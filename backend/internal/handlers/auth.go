@@ -3,14 +3,16 @@ package handlers
 import (
 	"net/http"
 
+	"upm-backend/internal/auth"
+	"upm-backend/internal/config"
 	"upm-backend/internal/models"
 
 	"github.com/gin-gonic/gin"
 )
 
 // Login godoc
-// @Summary      User login
-// @Description  Authenticate user and return JWT token
+// @Summary      Admin login
+// @Description  Authenticate admin and return JWT token (Pi-hole style)
 // @Tags         auth
 // @Accept       json
 // @Produce      json
@@ -27,17 +29,38 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// TODO: Implement authentication logic
-	// For now, return a mock response
+	// Get config
+	cfg := config.Load()
+
+	// Check if admin password is set
+	if cfg.AdminPassword == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Admin password not configured"})
+		return
+	}
+
+	// Authenticate admin (Pi-hole style - single password)
+	if !auth.AuthenticateAdmin(req.Password, cfg.AdminPassword) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		return
+	}
+
+	// Generate JWT token
+	token, err := auth.GenerateToken("admin", cfg.JWTSecret)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		return
+	}
+
+	// Create admin user response
 	user := models.User{
 		ID:       1,
-		Username: req.Username,
-		Email:    "user@example.com",
+		Username: "admin",
+		Email:    "admin@upm.local",
 		IsActive: true,
 	}
 
 	response := models.AuthResponse{
-		Token: "mock-jwt-token",
+		Token: token,
 		User:  user,
 	}
 
@@ -45,37 +68,15 @@ func Login(c *gin.Context) {
 }
 
 // Register godoc
-// @Summary      User registration
-// @Description  Register a new user account
+// @Summary      User registration (disabled)
+// @Description  Registration is disabled - UPM uses single admin authentication
 // @Tags         auth
 // @Accept       json
 // @Produce      json
-// @Param        user  body      models.UserCreateRequest  true  "User registration data"
-// @Success      201   {object}  models.AuthResponse
-// @Failure      400   {object}  map[string]string
-// @Failure      409   {object}  map[string]string
-// @Failure      500   {object}  map[string]string
+// @Failure      403   {object}  map[string]string
 // @Router       /auth/register [post]
 func Register(c *gin.Context) {
-	var req models.UserCreateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	// TODO: Implement registration logic
-	// For now, return a mock response
-	user := models.User{
-		ID:       1,
-		Username: req.Username,
-		Email:    req.Email,
-		IsActive: true,
-	}
-
-	response := models.AuthResponse{
-		Token: "mock-jwt-token",
-		User:  user,
-	}
-
-	c.JSON(http.StatusCreated, gin.H{"data": response})
+	c.JSON(http.StatusForbidden, gin.H{
+		"error": "Registration is disabled. UPM uses single admin authentication. Set ADMIN_PASSWORD environment variable to configure admin access.",
+	})
 }

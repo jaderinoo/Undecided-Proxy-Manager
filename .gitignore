@@ -21,6 +21,17 @@ dist/
 build/
 bin/
 
+# Go binaries
+upm-backend
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go build cache
+go.sum.bak
+
 # IDE
 .vscode/
 .idea/

@@ -7,6 +7,7 @@ import (
 	"upm-backend/docs"
 	"upm-backend/internal/config"
 	"upm-backend/internal/handlers"
+	"upm-backend/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -69,31 +70,36 @@ func main() {
 	// API v1 routes
 	v1 := r.Group("/api/v1")
 	{
-		// Proxy management endpoints
-		proxies := v1.Group("/proxies")
-		{
-			proxies.GET("", handlers.GetProxies)
-			proxies.POST("", handlers.CreateProxy)
-			proxies.GET("/:id", handlers.GetProxy)
-			proxies.PUT("/:id", handlers.UpdateProxy)
-			proxies.DELETE("/:id", handlers.DeleteProxy)
-		}
-
-		// User management endpoints
-		users := v1.Group("/users")
-		{
-			users.GET("", handlers.GetUsers)
-			users.POST("", handlers.CreateUser)
-			users.GET("/:id", handlers.GetUser)
-			users.PUT("/:id", handlers.UpdateUser)
-			users.DELETE("/:id", handlers.DeleteUser)
-		}
-
-		// Authentication endpoints
+		// Authentication endpoints (public)
 		auth := v1.Group("/auth")
 		{
 			auth.POST("/login", handlers.Login)
 			auth.POST("/register", handlers.Register)
+		}
+
+		// Protected routes (require authentication)
+		protected := v1.Group("")
+		protected.Use(middleware.AuthMiddleware())
+		{
+			// Proxy management endpoints
+			proxies := protected.Group("/proxies")
+			{
+				proxies.GET("", handlers.GetProxies)
+				proxies.POST("", handlers.CreateProxy)
+				proxies.GET("/:id", handlers.GetProxy)
+				proxies.PUT("/:id", handlers.UpdateProxy)
+				proxies.DELETE("/:id", handlers.DeleteProxy)
+			}
+
+			// User management endpoints (admin only)
+			users := protected.Group("/users")
+			{
+				users.GET("", handlers.GetUsers)
+				users.POST("", handlers.CreateUser)
+				users.GET("/:id", handlers.GetUser)
+				users.PUT("/:id", handlers.UpdateUser)
+				users.DELETE("/:id", handlers.DeleteUser)
+			}
 		}
 	}
 
