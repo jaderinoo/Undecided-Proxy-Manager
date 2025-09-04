@@ -7,21 +7,29 @@ set -e
 
 case "${1:-up}" in
   up)
-    echo "🚀 Starting UPM in production mode..."
+    echo "Starting UPM in production mode..."
     docker-compose up --build -d
+    echo "UPM production environment started in detached mode"
+    echo "View logs: ./prod.sh logs"
+    echo "Frontend: http://localhost:6070"
+    echo "Backend: http://localhost:6080"
     ;;
   down)
-    echo "🛑 Stopping UPM production environment..."
+    echo "Stopping UPM production environment..."
     docker-compose down
     ;;
   logs)
-    echo "📋 Showing UPM production logs..."
+    echo "Showing UPM production logs..."
     docker-compose logs -f
     ;;
   restart)
-    echo "🔄 Restarting UPM production environment..."
+    echo "Restarting UPM production environment..."
     docker-compose down
     docker-compose up --build -d
+    echo "UPM production environment restarted in detached mode"
+    echo "View logs: ./prod.sh logs"
+    echo "Frontend: http://localhost:6070"
+    echo "Backend: http://localhost:6080"
     ;;
   *)
     echo "Usage: $0 [up|down|logs|restart]"

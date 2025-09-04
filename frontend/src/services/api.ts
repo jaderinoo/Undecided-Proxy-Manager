@@ -13,18 +13,35 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:6081'
 
 class ApiService {
   private baseUrl: string
+  private authToken: string | null = null
 
   constructor(baseUrl: string = API_BASE_URL) {
     this.baseUrl = baseUrl
   }
 
+  setAuthToken(token: string) {
+    this.authToken = token
+  }
+
+  clearAuthToken() {
+    this.authToken = null
+  }
+
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`
+    
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    }
+
+    // Add authorization header if we have a token
+    if (this.authToken) {
+      headers['Authorization'] = `Bearer ${this.authToken}`
+    }
+
     const response = await fetch(url, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      headers,
       ...options,
     })
 
