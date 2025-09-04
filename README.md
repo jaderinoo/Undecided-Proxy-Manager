@@ -58,3 +58,11 @@ cd frontend && yarn dev
 - All endpoints return mock data (database integration pending)
 - CORS enabled for development
 - No `.env` files needed
+
+## ⚠️ Disclaimer
+
+**This software is for educational/development purposes only. Not recommended for production use without proper security review. See [DISCLAIMER.md](DISCLAIMER.md) for important security warnings.**
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
