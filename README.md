@@ -1,28 +1,60 @@
 # Undecided Proxy Manager (UPM)
 
-A simple monorepo with Go backend, Vue 3 frontend, and SQLite database.
+A simple proxy management system with Go backend, Vue 3 frontend, and Swagger API documentation.
 
-## 🚀 Quick Start
-
-```bash
-docker-compose up -d
-```
-
-## Services
-
-- **Backend**: Go server on port 6080
-- **Frontend**: Vue 3 app on port 6070  
-- **Database**: SQLite (file-based)
-
-## Development
+## 🚀 Super Easy Setup
 
 ```bash
-# Backend
-cd backend
-go run main.go
+# Development (hot reload)
+./dev.sh up
 
-# Frontend  
-cd frontend
-yarn install
-yarn dev
+# Production (optimized)
+./prod.sh up
 ```
+
+## 📍 Ports
+
+| Environment | Frontend | Backend | Swagger |
+|-------------|----------|---------|---------|
+| **Development** | 6071 | 6081 | http://localhost:6081/swagger |
+| **Production** | 80 | 6080 | http://localhost:6080/swagger |
+
+## 🔧 What You Get
+
+- **REST API** with full CRUD operations for proxies and users
+- **Interactive Swagger docs** - test APIs directly in your browser
+- **Hot reload** in development mode
+- **No config files needed** - everything just works
+- **Pi-hole friendly** - uses port 6080 to avoid conflicts
+
+## 📚 API Examples
+
+```bash
+# Health check
+curl http://localhost:6081/health
+
+# Get all proxies
+curl http://localhost:6081/api/v1/proxies
+
+# Create a proxy
+curl -X POST http://localhost:6081/api/v1/proxies \
+  -H "Content-Type: application/json" \
+  -d '{"name":"test","domain":"example.com","target_url":"http://localhost:6071","ssl_enabled":false}'
+```
+
+## 🛠️ Manual Development
+
+```bash
+# Backend only
+cd backend && go run main.go
+
+# Frontend only  
+cd frontend && yarn dev
+```
+
+## 📝 Notes
+
+- Database is automatically created
+- All endpoints return mock data (database integration pending)
+- CORS enabled for development
+- No `.env` files needed

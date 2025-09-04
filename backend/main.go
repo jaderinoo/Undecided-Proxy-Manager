@@ -3,13 +3,111 @@ package main
 import (
 	"log"
 	"net/http"
+
+	"upm-backend/docs"
+	"upm-backend/internal/config"
+	"upm-backend/internal/handlers"
+
+	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
+// @title           UPM (Undecided Proxy Manager) API
+// @version         1.0
+// @description     A REST API for managing proxy configurations and users
+// @termsOfService  http://swagger.io/terms/
+
+// @contact.name   API Support
+// @contact.url    http://www.swagger.io/support
+// @contact.email  support@swagger.io
+
+// @license.name  MIT
+// @license.url   https://opensource.org/licenses/MIT
+
+// @host      localhost:6080
+// @BasePath  /api/v1
+
+// @securityDefinitions.basic  BasicAuth
+
+// @externalDocs.description  OpenAPI
+// @externalDocs.url          https://swagger.io/resources/open-api/
 func main() {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Hello from Go backend!"))
+	// Load configuration
+	cfg := config.Load()
+
+	// Set Gin mode based on environment
+	if cfg.Environment == "production" {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
+	// Initialize Gin router
+	r := gin.Default()
+
+	// CORS middleware
+	r.Use(func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+		
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+		
+		c.Next()
 	})
 
-	log.Println("Starting server on :6080")
-	log.Fatal(http.ListenAndServe(":6080", nil))
+	// Health check endpoint
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"status":  "ok",
+			"message": "UPM API is running",
+		})
+	})
+
+	// API v1 routes
+	v1 := r.Group("/api/v1")
+	{
+		// Proxy management endpoints
+		proxies := v1.Group("/proxies")
+		{
+			proxies.GET("", handlers.GetProxies)
+			proxies.POST("", handlers.CreateProxy)
+			proxies.GET("/:id", handlers.GetProxy)
+			proxies.PUT("/:id", handlers.UpdateProxy)
+			proxies.DELETE("/:id", handlers.DeleteProxy)
+		}
+
+		// User management endpoints
+		users := v1.Group("/users")
+		{
+			users.GET("", handlers.GetUsers)
+			users.POST("", handlers.CreateUser)
+			users.GET("/:id", handlers.GetUser)
+			users.PUT("/:id", handlers.UpdateUser)
+			users.DELETE("/:id", handlers.DeleteUser)
+		}
+
+		// Authentication endpoints
+		auth := v1.Group("/auth")
+		{
+			auth.POST("/login", handlers.Login)
+			auth.POST("/register", handlers.Register)
+		}
+	}
+
+	// Swagger documentation
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	// Initialize docs
+	docs.SwaggerInfo.Host = "localhost:" + cfg.BackendPort
+	docs.SwaggerInfo.BasePath = "/api/v1"
+
+	log.Printf("Starting UPM API server on port %s", cfg.BackendPort)
+	log.Printf("Swagger documentation available at: http://localhost:%s/swagger/index.html", cfg.BackendPort)
+	
+	if err := r.Run(":" + cfg.BackendPort); err != nil {
+		log.Fatal("Failed to start server:", err)
+	}
 }

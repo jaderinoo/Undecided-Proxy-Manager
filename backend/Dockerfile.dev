@@ -1,0 +1,19 @@
+FROM golang:1.22-alpine
+
+WORKDIR /app
+
+# Install git for go mod download
+RUN apk add --no-cache git
+
+# Copy go mod files
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Expose port
+EXPOSE 6081
+
+# Run the application
+CMD ["go", "run", "main.go"]

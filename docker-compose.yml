@@ -7,14 +7,24 @@ services:
       dockerfile: Dockerfile
     ports:
       - "6080:6080"
+    environment:
+      - GO_ENV=production
+      - BACKEND_PORT=6080
+      - DB_PATH=/data/upm.db
+    volumes:
+      - sqlite_data:/data
     restart: unless-stopped
+    depends_on:
+      - db
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "6070:6070"
+      - "80:80"
+    environment:
+      - VITE_API_URL=http://localhost:6080
     depends_on:
       - backend
     restart: unless-stopped

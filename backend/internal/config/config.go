@@ -6,7 +6,6 @@ import (
 
 type Config struct {
 	DatabasePath string
-	JWTSecret    string
 	Environment  string
 	BackendPort  string
 }
@@ -14,9 +13,8 @@ type Config struct {
 func Load() *Config {
 	return &Config{
 		DatabasePath: getEnv("DB_PATH", "/data/upm.db"),
-		JWTSecret:    getEnv("JWT_SECRET", "default-secret-change-in-production"),
 		Environment:  getEnv("GO_ENV", "development"),
-		BackendPort:  getEnv("BACKEND_PORT", "8080"),
+		BackendPort:  getEnv("BACKEND_PORT", "6080"),
 	}
 }
 
