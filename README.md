@@ -2,7 +2,7 @@
 
 A simple proxy management system with Go backend, Vue 3 frontend, and Swagger API documentation.
 
-## 🚀 Super Easy Setup
+## Quick Start
 
 ```bash
 # Development (hot reload)
@@ -12,37 +12,36 @@ A simple proxy management system with Go backend, Vue 3 frontend, and Swagger AP
 ./prod.sh up
 ```
 
-## 📍 Ports
+## Development Commands
+
+```bash
+# Start development environment (no build)
+./dev.sh up
+
+# Start with build (when you need to rebuild)
+./dev.sh up-build
+
+# Build containers only
+./dev.sh build
+
+# Stop development environment
+./dev.sh down
+
+# View logs
+./dev.sh logs
+
+# Restart development environment
+./dev.sh restart
+```
+
+## Ports
 
 | Environment | Frontend | Backend | Swagger |
 |-------------|----------|---------|---------|
 | **Development** | 6071 | 6081 | http://localhost:6081/swagger |
-| **Production** | 80 | 6080 | http://localhost:6080/swagger |
+| **Production** | 6070 | 6080 | http://localhost:6080/swagger |
 
-## 🔧 What You Get
-
-- **REST API** with full CRUD operations for proxies and users
-- **Interactive Swagger docs** - test APIs directly in your browser
-- **Hot reload** in development mode
-- **No config files needed** - everything just works
-- **Pi-hole friendly** - uses port 6080 to avoid conflicts
-
-## 📚 API Examples
-
-```bash
-# Health check
-curl http://localhost:6081/health
-
-# Get all proxies
-curl http://localhost:6081/api/v1/proxies
-
-# Create a proxy
-curl -X POST http://localhost:6081/api/v1/proxies \
-  -H "Content-Type: application/json" \
-  -d '{"name":"test","domain":"example.com","target_url":"http://localhost:6071","ssl_enabled":false}'
-```
-
-## 🛠️ Manual Development
+## Manual Development
 
 ```bash
 # Backend only
@@ -52,17 +51,17 @@ cd backend && go run main.go
 cd frontend && yarn dev
 ```
 
-## 📝 Notes
+## Notes
 
 - Database is automatically created
 - All endpoints return mock data (database integration pending)
 - CORS enabled for development
 - No `.env` files needed
 
-## ⚠️ Disclaimer
+## Disclaimer
 
 **This software is for educational/development purposes only. Not recommended for production use without proper security review. See [DISCLAIMER.md](DISCLAIMER.md) for important security warnings.**
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

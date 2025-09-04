@@ -7,28 +7,28 @@ set -e
 
 case "${1:-up}" in
   up)
-    echo "🚀 Starting UPM in development mode..."
+    echo "Starting UPM in development mode..."
     docker-compose -f docker-compose.dev.yml up
     ;;
   up-build)
-    echo "🚀 Starting UPM in development mode (with build)..."
+    echo "Starting UPM in development mode (with build)..."
     docker-compose -f docker-compose.dev.yml up --build
     ;;
   down)
-    echo "🛑 Stopping UPM development environment..."
+    echo "Stopping UPM development environment..."
     docker-compose -f docker-compose.dev.yml down
     ;;
   logs)
-    echo "📋 Showing UPM development logs..."
+    echo "Showing UPM development logs..."
     docker-compose -f docker-compose.dev.yml logs -f
     ;;
   restart)
-    echo "🔄 Restarting UPM development environment..."
+    echo "Restarting UPM development environment..."
     docker-compose -f docker-compose.dev.yml down
     docker-compose -f docker-compose.dev.yml up
     ;;
   build)
-    echo "🔨 Building UPM development environment..."
+    echo "Building UPM development environment..."
     docker-compose -f docker-compose.dev.yml build
     ;;
   *)

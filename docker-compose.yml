@@ -22,7 +22,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "80:80"
+      - "6070:6070"
     environment:
       - VITE_API_URL=http://localhost:6080
     depends_on:
