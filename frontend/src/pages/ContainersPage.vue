@@ -1,5 +1,5 @@
 <template>
-  <AppLayout @refresh="loadContainers" @logout="handleLogout">
+  <AppLayout @refresh="loadContainers">
     <v-container>
       <v-row>
         <v-col cols="12">
@@ -132,21 +132,13 @@
                   v-else-if="containers && containers.length === 0"
                   title="No containers found"
                   text="No Docker containers are currently available"
-                >
-                  <template v-slot:image>
-                    <v-icon size="100" color="grey-lighten-1">mdi-docker</v-icon>
-                  </template>
-                </v-empty-state>
+                />
 
                 <v-empty-state
                   v-else
                   title="No matching containers"
                   text="Try adjusting your search or filter criteria"
-                >
-                  <template v-slot:image>
-                    <v-icon size="100" color="grey-lighten-1">mdi-magnify</v-icon>
-                  </template>
-                </v-empty-state>
+                />
               </div>
             </v-card-text>
           </v-card>
@@ -158,17 +150,12 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { apiService } from '../services/api'
-import { useAuthStore } from '../stores/auth'
 import AppLayout from '../components/AppLayout.vue'
 import ErrorAlert from '../components/ErrorAlert.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import ContainerCard from '../components/ContainerCard.vue'
 import type { Container, Proxy } from '../types/api'
-
-const router = useRouter()
-const authStore = useAuthStore()
 
 const containers = ref<Container[]>([])
 const filteredContainers = ref<Container[]>([])
@@ -332,10 +319,6 @@ const sortContainers = () => {
   filterContainers()
 }
 
-const handleLogout = () => {
-  authStore.logout()
-  router.push('/login')
-}
 
 onMounted(async () => {
   await Promise.all([

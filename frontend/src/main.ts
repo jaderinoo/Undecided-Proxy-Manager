@@ -14,6 +14,7 @@ import Dashboard from './pages/Dashboard.vue'
 import DNSPage from './pages/DNSPage.vue'
 import ContainersPage from './pages/ContainersPage.vue'
 import ProxiesPage from './pages/ProxiesPage.vue'
+import CertificatesPage from './pages/CertificatesPage.vue'
 import { useAuthStore } from './stores/auth'
 
 // Vuetify configuration
@@ -92,6 +93,12 @@ const router = createRouter({
       path: '/proxies',
       name: 'Proxies',
       component: ProxiesPage,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/certificates',
+      name: 'Certificates',
+      component: CertificatesPage,
       meta: { requiresAuth: true }
     },
     {

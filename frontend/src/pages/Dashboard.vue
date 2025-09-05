@@ -1,5 +1,5 @@
 <template>
-  <AppLayout @refresh="loadProxies" @logout="handleLogout">
+  <AppLayout @refresh="loadProxies">
     <v-container>
       <!-- Quick Stats -->
       <v-row class="mb-4">
@@ -371,17 +371,12 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { apiService } from '../services/api'
-import { useAuthStore } from '../stores/auth'
 import AppLayout from '../components/AppLayout.vue'
 import ErrorAlert from '../components/ErrorAlert.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import ProxyCard from '../components/ProxyCard.vue'
 import type { Proxy, Container, ProxyCreateRequest, ProxyUpdateRequest } from '../types/api'
-
-const router = useRouter()
-const authStore = useAuthStore()
 
 const proxies = ref<Proxy[]>([])
 const containers = ref<Container[]>([])
@@ -681,10 +676,6 @@ const reloadNginx = async () => {
   }
 }
 
-const handleLogout = () => {
-  authStore.logout()
-  router.push('/login')
-}
 
 onMounted(async () => {
   // Load all data when component mounts

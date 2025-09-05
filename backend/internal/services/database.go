@@ -526,6 +526,166 @@ func (d *DatabaseService) DeleteDNSRecord(id int) error {
 	return nil
 }
 
+// Certificate methods
+func (d *DatabaseService) GetCertificates() ([]models.Certificate, error) {
+	query := `
+		SELECT id, domain, cert_path, key_path, expires_at, is_valid, created_at, updated_at
+		FROM certificates
+		ORDER BY created_at DESC`
+
+	rows, err := d.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query certificates: %w", err)
+	}
+	defer rows.Close()
+
+	var certificates []models.Certificate
+	for rows.Next() {
+		var cert models.Certificate
+		err := rows.Scan(
+			&cert.ID,
+			&cert.Domain,
+			&cert.CertPath,
+			&cert.KeyPath,
+			&cert.ExpiresAt,
+			&cert.IsValid,
+			&cert.CreatedAt,
+			&cert.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan certificate: %w", err)
+		}
+		certificates = append(certificates, cert)
+	}
+
+	return certificates, nil
+}
+
+func (d *DatabaseService) GetCertificate(id int) (*models.Certificate, error) {
+	query := `
+		SELECT id, domain, cert_path, key_path, expires_at, is_valid, created_at, updated_at
+		FROM certificates
+		WHERE id = ?`
+
+	var cert models.Certificate
+	err := d.db.QueryRow(query, id).Scan(
+		&cert.ID,
+		&cert.Domain,
+		&cert.CertPath,
+		&cert.KeyPath,
+		&cert.ExpiresAt,
+		&cert.IsValid,
+		&cert.CreatedAt,
+		&cert.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get certificate: %w", err)
+	}
+
+	return &cert, nil
+}
+
+func (d *DatabaseService) CreateCertificate(cert *models.Certificate) error {
+	query := `
+		INSERT INTO certificates (domain, cert_path, key_path, expires_at, is_valid)
+		VALUES (?, ?, ?, ?, ?)`
+
+	result, err := d.db.Exec(query, cert.Domain, cert.CertPath, cert.KeyPath, cert.ExpiresAt, cert.IsValid)
+	if err != nil {
+		return fmt.Errorf("failed to insert certificate: %w", err)
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return fmt.Errorf("failed to get last insert id: %w", err)
+	}
+
+	cert.ID = int(id)
+	cert.CreatedAt = time.Now()
+	cert.UpdatedAt = time.Now()
+
+	return nil
+}
+
+func (d *DatabaseService) UpdateCertificate(cert *models.Certificate) error {
+	query := `
+		UPDATE certificates 
+		SET domain = ?, cert_path = ?, key_path = ?, expires_at = ?, is_valid = ?, updated_at = CURRENT_TIMESTAMP
+		WHERE id = ?`
+
+	result, err := d.db.Exec(query, cert.Domain, cert.CertPath, cert.KeyPath, cert.ExpiresAt, cert.IsValid, cert.ID)
+	if err != nil {
+		return fmt.Errorf("failed to update certificate: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("certificate not found")
+	}
+
+	cert.UpdatedAt = time.Now()
+	return nil
+}
+
+func (d *DatabaseService) DeleteCertificate(id int) error {
+	query := `DELETE FROM certificates WHERE id = ?`
+
+	result, err := d.db.Exec(query, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete certificate: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("certificate not found")
+	}
+
+	return nil
+}
+
+func (d *DatabaseService) GetProxiesByDomain(domain string) ([]models.Proxy, error) {
+	query := `
+		SELECT id, name, domain, target_url, ssl_enabled, ssl_path, status, created_at, updated_at
+		FROM proxies
+		WHERE domain = ? OR domain LIKE ?`
+
+	rows, err := d.db.Query(query, domain, "%."+domain)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query proxies by domain: %w", err)
+	}
+	defer rows.Close()
+
+	var proxies []models.Proxy
+	for rows.Next() {
+		var proxy models.Proxy
+		err := rows.Scan(
+			&proxy.ID,
+			&proxy.Name,
+			&proxy.Domain,
+			&proxy.TargetURL,
+			&proxy.SSLEnabled,
+			&proxy.SSLPath,
+			&proxy.Status,
+			&proxy.CreatedAt,
+			&proxy.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan proxy: %w", err)
+		}
+		proxies = append(proxies, proxy)
+	}
+
+	return proxies, nil
+}
+
 func (d *DatabaseService) Close() error {
 	return d.db.Close()
 }

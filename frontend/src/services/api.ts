@@ -16,7 +16,10 @@ import type {
   DNSRecordCreateRequest,
   DNSRecordUpdateRequest,
   DNSUpdateResponse,
-  DNSStatus
+  DNSStatus,
+  Certificate,
+  CertificateCreateRequest,
+  CertificateUpdateRequest
 } from '../types/api'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:6081'
@@ -246,6 +249,45 @@ class ApiService {
 
   async getPublicIP(): Promise<{ ip: string }> {
     return this.request('/api/v1/dns/public-ip')
+  }
+
+  // Certificate endpoints
+  async getCertificates(): Promise<ApiResponse<Certificate[]>> {
+    return this.request('/api/v1/certificates')
+  }
+
+  async getCertificate(id: number): Promise<ApiResponse<Certificate>> {
+    return this.request(`/api/v1/certificates/${id}`)
+  }
+
+  async createCertificate(certificate: CertificateCreateRequest): Promise<ApiResponse<Certificate>> {
+    return this.request('/api/v1/certificates', {
+      method: 'POST',
+      body: JSON.stringify(certificate),
+    })
+  }
+
+  async updateCertificate(id: number, certificate: CertificateUpdateRequest): Promise<ApiResponse<Certificate>> {
+    return this.request(`/api/v1/certificates/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(certificate),
+    })
+  }
+
+  async deleteCertificate(id: number): Promise<{ message: string }> {
+    return this.request(`/api/v1/certificates/${id}`, {
+      method: 'DELETE',
+    })
+  }
+
+  async getCertificateProxies(id: number): Promise<ApiResponse<Proxy[]>> {
+    return this.request(`/api/v1/certificates/${id}/proxies`)
+  }
+
+  async renewCertificate(id: number): Promise<ApiResponse<Certificate>> {
+    return this.request(`/api/v1/certificates/${id}/renew`, {
+      method: 'POST',
+    })
   }
 }
 

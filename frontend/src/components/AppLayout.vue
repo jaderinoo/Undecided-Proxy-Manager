@@ -39,6 +39,13 @@
         ></v-list-item>
 
         <v-list-item
+          prepend-icon="mdi-certificate"
+          title="Certificates"
+          value="certificates"
+          :to="{ name: 'Certificates' }"
+        ></v-list-item>
+
+        <v-list-item
           prepend-icon="mdi-docker"
           title="Containers"
           value="containers"
@@ -72,7 +79,7 @@
       <!-- Theme Toggle -->
       <ThemeToggle class="mr-2" />
       
-      <v-btn icon @click="$emit('logout')">
+      <v-btn icon @click="handleLogout">
         <v-icon>mdi-logout</v-icon>
       </v-btn>
     </v-app-bar> 
@@ -85,16 +92,22 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import ThemeToggle from './ThemeToggle.vue'
 
+const router = useRouter()
 const authStore = useAuthStore()
 
 const drawer = ref(true)
 const rail = ref(false)
 
+const handleLogout = () => {
+  authStore.logout()
+  router.push('/login')
+}
+
 defineEmits<{
   refresh: []
-  logout: []
 }>()
 </script>

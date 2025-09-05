@@ -40,3 +40,18 @@ type Certificate struct {
 	CreatedAt  time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at" db:"updated_at"`
 }
+
+type CertificateCreateRequest struct {
+	Domain    string    `json:"domain" binding:"required"`
+	CertPath  string    `json:"cert_path" binding:"required"`
+	KeyPath   string    `json:"key_path" binding:"required"`
+	ExpiresAt time.Time `json:"expires_at" binding:"required"`
+}
+
+type CertificateUpdateRequest struct {
+	Domain    *string    `json:"domain,omitempty"`
+	CertPath  *string    `json:"cert_path,omitempty"`
+	KeyPath   *string    `json:"key_path,omitempty"`
+	ExpiresAt *time.Time `json:"expires_at,omitempty"`
+	IsValid   *bool      `json:"is_valid,omitempty"`
+}

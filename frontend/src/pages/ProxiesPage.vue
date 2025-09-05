@@ -1,5 +1,5 @@
 <template>
-  <AppLayout @refresh="loadProxies" @logout="handleLogout">
+  <AppLayout @refresh="loadProxies">
     <v-container>
       <v-row>
         <v-col cols="12">
@@ -155,21 +155,13 @@
                   v-else-if="proxies && proxies.length === 0"
                   title="No proxies found"
                   text="No proxy configurations are currently available"
-                >
-                  <template v-slot:image>
-                    <v-icon size="100" color="grey-lighten-1">mdi-server-network</v-icon>
-                  </template>
-                </v-empty-state>
+                />
 
                 <v-empty-state
                   v-else
                   title="No matching proxies"
                   text="Try adjusting your search or filter criteria"
-                >
-                  <template v-slot:image>
-                    <v-icon size="100" color="grey-lighten-1">mdi-magnify</v-icon>
-                  </template>
-                </v-empty-state>
+                />
               </div>
             </v-card-text>
           </v-card>
@@ -389,7 +381,7 @@
             title="No containers found"
             text="No Docker containers are currently available"
           >
-            <template v-slot:image>
+            <template v-slot:icon>
               <v-icon size="100" color="grey-lighten-1">mdi-docker</v-icon>
             </template>
           </v-empty-state>
@@ -421,17 +413,12 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { apiService } from '../services/api'
-import { useAuthStore } from '../stores/auth'
 import AppLayout from '../components/AppLayout.vue'
 import ErrorAlert from '../components/ErrorAlert.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import ProxyCard from '../components/ProxyCard.vue'
 import type { Proxy, ProxyCreateRequest, ProxyUpdateRequest, Container } from '../types/api'
-
-const router = useRouter()
-const authStore = useAuthStore()
 
 const proxies = ref<Proxy[]>([])
 const filteredProxies = ref<Proxy[]>([])
@@ -443,7 +430,6 @@ const sortBy = ref('name')
 
 // Container-related state
 const containers = ref<Container[]>([])
-const filteredContainers = ref<Container[]>([])
 const loadingContainers = ref(false)
 const containerError = ref<string | null>(null)
 const containerSearchQuery = ref('')
@@ -791,10 +777,6 @@ const reloadNginx = async () => {
   }
 }
 
-const handleLogout = () => {
-  authStore.logout()
-  router.push('/login')
-}
 
 onMounted(async () => {
   await Promise.all([

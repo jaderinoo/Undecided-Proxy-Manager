@@ -180,6 +180,18 @@ func main() {
 				dns.GET("/status", handlers.GetDNSStatus)
 				dns.GET("/public-ip", handlers.GetPublicIP)
 			}
+
+			// Certificate management endpoints
+			certificates := protected.Group("/certificates")
+			{
+				certificates.GET("", handlers.GetCertificates)
+				certificates.POST("", handlers.CreateCertificate)
+				certificates.GET("/:id", handlers.GetCertificate)
+				certificates.PUT("/:id", handlers.UpdateCertificate)
+				certificates.DELETE("/:id", handlers.DeleteCertificate)
+				certificates.GET("/:id/proxies", handlers.GetCertificateProxies)
+				certificates.POST("/:id/renew", handlers.RenewCertificate)
+			}
 		}
 	}
 

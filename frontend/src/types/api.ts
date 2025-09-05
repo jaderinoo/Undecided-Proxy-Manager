@@ -71,6 +71,21 @@ export interface Certificate {
   updated_at: string;
 }
 
+export interface CertificateCreateRequest {
+  domain: string;
+  cert_path: string;
+  key_path: string;
+  expires_at: string;
+}
+
+export interface CertificateUpdateRequest {
+  domain?: string;
+  cert_path?: string;
+  key_path?: string;
+  expires_at?: string;
+  is_valid?: boolean;
+}
+
 // Container Types
 export interface Container {
   id: string;
