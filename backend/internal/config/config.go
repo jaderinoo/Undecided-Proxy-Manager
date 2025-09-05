@@ -10,6 +10,9 @@ type Config struct {
 	BackendPort   string
 	AdminPassword string
 	JWTSecret     string
+	// Development Configuration
+	DevMode       bool   // Whether we're in development mode
+	DevTestPassword string // Development test password for bypass
 	// DNS Configuration
 	DNSCheckInterval string // How often to check and update DNS (e.g., "5m", "1h")
 	PublicIPService  string // Service to get public IP (e.g., "https://api.ipify.org")
@@ -20,12 +23,17 @@ type Config struct {
 }
 
 func Load() *Config {
+	env := getEnv("GO_ENV", "development")
+	devMode := env == "development"
+
 	return &Config{
 		DatabasePath:        getEnv("DB_PATH", "/data/upm.db"),
-		Environment:         getEnv("GO_ENV", "development"),
+		Environment:         env,
 		BackendPort:         getEnv("BACKEND_PORT", "6080"),
 		AdminPassword:       getEnv("ADMIN_PASSWORD", ""),
 		JWTSecret:           getEnv("JWT_SECRET", "upm-default-secret-change-in-production"),
+		DevMode:             devMode,
+		DevTestPassword:     getEnv("DEV_TEST_PASSWORD", "devtest"),
 		DNSCheckInterval:    getEnv("DNS_CHECK_INTERVAL", "5m"),
 		PublicIPService:     getEnv("PUBLIC_IP_SERVICE", "https://api.ipify.org"),
 		LetsEncryptEmail:    getEnv("LETSENCRYPT_EMAIL", ""),

@@ -56,12 +56,13 @@ func main() {
 	// Initialize nginx service
 	nginxConfigPath := os.Getenv("NGINX_CONFIG_PATH")
 	nginxReloadCmd := os.Getenv("NGINX_RELOAD_CMD")
+	nginxContainerName := os.Getenv("NGINX_CONTAINER_NAME")
 
 	var nginxService *services.NginxService
 	if nginxConfigPath != "" && nginxReloadCmd != "" {
-		nginxService = services.NewNginxService(nginxConfigPath, nginxReloadCmd)
+		nginxService = services.NewNginxService(nginxConfigPath, nginxReloadCmd, nginxContainerName)
 		handlers.SetNginxService(nginxService)
-		log.Printf("Nginx service initialized with config path: %s", nginxConfigPath)
+		log.Printf("Nginx service initialized with config path: %s, container: %s", nginxConfigPath, nginxContainerName)
 	} else {
 		log.Printf("Nginx service not initialized - missing environment variables")
 	}

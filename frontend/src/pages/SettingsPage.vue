@@ -268,7 +268,7 @@
                         # The password will be hashed automatically
                       </div>
                       <div>
-                        ADMIN_PASSWORD="$2a$10$nw5fYAjn9BX9OMNPSpcSVuPlunvsjP10sDUq7RuzPDLANlwY2x2nu"
+                        ADMIN_PASSWORD="$$2a$$10$$nw5fYAjn9BX9OMNPSpcSVuPlunvsjP10sDUq7RuzPDLANlwY2x2nu"
                       </div>
                       <div></div>
                       <div data-comment="true">
@@ -312,14 +312,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { onMounted, ref } from 'vue';
 import AppLayout from '../components/AppLayout.vue';
 import PageHeader from '../components/PageHeader.vue';
 import apiService from '../services/api';
 import type {
-  CoreSettings,
-  UISettings,
-  SettingsUpdateRequest,
+    CoreSettings,
+    SettingsUpdateRequest,
+    UISettings,
 } from '../types/api';
 
 // Reactive data
@@ -457,7 +457,7 @@ BACKEND_PORT=6081
 # Authentication Configuration (Pi-hole style)
 # Set a strong password for admin access
 # The password will be hashed automatically
-ADMIN_PASSWORD="$2a$10$nw5fYAjn9BX9OMNPSpcSVuPlunvsjP10sDUq7RuzPDLANlwY2x2nu"
+ADMIN_PASSWORD="$$2a$$10$$nw5fYAjn9BX9OMNPSpcSVuPlunvsjP10sDUq7RuzPDLANlwY2x2nu"
 
 # JWT Secret for token signing
 # Generate a strong random secret for production

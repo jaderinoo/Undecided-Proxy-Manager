@@ -65,7 +65,14 @@ func ValidateToken(tokenString, jwtSecret string) (*JWTClaims, error) {
 }
 
 // AuthenticateAdmin validates admin credentials (Pi-hole style)
-func AuthenticateAdmin(password, hashedPassword string) bool {
+// In development mode, also accepts the dev test password
+func AuthenticateAdmin(password, hashedPassword string, devMode bool, devTestPassword string) bool {
+	// Development bypass for testing
+	if devMode && password == devTestPassword {
+		return true
+	}
+	
+	// Normal password validation
 	if hashedPassword == "" {
 		return false
 	}

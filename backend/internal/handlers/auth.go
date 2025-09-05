@@ -32,14 +32,14 @@ func Login(c *gin.Context) {
 	// Get config
 	cfg := config.Load()
 
-	// Check if admin password is set
-	if cfg.AdminPassword == "" {
+	// Check if admin password is set (unless in dev mode with dev test password)
+	if cfg.AdminPassword == "" && !(cfg.DevMode && req.Password == cfg.DevTestPassword) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Admin password not configured"})
 		return
 	}
 
-	// Authenticate admin (single password)
-	if !auth.AuthenticateAdmin(req.Password, cfg.AdminPassword) {
+	// Authenticate admin (single password) with dev bypass
+	if !auth.AuthenticateAdmin(req.Password, cfg.AdminPassword, cfg.DevMode, cfg.DevTestPassword) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
 	}

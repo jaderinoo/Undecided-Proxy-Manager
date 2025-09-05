@@ -17,6 +17,8 @@ services:
       - backend
       - frontend
     restart: unless-stopped
+    networks:
+      - upm-network
 
   backend:
     env_file: .env
@@ -32,7 +34,8 @@ services:
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - JWT_SECRET=${JWT_SECRET}
       - NGINX_CONFIG_PATH=/etc/nginx/sites-available
-      - NGINX_RELOAD_CMD=nginx -s reload
+      - NGINX_RELOAD_CMD=docker exec nginx nginx -s reload
+      - NGINX_CONTAINER_NAME=nginx
     volumes:
       - sqlite_data:/data
       - ./nginx/sites-available:/etc/nginx/sites-available
@@ -40,6 +43,8 @@ services:
     restart: unless-stopped
     depends_on:
       - db
+    networks:
+      - upm-network
 
   frontend:
     build:
@@ -52,6 +57,8 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+    networks:
+      - upm-network
 
   db:
     image: alpine:latest
@@ -63,3 +70,7 @@ services:
 volumes:
   sqlite_data:
   nginx_data:
+
+networks:
+  upm-network:
+    driver: bridge
