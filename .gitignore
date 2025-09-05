@@ -53,3 +53,5 @@ ssl/
 
 # Nginx configs (generated)
 nginx/conf.d/
+nginx/sites-available/proxy-*.conf
+nginx/sites-enabled/proxy-*.conf

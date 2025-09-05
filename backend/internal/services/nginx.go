@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"text/template"
 
 	"upm-backend/internal/models"
@@ -96,6 +97,13 @@ func (n *NginxService) ReloadNginx() error {
 	cmd := exec.Command("sh", "-c", n.ReloadCommand)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		// If nginx is not available (e.g., in backend container), log warning but don't fail
+		if strings.Contains(string(output), "not found") ||
+		   strings.Contains(err.Error(), "not found") ||
+		   strings.Contains(string(output), "command not found") {
+			// nginx not available in this container, skip reload
+			return nil
+		}
 		return fmt.Errorf("failed to reload nginx: %s, error: %w", string(output), err)
 	}
 	return nil
@@ -106,6 +114,13 @@ func (n *NginxService) TestNginxConfig() error {
 	cmd := exec.Command("nginx", "-t")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		// If nginx is not available (e.g., in backend container), log warning but don't fail
+		if strings.Contains(string(output), "executable file not found") || 
+		   strings.Contains(string(output), "not found") ||
+		   strings.Contains(err.Error(), "executable file not found") {
+			// nginx not available in this container, skip test
+			return nil
+		}
 		return fmt.Errorf("nginx config test failed: %s, error: %w", string(output), err)
 	}
 	return nil

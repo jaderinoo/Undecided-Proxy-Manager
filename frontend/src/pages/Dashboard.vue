@@ -40,6 +40,16 @@
               Proxy Management
               <v-spacer></v-spacer>
               <v-btn
+                color="success"
+                variant="outlined"
+                size="small"
+                @click="openCreateProxyDialog"
+                class="mr-2"
+              >
+                <v-icon left>mdi-plus</v-icon>
+                Add Proxy
+              </v-btn>
+              <v-btn
                 color="primary"
                 variant="outlined"
                 size="small"
@@ -116,7 +126,7 @@
                   
                   <v-list density="compact">
                     <v-list-item
-                      v-for="container in containers"
+                      v-for="container in displayedContainers"
                       :key="container.id"
                       class="px-0"
                     >
@@ -145,6 +155,20 @@
                       </template>
                     </v-list-item>
                   </v-list>
+                  
+                  <v-btn
+                    v-if="hasMoreContainers"
+                    color="primary"
+                    variant="text"
+                    size="small"
+                    class="mt-2"
+                    @click="toggleContainerDisplay"
+                  >
+                    <v-icon left>
+                      {{ showAllContainers ? 'mdi-chevron-up' : 'mdi-chevron-down' }}
+                    </v-icon>
+                    {{ showAllContainers ? 'Show Less' : `Show All ${containers.length} Containers` }}
+                  </v-btn>
                 </div>
 
                 <v-empty-state
@@ -162,6 +186,70 @@
         </v-col>
       </v-row>
     </v-container>
+
+    <!-- Create Proxy Dialog -->
+    <v-dialog v-model="createProxyDialog" max-width="600px">
+      <v-card>
+        <v-card-title>
+          <v-icon left>mdi-plus</v-icon>
+          Add New Proxy
+        </v-card-title>
+        <v-card-text>
+          <v-form ref="createProxyForm" v-model="createProxyFormValid">
+            <v-text-field
+              v-model="newProxy.name"
+              label="Proxy Name"
+              :rules="[v => !!v || 'Name is required']"
+              required
+              class="mb-2"
+            ></v-text-field>
+            
+            <v-text-field
+              v-model="newProxy.domain"
+              label="Domain"
+              :rules="[v => !!v || 'Domain is required']"
+              required
+              class="mb-2"
+              hint="e.g., example.com"
+            ></v-text-field>
+            
+            <v-text-field
+              v-model="newProxy.target_url"
+              label="Target URL"
+              :rules="[v => !!v || 'Target URL is required']"
+              required
+              class="mb-2"
+              hint="e.g., http://localhost:3000"
+            ></v-text-field>
+            
+            <v-switch
+              v-model="newProxy.ssl_enabled"
+              label="Enable SSL"
+              color="success"
+              class="mb-2"
+            ></v-switch>
+          </v-form>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            color="grey"
+            variant="text"
+            @click="closeCreateProxyDialog"
+          >
+            Cancel
+          </v-btn>
+          <v-btn
+            color="primary"
+            @click="createProxy"
+            :loading="creatingProxy"
+            :disabled="!createProxyFormValid"
+          >
+            Create Proxy
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </AppLayout>
 </template>
 
@@ -174,7 +262,7 @@ import AppLayout from '../components/AppLayout.vue'
 import ErrorAlert from '../components/ErrorAlert.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import ProxyCard from '../components/ProxyCard.vue'
-import type { Proxy, Container } from '../types/api'
+import type { Proxy, Container, ProxyCreateRequest } from '../types/api'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -185,6 +273,18 @@ const loading = ref(true)
 const loadingContainers = ref(false)
 const error = ref<string | null>(null)
 const containerError = ref<string | null>(null)
+const showAllContainers = ref(false)
+
+// Create proxy dialog state
+const createProxyDialog = ref(false)
+const createProxyFormValid = ref(false)
+const creatingProxy = ref(false)
+const newProxy = ref<ProxyCreateRequest>({
+  name: '',
+  domain: '',
+  target_url: '',
+  ssl_enabled: false
+})
 
 // Computed properties
 const sslCount = computed(() => 
@@ -201,6 +301,17 @@ const stoppedContainers = computed(() =>
 
 const createdContainers = computed(() => 
   containers.value.filter(c => c.state === 'created').length
+)
+
+const displayedContainers = computed(() => {
+  if (showAllContainers.value) {
+    return containers.value
+  }
+  return containers.value.slice(0, 5)
+})
+
+const hasMoreContainers = computed(() => 
+  containers.value.length > 5
 )
 
 const loadProxies = async () => {
@@ -252,6 +363,49 @@ const getContainerStatusIcon = (state: string) => {
   }
 }
 
+const toggleContainerDisplay = () => {
+  showAllContainers.value = !showAllContainers.value
+}
+
+// Create proxy dialog methods
+const openCreateProxyDialog = () => {
+  createProxyDialog.value = true
+  // Reset form
+  newProxy.value = {
+    name: '',
+    domain: '',
+    target_url: '',
+    ssl_enabled: false
+  }
+  createProxyFormValid.value = false
+}
+
+const closeCreateProxyDialog = () => {
+  createProxyDialog.value = false
+  error.value = null
+}
+
+const createProxy = async () => {
+  try {
+    creatingProxy.value = true
+    error.value = null
+    
+    const response = await apiService.createProxy(newProxy.value)
+    
+    // Add the new proxy to the list
+    if (response.data) {
+      proxies.value.unshift(response.data)
+    }
+    
+    // Close dialog and reset form
+    closeCreateProxyDialog()
+    
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to create proxy'
+  } finally {
+    creatingProxy.value = false
+  }
+}
 
 const handleLogout = () => {
   authStore.logout()
