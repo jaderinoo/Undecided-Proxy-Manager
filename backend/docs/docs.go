@@ -26,7 +26,7 @@ const docTemplate = `{
     "paths": {
         "/auth/login": {
             "post": {
-                "description": "Authenticate user and return JWT token",
+                "description": "Authenticate admin and return JWT token",
                 "consumes": [
                     "application/json"
                 ],
@@ -36,7 +36,7 @@ const docTemplate = `{
                 "tags": [
                     "auth"
                 ],
-                "summary": "User login",
+                "summary": "Admin login",
                 "parameters": [
                     {
                         "description": "Login credentials",
@@ -87,7 +87,7 @@ const docTemplate = `{
         },
         "/auth/register": {
             "post": {
-                "description": "Register a new user account",
+                "description": "Registration is disabled - UPM uses single admin authentication",
                 "consumes": [
                     "application/json"
                 ],
@@ -97,23 +97,79 @@ const docTemplate = `{
                 "tags": [
                     "auth"
                 ],
-                "summary": "User registration",
+                "summary": "User registration (disabled)",
+                "responses": {
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/containers": {
+            "get": {
+                "description": "Get a list of all containers (running and stopped)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "containers"
+                ],
+                "summary": "Get all containers",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.ContainerListResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/containers/{id}": {
+            "get": {
+                "description": "Get a specific container by ID with detailed information",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "containers"
+                ],
+                "summary": "Get container by ID",
                 "parameters": [
                     {
-                        "description": "User registration data",
-                        "name": "user",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/models.UserCreateRequest"
-                        }
+                        "type": "string",
+                        "description": "Container ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
                     }
                 ],
                 "responses": {
-                    "201": {
-                        "description": "Created",
+                    "200": {
+                        "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.AuthResponse"
+                            "$ref": "#/definitions/models.Container"
                         }
                     },
                     "400": {
@@ -125,8 +181,68 @@ const docTemplate = `{
                             }
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/containers/{id}/stats": {
+            "get": {
+                "description": "Get real-time statistics for a specific container",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "containers"
+                ],
+                "summary": "Get container stats",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Container ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -699,6 +815,122 @@ const docTemplate = `{
                 }
             }
         },
+        "models.Container": {
+            "type": "object",
+            "properties": {
+                "command": {
+                    "type": "string"
+                },
+                "created": {
+                    "type": "string"
+                },
+                "finished_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "image": {
+                    "type": "string"
+                },
+                "image_id": {
+                    "type": "string"
+                },
+                "labels": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "mounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Mount"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "network_mode": {
+                    "type": "string"
+                },
+                "ports": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.PortMapping"
+                    }
+                },
+                "size_root_fs": {
+                    "type": "integer"
+                },
+                "size_rw": {
+                    "type": "integer"
+                },
+                "started_at": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.ContainerListResponse": {
+            "type": "object",
+            "properties": {
+                "containers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Container"
+                    }
+                },
+                "count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.Mount": {
+            "type": "object",
+            "properties": {
+                "destination": {
+                    "type": "string"
+                },
+                "mode": {
+                    "type": "string"
+                },
+                "propagation": {
+                    "type": "string"
+                },
+                "rw": {
+                    "type": "boolean"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.PortMapping": {
+            "type": "object",
+            "properties": {
+                "ip": {
+                    "type": "string"
+                },
+                "private_port": {
+                    "type": "integer"
+                },
+                "public_port": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
         "models.Proxy": {
             "type": "object",
             "properties": {
@@ -817,14 +1049,10 @@ const docTemplate = `{
         "models.UserLoginRequest": {
             "type": "object",
             "required": [
-                "password",
-                "username"
+                "password"
             ],
             "properties": {
                 "password": {
-                    "type": "string"
-                },
-                "username": {
                     "type": "string"
                 }
             }

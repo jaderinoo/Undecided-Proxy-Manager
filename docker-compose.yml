@@ -36,6 +36,7 @@ services:
     volumes:
       - sqlite_data:/data
       - ./nginx/sites-available:/etc/nginx/sites-available
+      - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
     depends_on:
       - db

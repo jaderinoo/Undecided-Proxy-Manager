@@ -66,6 +66,15 @@ func main() {
 		log.Printf("Nginx service not initialized - missing environment variables")
 	}
 
+	// Initialize Docker service
+	dockerService, err := services.NewDockerService()
+	if err != nil {
+		log.Printf("Docker service not initialized: %v", err)
+	} else {
+		handlers.SetDockerService(dockerService)
+		log.Printf("Docker service initialized")
+	}
+
 	// Initialize Gin router
 	r := gin.Default()
 
@@ -123,6 +132,14 @@ func main() {
 				users.GET("/:id", handlers.GetUser)
 				users.PUT("/:id", handlers.UpdateUser)
 				users.DELETE("/:id", handlers.DeleteUser)
+			}
+
+			// Container management endpoints
+			containers := protected.Group("/containers")
+			{
+				containers.GET("", handlers.GetContainers)
+				containers.GET("/:id", handlers.GetContainer)
+				containers.GET("/:id/stats", handlers.GetContainerStats)
 			}
 		}
 	}

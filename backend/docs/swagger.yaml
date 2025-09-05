@@ -7,6 +7,82 @@ definitions:
       user:
         $ref: '#/definitions/models.User'
     type: object
+  models.Container:
+    properties:
+      command:
+        type: string
+      created:
+        type: string
+      finished_at:
+        type: string
+      id:
+        type: string
+      image:
+        type: string
+      image_id:
+        type: string
+      labels:
+        additionalProperties:
+          type: string
+        type: object
+      mounts:
+        items:
+          $ref: '#/definitions/models.Mount'
+        type: array
+      name:
+        type: string
+      network_mode:
+        type: string
+      ports:
+        items:
+          $ref: '#/definitions/models.PortMapping'
+        type: array
+      size_root_fs:
+        type: integer
+      size_rw:
+        type: integer
+      started_at:
+        type: string
+      state:
+        type: string
+      status:
+        type: string
+    type: object
+  models.ContainerListResponse:
+    properties:
+      containers:
+        items:
+          $ref: '#/definitions/models.Container'
+        type: array
+      count:
+        type: integer
+    type: object
+  models.Mount:
+    properties:
+      destination:
+        type: string
+      mode:
+        type: string
+      propagation:
+        type: string
+      rw:
+        type: boolean
+      source:
+        type: string
+      type:
+        type: string
+    type: object
+  models.PortMapping:
+    properties:
+      ip:
+        type: string
+      private_port:
+        type: integer
+      public_port:
+        type: integer
+      type:
+        type: string
+    type: object
   models.Proxy:
     properties:
       created_at:
@@ -88,16 +164,13 @@ definitions:
     properties:
       password:
         type: string
-      username:
-        type: string
     required:
     - password
-    - username
     type: object
 externalDocs:
   description: OpenAPI
   url: https://swagger.io/resources/open-api/
-host: localhost:8080
+host: localhost:6080
 info:
   contact:
     email: support@swagger.io
@@ -115,7 +188,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Authenticate user and return JWT token
+      description: Authenticate admin and return JWT token
       parameters:
       - description: Login credentials
         in: body
@@ -148,36 +221,73 @@ paths:
             additionalProperties:
               type: string
             type: object
-      summary: User login
+      summary: Admin login
       tags:
       - auth
   /auth/register:
     post:
       consumes:
       - application/json
-      description: Register a new user account
-      parameters:
-      - description: User registration data
-        in: body
-        name: user
-        required: true
-        schema:
-          $ref: '#/definitions/models.UserCreateRequest'
+      description: Registration is disabled - UPM uses single admin authentication
       produces:
       - application/json
       responses:
-        "201":
-          description: Created
+        "403":
+          description: Forbidden
           schema:
-            $ref: '#/definitions/models.AuthResponse'
+            additionalProperties:
+              type: string
+            type: object
+      summary: User registration (disabled)
+      tags:
+      - auth
+  /containers:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all containers (running and stopped)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ContainerListResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get all containers
+      tags:
+      - containers
+  /containers/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get a specific container by ID with detailed information
+      parameters:
+      - description: Container ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Container'
         "400":
           description: Bad Request
           schema:
             additionalProperties:
               type: string
             type: object
-        "409":
-          description: Conflict
+        "404":
+          description: Not Found
           schema:
             additionalProperties:
               type: string
@@ -188,9 +298,49 @@ paths:
             additionalProperties:
               type: string
             type: object
-      summary: User registration
+      summary: Get container by ID
       tags:
-      - auth
+      - containers
+  /containers/{id}/stats:
+    get:
+      consumes:
+      - application/json
+      description: Get real-time statistics for a specific container
+      parameters:
+      - description: Container ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get container stats
+      tags:
+      - containers
   /proxies:
     get:
       consumes:

@@ -6,7 +6,9 @@ import type {
   User,
   UserCreateRequest,
   UserLoginRequest,
-  AuthResponse
+  AuthResponse,
+  Container,
+  ContainerListResponse
 } from '../types/api'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:6081'
@@ -128,6 +130,19 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify(userData),
     })
+  }
+
+  // Container endpoints
+  async getContainers(): Promise<ContainerListResponse> {
+    return this.request('/api/v1/containers')
+  }
+
+  async getContainer(id: string): Promise<ApiResponse<Container>> {
+    return this.request(`/api/v1/containers/${id}`)
+  }
+
+  async getContainerStats(id: string): Promise<any> {
+    return this.request(`/api/v1/containers/${id}/stats`)
   }
 }
 

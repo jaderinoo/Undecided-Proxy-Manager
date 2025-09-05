@@ -67,3 +67,44 @@ export interface Certificate {
   created_at: string;
   updated_at: string;
 }
+
+// Container Types
+export interface Container {
+  id: string;
+  name: string;
+  image: string;
+  image_id: string;
+  status: string;
+  state: string;
+  created: string;
+  started_at?: string;
+  finished_at?: string;
+  ports: PortMapping[];
+  labels: Record<string, string>;
+  command: string;
+  size_rw: number;
+  size_root_fs: number;
+  network_mode: string;
+  mounts: Mount[];
+}
+
+export interface PortMapping {
+  ip: string;
+  private_port: number;
+  public_port: number;
+  type: string;
+}
+
+export interface Mount {
+  type: string;
+  source: string;
+  destination: string;
+  mode: string;
+  rw: boolean;
+  propagation: string;
+}
+
+export interface ContainerListResponse {
+  containers: Container[];
+  count: number;
+}
