@@ -33,6 +33,7 @@ services:
       - DB_PATH=/data/upm.db
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - JWT_SECRET=${JWT_SECRET}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
       - NGINX_CONFIG_PATH=/etc/nginx/sites-available
       - NGINX_RELOAD_CMD=docker exec nginx nginx -s reload
       - NGINX_CONTAINER_NAME=nginx

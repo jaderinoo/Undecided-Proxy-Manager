@@ -1,6 +1,7 @@
 package config
 
 import (
+	"log"
 	"os"
 )
 
@@ -28,17 +29,24 @@ func Load() *Config {
 	env := getEnv("GO_ENV", "development")
 	devMode := env == "development"
 
+	// In production, require critical secrets to be set
+	if !devMode {
+		requireEnvVar("ADMIN_PASSWORD", "Admin password is required in production")
+		requireEnvVar("JWT_SECRET", "JWT secret is required in production")
+		requireEnvVar("ENCRYPTION_KEY", "Encryption key is required in production")
+	}
+
 	return &Config{
 		DatabasePath:        getEnv("DB_PATH", "/data/upm.db"),
 		Environment:         env,
 		BackendPort:         getEnv("BACKEND_PORT", "6080"),
 		AdminPassword:       getEnv("ADMIN_PASSWORD", ""),
-		JWTSecret:           getEnv("JWT_SECRET", "upm-default-secret-change-in-production"),
+		JWTSecret:           getEnvWithDevDefault("JWT_SECRET", "upm-default-secret-change-in-production", devMode),
 		DevMode:             devMode,
 		DevTestPassword:     getEnv("DEV_TEST_PASSWORD", "devtest"),
 		DNSCheckInterval:    getEnv("DNS_CHECK_INTERVAL", "5m"),
 		PublicIPService:     getEnv("PUBLIC_IP_SERVICE", "https://api.ipify.org"),
-		EncryptionKey:       getEnv("ENCRYPTION_KEY", "upm-default-encryption-key-32byt"),
+		EncryptionKey:       getEnvWithDevDefault("ENCRYPTION_KEY", "upm-default-encryption-key-32byt", devMode),
 		LetsEncryptEmail:    getEnv("LETSENCRYPT_EMAIL", ""),
 		LetsEncryptWebroot:  getEnv("LETSENCRYPT_WEBROOT", "/var/www/html"),
 		LetsEncryptCertPath: getEnv("LETSENCRYPT_CERT_PATH", "/etc/letsencrypt"),
@@ -50,4 +58,23 @@ func getEnv(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
+}
+
+// getEnvWithDevDefault returns the environment variable value, or a dev default if in dev mode
+func getEnvWithDevDefault(key, devDefault string, devMode bool) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	if devMode {
+		return devDefault
+	}
+	// This should never be reached due to requireEnvVar check above
+	return ""
+}
+
+// requireEnvVar checks if an environment variable is set and exits if not
+func requireEnvVar(key, message string) {
+	if os.Getenv(key) == "" {
+		log.Fatalf("FATAL: %s. Please set the %s environment variable.", message, key)
+	}
 }

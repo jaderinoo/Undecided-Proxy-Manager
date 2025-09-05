@@ -47,16 +47,34 @@ A simple proxy management system with Go backend, Vue 3 frontend, and Swagger AP
 # Backend only
 cd backend && go run main.go
 
-# Frontend only  
+# Frontend only
 cd frontend && yarn dev
 ```
 
-## Notes
+## Production Setup
+
+For production deployment, create a `.env` file with the following required variables:
+
+```bash
+# Required for Production
+ADMIN_PASSWORD=your_secure_admin_password_here
+JWT_SECRET=your_jwt_secret_here_minimum_32_characters
+ENCRYPTION_KEY=your_encryption_key_here_exactly_32_bytes
+
+# Optional
+BACKEND_PORT=6080
+DB_PATH=/data/upm.db
+LETSENCRYPT_EMAIL=your_email@example.com
+```
+
+**Important:** The application will exit immediately if these required variables are not set in production mode.
+
+## Development Notes
 
 - Database is automatically created
-- All endpoints return mock data (database integration pending)
+- Development mode uses default secrets (not secure for production)
 - CORS enabled for development
-- No `.env` files needed
+- No `.env` files needed for development
 
 ## Disclaimer
 
