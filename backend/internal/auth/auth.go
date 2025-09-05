@@ -10,8 +10,8 @@ import (
 
 // JWTClaims represents the JWT token claims
 type JWTClaims struct {
-	Username string `json:"username"`
-	IsAdmin  bool   `json:"is_admin"`
+	// single admin token
+	IsAdmin bool `json:"is_admin"`
 	jwt.RegisteredClaims
 }
 
@@ -27,17 +27,16 @@ func CheckPasswordHash(password, hash string) bool {
 	return err == nil
 }
 
-// GenerateToken creates a JWT token for the admin user
-func GenerateToken(username, jwtSecret string) (string, error) {
+// GenerateToken creates a JWT token for admin access
+func GenerateToken(jwtSecret string) (string, error) {
 	claims := JWTClaims{
-		Username: username,
-		IsAdmin:  true,
+		IsAdmin: true,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)), // 24 hours
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			NotBefore: jwt.NewNumericDate(time.Now()),
 			Issuer:    "upm",
-			Subject:   username,
+			Subject:   "admin",
 		},
 	}
 

@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   backend:
+    env_file: .env
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -11,12 +12,13 @@ services:
       - GO_ENV=production
       - BACKEND_PORT=6080
       - DB_PATH=/data/upm.db
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
     volumes:
       - sqlite_data:/data
     restart: unless-stopped
     depends_on:
       - db
-
   frontend:
     build:
       context: ./frontend

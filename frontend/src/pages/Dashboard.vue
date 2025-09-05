@@ -46,6 +46,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { apiService } from '../services/api'
 import { useAuthStore } from '../stores/auth'
 import AppLayout from '../components/AppLayout.vue'
@@ -54,6 +55,7 @@ import LoadingSpinner from '../components/LoadingSpinner.vue'
 import ProxyCard from '../components/ProxyCard.vue'
 import type { Proxy } from '../types/api'
 
+const router = useRouter()
 const authStore = useAuthStore()
 
 const proxies = ref<Proxy[]>([])
@@ -76,6 +78,7 @@ const loadProxies = async () => {
 
 const handleLogout = () => {
   authStore.logout()
+  router.push('/login')
 }
 
 onMounted(() => {

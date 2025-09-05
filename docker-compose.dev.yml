@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   backend:
+    env_file: .env
     build:
       context: ./backend
       dockerfile: Dockerfile.dev
@@ -11,6 +12,8 @@ services:
       - GO_ENV=development
       - BACKEND_PORT=6081
       - DB_PATH=/data/upm-dev.db
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
     volumes:
       - ./backend/data:/data
       - ./backend:/app

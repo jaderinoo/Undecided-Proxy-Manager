@@ -18,16 +18,6 @@
 
                 <v-form @submit.prevent="handleLogin" ref="form">
                   <v-text-field
-                    v-model="credentials.username"
-                    label="Username"
-                    prepend-inner-icon="mdi-account"
-                    variant="outlined"
-                    :rules="[rules.required]"
-                    :disabled="loading"
-                    class="mb-4"
-                  />
-
-                  <v-text-field
                     v-model="credentials.password"
                     label="Password"
                     prepend-inner-icon="mdi-lock"
@@ -83,7 +73,6 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const credentials = ref<UserLoginRequest>({
-  username: 'admin',
   password: ''
 })
 
@@ -95,7 +84,7 @@ const rules = {
 }
 
 const isFormValid = computed(() => {
-  return credentials.value.username && credentials.value.password
+  return !!credentials.value.password
 })
 
 const handleLogin = async () => {

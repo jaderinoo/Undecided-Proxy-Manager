@@ -10,8 +10,9 @@ export const useAuthStore = defineStore('auth', () => {
   const loading = ref(false)
 
   // Getters
-  const isAuthenticated = computed(() => !!token.value && !!user.value)
-  const isAdmin = computed(() => user.value?.username === 'admin')
+  const isAuthenticated = computed(() => !!token.value)
+  // Single admin auth - always admin if authenticated
+  const isAdmin = computed(() => isAuthenticated.value)
 
   // Actions
   const login = async (credentials: UserLoginRequest) => {

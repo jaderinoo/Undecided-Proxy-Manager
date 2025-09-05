@@ -12,7 +12,7 @@ import (
 
 // Login godoc
 // @Summary      Admin login
-// @Description  Authenticate admin and return JWT token (Pi-hole style)
+// @Description  Authenticate admin and return JWT token
 // @Tags         auth
 // @Accept       json
 // @Produce      json
@@ -38,33 +38,29 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// Authenticate admin (Pi-hole style - single password)
+	// Authenticate admin (single password)
 	if !auth.AuthenticateAdmin(req.Password, cfg.AdminPassword) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
 	}
 
-	// Generate JWT token
-	token, err := auth.GenerateToken("admin", cfg.JWTSecret)
+	// Generate JWT token (single admin token)
+	token, err := auth.GenerateToken(cfg.JWTSecret)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 		return
 	}
 
-	// Create admin user response
-	user := models.User{
-		ID:       1,
-		Username: "admin",
-		Email:    "admin@upm.local",
-		IsActive: true,
-	}
-
-	response := models.AuthResponse{
+	c.JSON(http.StatusOK, gin.H{"data": models.AuthResponse{
 		Token: token,
-		User:  user,
-	}
-
-	c.JSON(http.StatusOK, gin.H{"data": response})
+		// Minimal user info for single admin auth
+		User: models.User{
+			ID:       1,
+			Username: "admin",
+			Email:    "admin@upm.local",
+			IsActive: true,
+		},
+	}})
 }
 
 // Register godoc

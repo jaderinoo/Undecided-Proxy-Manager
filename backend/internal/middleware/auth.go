@@ -43,7 +43,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		}
 
 		// Set user info in context
-		c.Set("username", claims.Username)
+		c.Set("username", "admin") // Fixed username for single admin auth
 		c.Set("is_admin", claims.IsAdmin)
 
 		c.Next()
@@ -80,7 +80,7 @@ func OptionalAuthMiddleware() gin.HandlerFunc {
 		}
 
 		// Set user info in context
-		c.Set("username", claims.Username)
+		c.Set("username", "admin") // Fixed username for single admin auth
 		c.Set("is_admin", claims.IsAdmin)
 
 		c.Next()
