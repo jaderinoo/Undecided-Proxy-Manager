@@ -17,6 +17,7 @@ export interface Proxy {
   updated_at: string;
   // Computed fields for UI
   connected_containers?: Container[];
+  certificate?: Certificate;
 }
 
 export interface ProxyCreateRequest {
@@ -32,6 +33,12 @@ export interface ProxyUpdateRequest {
   domain?: string;
   target_url?: string;
   ssl_enabled?: boolean;
+}
+
+export interface ProxyResponse {
+  data: Proxy;
+  ssl_status?: 'certificate_generated' | 'certificate_failed';
+  ssl_message?: string;
 }
 
 // User Types
@@ -132,10 +139,10 @@ export interface ContainerListResponse {
 // DNS Types
 export interface DNSConfig {
   id: number;
-  provider: 'namecheap';
+  provider: 'namecheap' | 'static';
   domain: string;
-  username: string;
-  password: string;
+  username?: string; // Optional for static DNS
+  password?: string; // Optional since it's hidden in API responses
   is_active: boolean;
   last_update?: string;
   last_ip?: string;
@@ -146,8 +153,8 @@ export interface DNSConfig {
 export interface DNSConfigCreateRequest {
   provider: string;
   domain: string;
-  username: string;
-  password: string;
+  username?: string;
+  password?: string;
 }
 
 export interface DNSConfigUpdateRequest {

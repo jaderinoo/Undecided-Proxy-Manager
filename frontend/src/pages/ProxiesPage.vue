@@ -98,84 +98,13 @@
     </v-container>
 
     <!-- Create/Edit Dialog -->
-    <v-dialog v-model="showCreateDialog" max-width="600px" persistent>
-      <v-card>
-        <v-card-title>
-          <v-icon left>mdi-server-plus</v-icon>
-          {{ editingProxy ? 'Edit Proxy' : 'Create New Proxy' }}
-        </v-card-title>
-
-        <v-card-text>
-          <v-form ref="formRef" v-model="formValid">
-            <v-row>
-              <v-col cols="12">
-                <v-text-field
-                  v-model="form.name"
-                  label="Proxy Name"
-                  variant="outlined"
-                  density="compact"
-                  :rules="[v => !!v || 'Name is required']"
-                  required
-                />
-              </v-col>
-
-              <v-col cols="12">
-                <v-text-field
-                  v-model="form.domain"
-                  label="Domain"
-                  variant="outlined"
-                  density="compact"
-                  placeholder="example.com"
-                  :rules="[v => !!v || 'Domain is required']"
-                  required
-                />
-              </v-col>
-
-              <v-col cols="12">
-                <v-text-field
-                  v-model="form.target_url"
-                  label="Target URL"
-                  variant="outlined"
-                  density="compact"
-                  placeholder="http://localhost:3000"
-                  :rules="[v => !!v || 'Target URL is required']"
-                  required
-                />
-              </v-col>
-
-              <v-col cols="12">
-                <v-switch
-                  v-model="form.ssl_enabled"
-                  label="Enable SSL"
-                  color="primary"
-                  hide-details
-                />
-              </v-col>
-            </v-row>
-          </v-form>
-        </v-card-text>
-
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn
-            color="grey"
-            variant="text"
-            @click="cancelEdit"
-            :disabled="saving"
-          >
-            Cancel
-          </v-btn>
-          <v-btn
-            color="primary"
-            @click="saveProxy"
-            :loading="saving"
-            :disabled="!formValid"
-          >
-            {{ editingProxy ? 'Update' : 'Create' }}
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <ProxyFormDialog
+      v-model:show="showCreateDialog"
+      :editing-proxy="editingProxy"
+      :initial-data="containerFormData"
+      @save="handleProxySave"
+      @cancel="cancelEdit"
+    />
 
     <!-- Delete Confirmation Dialog -->
     <ConfirmationDialog
@@ -319,21 +248,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { apiService } from '../services/api';
+import { computed, onMounted, ref, watch } from 'vue';
 import AppLayout from '../components/AppLayout.vue';
-import ErrorAlert from '../components/ErrorAlert.vue';
-import LoadingSpinner from '../components/LoadingSpinner.vue';
-import ProxyCard from '../components/ProxyCard.vue';
-import PageHeader from '../components/PageHeader.vue';
-import StatsCards from '../components/StatsCards.vue';
-import FilterBar from '../components/FilterBar.vue';
 import ConfirmationDialog from '../components/ConfirmationDialog.vue';
+import ErrorAlert from '../components/ErrorAlert.vue';
+import FilterBar from '../components/FilterBar.vue';
+import LoadingSpinner from '../components/LoadingSpinner.vue';
+import PageHeader from '../components/PageHeader.vue';
+import ProxyCard from '../components/ProxyCard.vue';
+import ProxyFormDialog from '../components/ProxyFormDialog.vue';
+import StatsCards from '../components/StatsCards.vue';
+import { apiService } from '../services/api';
 import type {
+  Container,
   Proxy,
   ProxyCreateRequest,
+  ProxyResponse,
   ProxyUpdateRequest,
-  Container,
 } from '../types/api';
 
 const proxies = ref<Proxy[]>([]);
@@ -359,18 +290,10 @@ const editingProxy = ref<Proxy | null>(null);
 const deletingProxy = ref<Proxy | null>(null);
 const saving = ref(false);
 const deleting = ref(false);
-const formValid = ref(false);
 const reloadingNginx = ref(false);
 
-// Form data
-const form = ref<ProxyCreateRequest & { id?: number }>({
-  name: '',
-  domain: '',
-  target_url: '',
-  ssl_enabled: false,
-});
-
-const formRef = ref();
+// Container form data for pre-filling
+const containerFormData = ref<Partial<ProxyCreateRequest> | null>(null);
 
 const statusOptions = [
   { title: 'Active', value: 'active' },
@@ -467,12 +390,29 @@ const loadProxies = async () => {
     filteredProxies.value = [...proxies.value];
     filterProxies();
     updateProxyContainerRelationships();
+
+    // Load certificate information for SSL-enabled proxies
+    await loadCertificateInfo();
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load proxies';
     proxies.value = [];
     filteredProxies.value = [];
   } finally {
     loading.value = false;
+  }
+};
+
+const loadCertificateInfo = async () => {
+  const sslProxies = proxies.value.filter(proxy => proxy.ssl_enabled);
+
+  for (const proxy of sslProxies) {
+    try {
+      const response = await apiService.getProxyCertificate(proxy.id);
+      proxy.certificate = response.data;
+    } catch (err) {
+      // Silently fail for certificate loading - it's not critical
+      console.warn(`Failed to load certificate for proxy ${proxy.id}:`, err);
+    }
   }
 };
 
@@ -582,13 +522,6 @@ const updateProxyContainerRelationships = () => {
 
 const editProxy = (proxy: Proxy) => {
   editingProxy.value = proxy;
-  form.value = {
-    id: proxy.id,
-    name: proxy.name,
-    domain: proxy.domain,
-    target_url: proxy.target_url,
-    ssl_enabled: proxy.ssl_enabled,
-  };
   showCreateDialog.value = true;
 };
 
@@ -600,40 +533,32 @@ const deleteProxy = (proxy: Proxy) => {
 const cancelEdit = () => {
   showCreateDialog.value = false;
   editingProxy.value = null;
-  form.value = {
-    name: '',
-    domain: '',
-    target_url: '',
-    ssl_enabled: false,
-  };
-  formRef.value?.reset();
+  containerFormData.value = null;
 };
 
-const saveProxy = async () => {
-  if (!formValid.value) return;
-
+const handleProxySave = async (data: ProxyCreateRequest | ProxyUpdateRequest, isEdit: boolean) => {
   try {
     saving.value = true;
     error.value = null;
 
-    if (editingProxy.value) {
+    let response: ProxyResponse;
+
+    if (isEdit && editingProxy.value) {
       // Update existing proxy
-      const updateData: ProxyUpdateRequest = {
-        name: form.value.name,
-        domain: form.value.domain,
-        target_url: form.value.target_url,
-        ssl_enabled: form.value.ssl_enabled,
-      };
-      await apiService.updateProxy(editingProxy.value.id, updateData);
+      response = await apiService.updateProxy(editingProxy.value.id, data as ProxyUpdateRequest);
     } else {
       // Create new proxy
-      const createData: ProxyCreateRequest = {
-        name: form.value.name,
-        domain: form.value.domain,
-        target_url: form.value.target_url,
-        ssl_enabled: form.value.ssl_enabled,
-      };
-      await apiService.createProxy(createData);
+      response = await apiService.createProxy(data as ProxyCreateRequest);
+    }
+
+    // Handle SSL status messages
+    if (response.ssl_status) {
+      if (response.ssl_status === 'certificate_generated') {
+        console.log('✅ SSL Certificate generated successfully:', response.ssl_message);
+      } else if (response.ssl_status === 'certificate_failed') {
+        console.warn('⚠️ SSL Certificate generation failed:', response.ssl_message);
+        // You could show a toast notification here
+      }
     }
 
     await loadProxies();
@@ -721,7 +646,7 @@ const selectContainer = (container: Container) => {
 
 const createProxyFromContainer = (container: Container) => {
   // Pre-fill the form with container information
-  form.value = {
+  containerFormData.value = {
     name: `${container.name || 'container'}-proxy`,
     domain: `${container.name || 'container'}.example.com`,
     target_url: getContainerTargetUrl(container),
@@ -731,7 +656,6 @@ const createProxyFromContainer = (container: Container) => {
   // Close container dialog and open create dialog
   showContainerDialog.value = false;
   showCreateDialog.value = true;
-  formValid.value = false;
 };
 
 const reloadNginx = async () => {
@@ -749,6 +673,13 @@ const reloadNginx = async () => {
     reloadingNginx.value = false;
   }
 };
+
+// Clear container form data when dialog closes
+watch(showCreateDialog, (newValue) => {
+  if (!newValue) {
+    containerFormData.value = null;
+  }
+});
 
 onMounted(async () => {
   await Promise.all([loadProxies(), loadContainers()]);

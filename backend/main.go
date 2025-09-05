@@ -131,6 +131,7 @@ func main() {
 				proxies.GET("/:id", handlers.GetProxy)
 				proxies.PUT("/:id", handlers.UpdateProxy)
 				proxies.DELETE("/:id", handlers.DeleteProxy)
+				proxies.GET("/:id/certificate", handlers.GetProxyCertificate)
 			}
 
 			// User management endpoints (admin only)

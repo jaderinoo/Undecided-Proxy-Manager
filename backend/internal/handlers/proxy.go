@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -116,6 +117,30 @@ func CreateProxy(c *gin.Context) {
 		Status:     "active",
 	}
 
+	// If SSL is enabled, generate Let's Encrypt certificate
+	if req.SSLEnabled {
+		certService := services.NewCertificateService("/etc/ssl/certs")
+
+		// Generate Let's Encrypt certificate
+		certificate, err := certService.GenerateLetsEncryptCertificate(req.Domain)
+		if err != nil {
+			// If certificate generation fails, disable SSL and continue
+			proxy.SSLEnabled = false
+			proxy.Status = "active" // Still create proxy but without SSL
+
+			// Log the error but don't fail the proxy creation
+			fmt.Printf("Warning: Failed to generate Let's Encrypt certificate for %s: %v. Creating proxy without SSL.\n", req.Domain, err)
+		} else {
+			// Certificate generated successfully, save it to database
+			if err := dbService.CreateCertificate(certificate); err != nil {
+				fmt.Printf("Warning: Failed to save certificate to database: %v\n", err)
+			} else {
+				// Set SSL path in proxy
+				proxy.SSLPath = fmt.Sprintf("/etc/ssl/certs/certs/%s", req.Domain)
+			}
+		}
+	}
+
 	// Save to database
 	if err := dbService.CreateProxy(proxy); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create proxy: " + err.Error()})
@@ -143,7 +168,21 @@ func CreateProxy(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"data": proxy})
+	// Prepare response with SSL status
+	response := gin.H{"data": proxy}
+
+	// Add SSL certificate generation status
+	if req.SSLEnabled {
+		if proxy.SSLEnabled {
+			response["ssl_status"] = "certificate_generated"
+			response["ssl_message"] = "Let's Encrypt certificate generated successfully"
+		} else {
+			response["ssl_status"] = "certificate_failed"
+			response["ssl_message"] = "Failed to generate Let's Encrypt certificate. Proxy created without SSL."
+		}
+	}
+
+	c.JSON(http.StatusCreated, response)
 }
 
 // UpdateProxy godoc
@@ -195,7 +234,29 @@ func UpdateProxy(c *gin.Context) {
 		proxy.TargetURL = *req.TargetURL
 	}
 	if req.SSLEnabled != nil {
-		proxy.SSLEnabled = *req.SSLEnabled
+		// If SSL is being enabled, generate Let's Encrypt certificate
+		if *req.SSLEnabled && !proxy.SSLEnabled {
+			certService := services.NewCertificateService("/etc/ssl/certs")
+
+			// Generate Let's Encrypt certificate
+			certificate, err := certService.GenerateLetsEncryptCertificate(proxy.Domain)
+			if err != nil {
+				// If certificate generation fails, keep SSL disabled
+				fmt.Printf("Warning: Failed to generate Let's Encrypt certificate for %s: %v. Keeping SSL disabled.\n", proxy.Domain, err)
+				proxy.SSLEnabled = false
+			} else {
+				// Certificate generated successfully, save it to database
+				if err := dbService.CreateCertificate(certificate); err != nil {
+					fmt.Printf("Warning: Failed to save certificate to database: %v\n", err)
+					proxy.SSLEnabled = false
+				} else {
+					proxy.SSLEnabled = true
+					proxy.SSLPath = fmt.Sprintf("/etc/ssl/certs/certs/%s", proxy.Domain)
+				}
+			}
+		} else {
+			proxy.SSLEnabled = *req.SSLEnabled
+		}
 	}
 
 	// Save to database
@@ -225,7 +286,21 @@ func UpdateProxy(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": proxy})
+	// Prepare response with SSL status
+	response := gin.H{"data": proxy}
+
+	// Add SSL certificate generation status if SSL was enabled
+	if req.SSLEnabled != nil && *req.SSLEnabled {
+		if proxy.SSLEnabled {
+			response["ssl_status"] = "certificate_generated"
+			response["ssl_message"] = "Let's Encrypt certificate generated successfully"
+		} else {
+			response["ssl_status"] = "certificate_failed"
+			response["ssl_message"] = "Failed to generate Let's Encrypt certificate. SSL remains disabled."
+		}
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 // DeleteProxy godoc
@@ -280,4 +355,51 @@ func DeleteProxy(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusNoContent, gin.H{"message": "Proxy deleted successfully"})
+}
+
+// GetProxyCertificate godoc
+// @Summary      Get certificate information for a proxy
+// @Description  Get certificate details for a specific proxy by domain
+// @Tags         proxies
+// @Accept       json
+// @Produce      json
+// @Param        id   path      int  true  "Proxy ID"
+// @Success      200  {object}  models.Certificate
+// @Failure      400  {object}  map[string]string
+// @Failure      404  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Router       /proxies/{id}/certificate [get]
+func GetProxyCertificate(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid proxy ID"})
+		return
+	}
+
+	if dbService == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database service not initialized"})
+		return
+	}
+
+	// Get proxy first to get domain
+	proxy, err := dbService.GetProxy(id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Proxy not found"})
+		return
+	}
+
+	// Check if SSL is enabled
+	if !proxy.SSLEnabled {
+		c.JSON(http.StatusNotFound, gin.H{"error": "SSL is not enabled for this proxy"})
+		return
+	}
+
+	// Get certificate by domain
+	certificate, err := dbService.GetCertificateByDomain(proxy.Domain)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Certificate not found for this domain"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": certificate})
 }

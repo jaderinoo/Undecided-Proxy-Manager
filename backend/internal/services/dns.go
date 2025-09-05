@@ -200,6 +200,32 @@ func (d *DNSService) UpdateDNSRecord(recordID int) (*models.DNSUpdateResponse, e
 	switch config.Provider {
 	case models.ProviderNamecheap:
 		return d.UpdateNamecheapDNS(config, record, currentIP)
+	case models.ProviderStatic:
+		// Static DNS - just update the record in database without API call
+		now := time.Now()
+		record.CurrentIP = currentIP
+		record.LastUpdate = &now
+
+		if err := d.DbService.UpdateDNSRecord(record); err != nil {
+			return &models.DNSUpdateResponse{
+				Success: false,
+				Message: fmt.Sprintf("Failed to save to database: %v", err),
+			}, err
+		}
+
+		// Update config last update time
+		config.LastUpdate = &now
+		config.LastIP = currentIP
+		if err := d.DbService.UpdateDNSConfig(config); err != nil {
+			fmt.Printf("Warning: Failed to update DNS config timestamp: %v\n", err)
+		}
+
+		return &models.DNSUpdateResponse{
+			Success:   true,
+			Message:   "Static DNS record updated successfully",
+			NewIP:     currentIP,
+			UpdatedAt: now.Format(time.RFC3339),
+		}, nil
 	default:
 		return &models.DNSUpdateResponse{
 			Success: false,

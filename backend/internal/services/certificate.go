@@ -79,7 +79,19 @@ func (c *CertificateService) GenerateLetsEncryptCertificate(domain string) (*mod
 		return nil, fmt.Errorf("Let's Encrypt email not configured. Set LETSENCRYPT_EMAIL environment variable")
 	}
 
-	// Validate domain is accessible
+	// In development mode, try Let's Encrypt first, but fall back to placeholder if it fails
+	if c.config.Environment == "development" {
+		// Try Let's Encrypt first
+		cert, err := c.LetsEncrypt.GenerateCertificate(domain)
+		if err != nil {
+			// If Let's Encrypt fails in development, create a placeholder certificate
+			fmt.Printf("Let's Encrypt failed in development mode for %s: %v. Creating placeholder certificate.\n", domain, err)
+			return c.createDevelopmentCertificate(domain)
+		}
+		return cert, nil
+	}
+
+	// In production, validate domain is accessible
 	if err := c.LetsEncrypt.ValidateDomain(domain); err != nil {
 		return nil, fmt.Errorf("domain validation failed: %w", err)
 	}
@@ -91,6 +103,32 @@ func (c *CertificateService) GenerateLetsEncryptCertificate(domain string) (*mod
 	}
 
 	return cert, nil
+}
+
+// createDevelopmentCertificate creates a development certificate for testing
+func (c *CertificateService) createDevelopmentCertificate(domain string) (*models.Certificate, error) {
+	// Create certificate directory
+	certDir := filepath.Join(c.CertPath, "certs")
+	if err := os.MkdirAll(certDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create cert directory: %w", err)
+	}
+
+	certPath := filepath.Join(certDir, domain+".crt")
+	keyPath := filepath.Join(certDir, domain+".key")
+
+	// Create placeholder certificate files
+	if err := c.createPlaceholderCertificate(domain, certPath, keyPath); err != nil {
+		return nil, fmt.Errorf("failed to create placeholder certificate: %w", err)
+	}
+
+	// Return certificate model with development-specific data
+	return &models.Certificate{
+		Domain:    domain,
+		CertPath:  certPath,
+		KeyPath:   keyPath,
+		ExpiresAt: time.Now().Add(365 * 24 * time.Hour), // 1 year from now
+		IsValid:   true,
+	}, nil
 }
 
 // createPlaceholderCertificate creates placeholder certificate files

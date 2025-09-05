@@ -28,6 +28,15 @@
         <v-icon left size="x-small">mdi-lock</v-icon>
         SSL
       </v-chip>
+      <v-btn
+        v-if="proxy.ssl_enabled"
+        icon
+        size="x-small"
+        @click="showCertificateInfo = true"
+        class="mr-1"
+      >
+        <v-icon size="small" color="blue">mdi-information</v-icon>
+      </v-btn>
       <v-btn icon size="x-small" @click="$emit('edit', proxy)">
         <v-icon size="small" color="grey-darken-2">mdi-pencil</v-icon>
       </v-btn>
@@ -87,13 +96,91 @@
         </div>
       </div>
     </v-card-text>
+
+    <!-- Certificate Information Dialog -->
+    <v-dialog v-model="showCertificateInfo" max-width="600px">
+      <v-card>
+        <v-card-title>
+          <v-icon left>mdi-certificate</v-icon>
+          SSL Certificate Information
+        </v-card-title>
+
+        <v-card-text>
+          <div v-if="loadingCertificate" class="text-center py-4">
+            <v-progress-circular indeterminate color="primary"></v-progress-circular>
+            <div class="mt-2">Loading certificate information...</div>
+          </div>
+
+          <div v-else-if="certificateError" class="text-center py-4">
+            <v-icon color="error" size="large">mdi-alert-circle</v-icon>
+            <div class="mt-2 text-error">{{ certificateError }}</div>
+          </div>
+
+          <div v-else-if="certificate">
+            <v-row>
+              <v-col cols="12">
+                <div class="text-caption text-grey-darken-2 mb-1">Domain</div>
+                <div class="text-body-2 text-grey-darken-3 mb-3">
+                  {{ certificate.domain }}
+                </div>
+
+                <div class="text-caption text-grey-darken-2 mb-1">Issuer</div>
+                <div class="text-body-2 text-grey-darken-3 mb-3">
+                  {{ certificate.issuer || 'Let\'s Encrypt' }}
+                </div>
+
+                <div class="text-caption text-grey-darken-2 mb-1">Expires</div>
+                <div class="text-body-2 text-grey-darken-3 mb-3">
+                  {{ formatDate(certificate.expires_at) }}
+                  <v-chip
+                    :color="certificate.is_valid ? 'success' : 'error'"
+                    size="x-small"
+                    class="ml-2"
+                  >
+                    {{ certificate.is_valid ? 'Valid' : 'Expired' }}
+                  </v-chip>
+                </div>
+
+                <div class="text-caption text-grey-darken-2 mb-1">Certificate Path</div>
+                <div class="text-body-2 text-grey-darken-3 mb-3 font-mono text-caption">
+                  {{ certificate.cert_path }}
+                </div>
+
+                <div class="text-caption text-grey-darken-2 mb-1">Private Key Path</div>
+                <div class="text-body-2 text-grey-darken-3 mb-3 font-mono text-caption">
+                  {{ certificate.key_path }}
+                </div>
+
+                <div class="text-caption text-grey-darken-2 mb-1">Created</div>
+                <div class="text-body-2 text-grey-darken-3">
+                  {{ formatDate(certificate.created_at) }}
+                </div>
+              </v-col>
+            </v-row>
+          </div>
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            color="grey"
+            variant="text"
+            @click="showCertificateInfo = false"
+          >
+            Close
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-card>
 </template>
 
 <script setup lang="ts">
-import type { Proxy } from '../types/api';
+import { ref, watch } from 'vue';
+import { apiService } from '../services/api';
+import type { Certificate, Proxy } from '../types/api';
 
-defineProps<{
+const props = defineProps<{
   proxy: Proxy;
 }>();
 
@@ -101,6 +188,32 @@ defineEmits<{
   edit: [proxy: Proxy];
   delete: [proxy: Proxy];
 }>();
+
+const showCertificateInfo = ref(false);
+const loadingCertificate = ref(false);
+const certificateError = ref<string | null>(null);
+const certificate = ref<Certificate | null>(null);
+
+const loadCertificate = async (proxyId: number) => {
+  try {
+    loadingCertificate.value = true;
+    certificateError.value = null;
+    const response = await apiService.getProxyCertificate(proxyId);
+    certificate.value = response.data;
+  } catch (err) {
+    certificateError.value = err instanceof Error ? err.message : 'Failed to load certificate information';
+    certificate.value = null;
+  } finally {
+    loadingCertificate.value = false;
+  }
+};
+
+// Watch for dialog opening to load certificate data
+watch(showCertificateInfo, (newValue) => {
+  if (newValue && props.proxy.ssl_enabled) {
+    loadCertificate(props.proxy.id);
+  }
+});
 
 const getStatusColor = (status: string): string => {
   switch (status) {

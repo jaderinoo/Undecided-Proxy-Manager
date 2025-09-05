@@ -25,16 +25,18 @@ type CoreSettings struct {
 
 // UISettings represents settings that can be managed through the UI
 type UISettings struct {
-	DisplayName string `json:"display_name"`
-	Theme       string `json:"theme"`
-	Language    string `json:"language"`
+	DisplayName     string `json:"display_name"`
+	Theme           string `json:"theme"`
+	Language        string `json:"language"`
+	EnableDynamicDNS bool  `json:"enable_dynamic_dns"`
 }
 
 // SettingsUpdateRequest represents a request to update UI settings
 type SettingsUpdateRequest struct {
-	DisplayName *string `json:"display_name,omitempty"`
-	Theme       *string `json:"theme,omitempty"`
-	Language    *string `json:"language,omitempty"`
+	DisplayName     *string `json:"display_name,omitempty"`
+	Theme           *string `json:"theme,omitempty"`
+	Language        *string `json:"language,omitempty"`
+	EnableDynamicDNS *bool  `json:"enable_dynamic_dns,omitempty"`
 }
 
 // MaskSensitiveData masks sensitive information in core settings

@@ -8,12 +8,14 @@ import (
 
 	"upm-backend/internal/config"
 	"upm-backend/internal/models"
+	"upm-backend/internal/utils"
 
 	_ "modernc.org/sqlite"
 )
 
 type DatabaseService struct {
-	db *sql.DB
+	db            *sql.DB
+	encryptionSvc *utils.EncryptionService
 }
 
 func NewDatabaseService() (*DatabaseService, error) {
@@ -29,7 +31,16 @@ func NewDatabaseService() (*DatabaseService, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	service := &DatabaseService{db: db}
+	// Initialize encryption service
+	encryptionSvc, err := utils.NewEncryptionService(cfg.EncryptionKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize encryption service: %w", err)
+	}
+
+	service := &DatabaseService{
+		db:            db,
+		encryptionSvc: encryptionSvc,
+	}
 
 	// Initialize tables
 	if err := service.initTables(); err != nil {
@@ -235,7 +246,7 @@ func (d *DatabaseService) CreateProxy(proxy *models.Proxy) error {
 
 func (d *DatabaseService) UpdateProxy(proxy *models.Proxy) error {
 	query := `
-		UPDATE proxies 
+		UPDATE proxies
 		SET name = ?, domain = ?, target_url = ?, ssl_enabled = ?, ssl_path = ?, status = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?`
 
@@ -295,13 +306,14 @@ func (d *DatabaseService) GetDNSConfigs() ([]models.DNSConfig, error) {
 		var config models.DNSConfig
 		var lastUpdate sql.NullTime
 		var lastIP sql.NullString
+		var encryptedPassword string
 
 		err := rows.Scan(
 			&config.ID,
 			&config.Provider,
 			&config.Domain,
 			&config.Username,
-			&config.Password,
+			&encryptedPassword,
 			&config.IsActive,
 			&lastUpdate,
 			&lastIP,
@@ -311,6 +323,13 @@ func (d *DatabaseService) GetDNSConfigs() ([]models.DNSConfig, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan dns config: %w", err)
 		}
+
+		// Decrypt the password
+		decryptedPassword, err := d.encryptionSvc.Decrypt(encryptedPassword)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt password for config %d: %w", config.ID, err)
+		}
+		config.Password = decryptedPassword
 
 		// Handle nullable fields
 		if lastUpdate.Valid {
@@ -335,13 +354,14 @@ func (d *DatabaseService) GetDNSConfig(id int) (*models.DNSConfig, error) {
 	var config models.DNSConfig
 	var lastUpdate sql.NullTime
 	var lastIP sql.NullString
+	var encryptedPassword string
 
 	err := d.db.QueryRow(query, id).Scan(
 		&config.ID,
 		&config.Provider,
 		&config.Domain,
 		&config.Username,
-		&config.Password,
+		&encryptedPassword,
 		&config.IsActive,
 		&lastUpdate,
 		&lastIP,
@@ -356,6 +376,13 @@ func (d *DatabaseService) GetDNSConfig(id int) (*models.DNSConfig, error) {
 		return nil, fmt.Errorf("failed to query dns config: %w", err)
 	}
 
+	// Decrypt the password
+	decryptedPassword, err := d.encryptionSvc.Decrypt(encryptedPassword)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt password: %w", err)
+	}
+	config.Password = decryptedPassword
+
 	// Handle nullable fields
 	if lastUpdate.Valid {
 		config.LastUpdate = &lastUpdate.Time
@@ -368,11 +395,17 @@ func (d *DatabaseService) GetDNSConfig(id int) (*models.DNSConfig, error) {
 }
 
 func (d *DatabaseService) CreateDNSConfig(config *models.DNSConfig) error {
+	// Encrypt the password before storing
+	encryptedPassword, err := d.encryptionSvc.Encrypt(config.Password)
+	if err != nil {
+		return fmt.Errorf("failed to encrypt password: %w", err)
+	}
+
 	query := `
 		INSERT INTO dns_configs (provider, domain, username, password, is_active)
 		VALUES (?, ?, ?, ?, ?)`
 
-	result, err := d.db.Exec(query, config.Provider, config.Domain, config.Username, config.Password, config.IsActive)
+	result, err := d.db.Exec(query, config.Provider, config.Domain, config.Username, encryptedPassword, config.IsActive)
 	if err != nil {
 		return fmt.Errorf("failed to insert dns config: %w", err)
 	}
@@ -390,12 +423,18 @@ func (d *DatabaseService) CreateDNSConfig(config *models.DNSConfig) error {
 }
 
 func (d *DatabaseService) UpdateDNSConfig(config *models.DNSConfig) error {
+	// Encrypt the password before storing
+	encryptedPassword, err := d.encryptionSvc.Encrypt(config.Password)
+	if err != nil {
+		return fmt.Errorf("failed to encrypt password: %w", err)
+	}
+
 	query := `
-		UPDATE dns_configs 
+		UPDATE dns_configs
 		SET provider = ?, domain = ?, username = ?, password = ?, is_active = ?, last_update = ?, last_ip = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?`
 
-	result, err := d.db.Exec(query, config.Provider, config.Domain, config.Username, config.Password, config.IsActive, config.LastUpdate, config.LastIP, config.ID)
+	result, err := d.db.Exec(query, config.Provider, config.Domain, config.Username, encryptedPassword, config.IsActive, config.LastUpdate, config.LastIP, config.ID)
 	if err != nil {
 		return fmt.Errorf("failed to update dns config: %w", err)
 	}
@@ -544,7 +583,7 @@ func (d *DatabaseService) CreateDNSRecord(record *models.DNSRecord) error {
 
 func (d *DatabaseService) UpdateDNSRecord(record *models.DNSRecord) error {
 	query := `
-		UPDATE dns_records 
+		UPDATE dns_records
 		SET host = ?, current_ip = ?, last_update = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?`
 
@@ -669,7 +708,7 @@ func (d *DatabaseService) CreateCertificate(cert *models.Certificate) error {
 
 func (d *DatabaseService) UpdateCertificate(cert *models.Certificate) error {
 	query := `
-		UPDATE certificates 
+		UPDATE certificates
 		SET domain = ?, cert_path = ?, key_path = ?, expires_at = ?, is_valid = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?`
 
@@ -711,6 +750,34 @@ func (d *DatabaseService) DeleteCertificate(id int) error {
 	return nil
 }
 
+func (d *DatabaseService) GetCertificateByDomain(domain string) (*models.Certificate, error) {
+	query := `
+		SELECT id, domain, cert_path, key_path, expires_at, is_valid, created_at, updated_at
+		FROM certificates
+		WHERE domain = ?`
+
+	var cert models.Certificate
+	err := d.db.QueryRow(query, domain).Scan(
+		&cert.ID,
+		&cert.Domain,
+		&cert.CertPath,
+		&cert.KeyPath,
+		&cert.ExpiresAt,
+		&cert.IsValid,
+		&cert.CreatedAt,
+		&cert.UpdatedAt,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("certificate not found for domain: %s", domain)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to query certificate: %w", err)
+	}
+
+	return &cert, nil
+}
+
 func (d *DatabaseService) GetProxiesByDomain(domain string) ([]models.Proxy, error) {
 	query := `
 		SELECT id, name, domain, target_url, ssl_enabled, ssl_path, status, created_at, updated_at
@@ -749,7 +816,7 @@ func (d *DatabaseService) GetProxiesByDomain(domain string) ([]models.Proxy, err
 // UI Settings methods
 func (d *DatabaseService) GetUISettings() (models.UISettings, error) {
 	var settings models.UISettings
-	query := `SELECT display_name, theme, language 
+	query := `SELECT display_name, theme, language
 			  FROM ui_settings WHERE id = 1`
 
 	err := d.db.QueryRow(query).Scan(
@@ -762,8 +829,8 @@ func (d *DatabaseService) GetUISettings() (models.UISettings, error) {
 }
 
 func (d *DatabaseService) SaveUISettings(settings models.UISettings) error {
-	query := `INSERT OR REPLACE INTO ui_settings 
-			  (id, display_name, theme, language, updated_at) 
+	query := `INSERT OR REPLACE INTO ui_settings
+			  (id, display_name, theme, language, updated_at)
 			  VALUES (1, ?, ?, ?, ?)`
 
 	_, err := d.db.Exec(query,

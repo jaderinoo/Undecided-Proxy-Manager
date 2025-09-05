@@ -292,8 +292,11 @@
               <v-col cols="12">
                 <v-select
                   v-model="configForm.provider"
-                  label="Provider"
-                  :items="['namecheap']"
+                  label="DNS Provider"
+                  :items="[
+                    { title: 'Namecheap Dynamic DNS', value: 'namecheap' },
+                    { title: 'No Dynamic DNS (Static)', value: 'static' }
+                  ]"
                   required
                 ></v-select>
               </v-col>
@@ -307,23 +310,79 @@
                 ></v-text-field>
               </v-col>
 
-              <v-col cols="12">
-                <v-text-field
-                  v-model="configForm.username"
-                  label="Username"
-                  placeholder="yourdomain.com"
-                  required
-                ></v-text-field>
-              </v-col>
+              <!-- Dynamic DNS credentials (only for namecheap) -->
+              <template v-if="configForm.provider === 'namecheap'">
+                <v-col cols="12">
+                  <v-text-field
+                    v-model="configForm.username"
+                    label="Username"
+                    placeholder="yourdomain.com"
+                    required
+                  ></v-text-field>
+                </v-col>
 
-              <v-col cols="12">
-                <v-text-field
-                  v-model="configForm.password"
-                  label="Password"
-                  type="password"
-                  placeholder="Dynamic DNS password"
-                  required
-                ></v-text-field>
+                <v-col cols="12">
+                  <!-- Show password field for create or when changing password -->
+                  <div v-if="showCreateConfigModal || changePassword">
+                    <div v-if="changePassword" class="d-flex align-center mb-2">
+                      <v-icon color="primary" class="mr-2">mdi-key-change</v-icon>
+                      <span class="text-body-2 text-primary">Changing Password</span>
+                      <v-spacer></v-spacer>
+                      <v-btn
+                        variant="text"
+                        size="small"
+                        color="grey"
+                        @click="changePassword = false; configForm.password = ''"
+                      >
+                        Cancel
+                      </v-btn>
+                    </div>
+                    <v-text-field
+                      v-model="configForm.password"
+                      label="Dynamic DNS Password"
+                      type="password"
+                      placeholder="Dynamic DNS password"
+                      :required="showCreateConfigModal"
+                    ></v-text-field>
+                  </div>
+
+                  <!-- Show password change option for edit -->
+                  <div v-else-if="showEditConfigModal">
+                    <v-alert
+                      type="info"
+                      variant="outlined"
+                      class="mb-3"
+                      density="compact"
+                    >
+                      <template #prepend>
+                        <v-icon>mdi-information</v-icon>
+                      </template>
+                      Password is encrypted and hidden for security.
+                      <v-btn
+                        variant="text"
+                        size="small"
+                        color="primary"
+                        @click="changePassword = true"
+                      >
+                        Change Password
+                      </v-btn>
+                    </v-alert>
+                  </div>
+                </v-col>
+              </template>
+
+              <!-- Static DNS notice -->
+              <v-col v-else-if="configForm.provider === 'static'" cols="12">
+                <v-alert
+                  type="info"
+                  variant="outlined"
+                  density="compact"
+                >
+                  <template #prepend>
+                    <v-icon>mdi-information</v-icon>
+                  </template>
+                  Static DNS mode - no dynamic updates. DNS records will be managed manually.
+                </v-alert>
               </v-col>
 
               <v-col cols="12">
@@ -423,13 +482,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import AppLayout from '../components/AppLayout.vue';
-import LoadingSpinner from '../components/LoadingSpinner.vue';
+import ConfirmationDialog from '../components/ConfirmationDialog.vue';
 import ErrorAlert from '../components/ErrorAlert.vue';
 import PageHeader from '../components/PageHeader.vue';
 import StatsCards from '../components/StatsCards.vue';
-import ConfirmationDialog from '../components/ConfirmationDialog.vue';
 import apiService from '../services/api';
 import type {
   DNSConfig,
@@ -437,8 +495,7 @@ import type {
   DNSConfigUpdateRequest,
   DNSRecord,
   DNSRecordCreateRequest,
-  DNSRecordUpdateRequest,
-  DNSUpdateResponse,
+  DNSRecordUpdateRequest
 } from '../types/api';
 
 // Reactive data
@@ -471,6 +528,9 @@ const configForm = ref<DNSConfigCreateRequest & { is_active: boolean }>({
   is_active: true,
 });
 
+// Password change state
+const changePassword = ref(false);
+
 const recordForm = ref<DNSRecordCreateRequest & { is_active: boolean }>({
   config_id: 0,
   host: '',
@@ -481,13 +541,6 @@ const editingConfig = ref<DNSConfig | null>(null);
 const editingRecord = ref<DNSRecord | null>(null);
 
 // Computed
-const selectedConfigId = computed(() => {
-  if (showCreateRecordModal.value) {
-    return recordForm.value.config_id;
-  }
-  return editingRecord.value?.config_id || 0;
-});
-
 const showConfigDialog = computed({
   get: () => showCreateConfigModal.value || showEditConfigModal.value,
   set: value => {
@@ -590,9 +643,10 @@ const editConfig = (config: DNSConfig) => {
     provider: config.provider,
     domain: config.domain,
     username: config.username,
-    password: config.password,
+    password: '', // Don't populate password for security
     is_active: config.is_active,
   };
+  changePassword.value = false; // Reset password change state
   showEditConfigModal.value = true;
 };
 
@@ -619,15 +673,37 @@ const saveConfig = async () => {
     savingConfig.value = true;
 
     if (showCreateConfigModal.value) {
-      await apiService.createDNSConfig(configForm.value);
+      // Prepare data based on provider type
+      const createData: DNSConfigCreateRequest = {
+        provider: configForm.value.provider,
+        domain: configForm.value.domain,
+        is_active: configForm.value.is_active,
+      };
+
+      // Only include credentials for dynamic DNS providers
+      if (configForm.value.provider === 'namecheap') {
+        createData.username = configForm.value.username;
+        createData.password = configForm.value.password;
+      }
+
+      await apiService.createDNSConfig(createData);
     } else if (editingConfig.value) {
       const updateData: DNSConfigUpdateRequest = {
         provider: configForm.value.provider,
         domain: configForm.value.domain,
-        username: configForm.value.username,
-        password: configForm.value.password,
         is_active: configForm.value.is_active,
       };
+
+      // Only include credentials for dynamic DNS providers
+      if (configForm.value.provider === 'namecheap') {
+        updateData.username = configForm.value.username;
+
+        // Only include password if it's being changed
+        if (changePassword.value && configForm.value.password) {
+          updateData.password = configForm.value.password;
+        }
+      }
+
       await apiService.updateDNSConfig(editingConfig.value.id, updateData);
     }
 
@@ -721,6 +797,7 @@ const closeConfigModal = () => {
   showCreateConfigModal.value = false;
   showEditConfigModal.value = false;
   editingConfig.value = null;
+  changePassword.value = false;
   configForm.value = {
     provider: 'namecheap',
     domain: '',

@@ -16,6 +16,8 @@ type Config struct {
 	// DNS Configuration
 	DNSCheckInterval string // How often to check and update DNS (e.g., "5m", "1h")
 	PublicIPService  string // Service to get public IP (e.g., "https://api.ipify.org")
+	// Encryption Configuration
+	EncryptionKey string // Key for encrypting sensitive data like DNS passwords
 	// Let's Encrypt Configuration
 	LetsEncryptEmail    string // Email for Let's Encrypt registration
 	LetsEncryptWebroot  string // Webroot for HTTP-01 challenges
@@ -36,6 +38,7 @@ func Load() *Config {
 		DevTestPassword:     getEnv("DEV_TEST_PASSWORD", "devtest"),
 		DNSCheckInterval:    getEnv("DNS_CHECK_INTERVAL", "5m"),
 		PublicIPService:     getEnv("PUBLIC_IP_SERVICE", "https://api.ipify.org"),
+		EncryptionKey:       getEnv("ENCRYPTION_KEY", "upm-default-encryption-key-32byt"),
 		LetsEncryptEmail:    getEnv("LETSENCRYPT_EMAIL", ""),
 		LetsEncryptWebroot:  getEnv("LETSENCRYPT_WEBROOT", "/var/www/html"),
 		LetsEncryptCertPath: getEnv("LETSENCRYPT_CERT_PATH", "/etc/letsencrypt"),

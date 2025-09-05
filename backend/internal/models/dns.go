@@ -9,6 +9,7 @@ type DNSProvider string
 
 const (
 	ProviderNamecheap DNSProvider = "namecheap"
+	ProviderStatic    DNSProvider = "static"
 )
 
 // DNSConfig represents the configuration for a DNS provider
@@ -17,7 +18,7 @@ type DNSConfig struct {
 	Provider   DNSProvider `json:"provider" db:"provider"`
 	Domain     string      `json:"domain" db:"domain"`
 	Username   string      `json:"username" db:"username"`
-	Password   string      `json:"password" db:"password"`
+	Password   string      `json:"-" db:"password"` // Hidden from JSON for security
 	IsActive   bool        `json:"is_active" db:"is_active"`
 	LastUpdate *time.Time  `json:"last_update,omitempty" db:"last_update"`
 	LastIP     string      `json:"last_ip,omitempty" db:"last_ip"`

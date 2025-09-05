@@ -1,12 +1,9 @@
 import type {
   ApiResponse,
-  Proxy,
-  ProxyCreateRequest,
-  ProxyUpdateRequest,
-  User,
-  UserCreateRequest,
-  UserLoginRequest,
   AuthResponse,
+  Certificate,
+  CertificateCreateRequest,
+  CertificateUpdateRequest,
   Container,
   ContainerListResponse,
   DNSConfig,
@@ -15,13 +12,17 @@ import type {
   DNSRecord,
   DNSRecordCreateRequest,
   DNSRecordUpdateRequest,
-  DNSUpdateResponse,
   DNSStatus,
-  Certificate,
-  CertificateCreateRequest,
-  CertificateUpdateRequest,
+  DNSUpdateResponse,
+  Proxy,
+  ProxyCreateRequest,
+  ProxyResponse,
+  ProxyUpdateRequest,
   Settings,
   SettingsUpdateRequest,
+  User,
+  UserCreateRequest,
+  UserLoginRequest,
 } from '../types/api';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:6081';
@@ -89,7 +90,7 @@ class ApiService {
     return this.request(`/api/v1/proxies/${id}`);
   }
 
-  async createProxy(proxy: ProxyCreateRequest): Promise<ApiResponse<Proxy>> {
+  async createProxy(proxy: ProxyCreateRequest): Promise<ProxyResponse> {
     return this.request('/api/v1/proxies', {
       method: 'POST',
       body: JSON.stringify(proxy),
@@ -99,7 +100,7 @@ class ApiService {
   async updateProxy(
     id: number,
     proxy: ProxyUpdateRequest
-  ): Promise<ApiResponse<Proxy>> {
+  ): Promise<ProxyResponse> {
     return this.request(`/api/v1/proxies/${id}`, {
       method: 'PUT',
       body: JSON.stringify(proxy),
@@ -110,6 +111,10 @@ class ApiService {
     return this.request(`/api/v1/proxies/${id}`, {
       method: 'DELETE',
     });
+  }
+
+  async getProxyCertificate(id: number): Promise<ApiResponse<Certificate>> {
+    return this.request(`/api/v1/proxies/${id}/certificate`);
   }
 
   // User endpoints

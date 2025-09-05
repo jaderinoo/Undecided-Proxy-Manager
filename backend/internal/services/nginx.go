@@ -42,11 +42,15 @@ func (n *NginxService) GenerateProxyConfig(proxy *models.Proxy) error {
 		TargetURL  string
 		SSLEnabled bool
 		SSLPath    string
+		CertPath   string
+		KeyPath    string
 	}{
 		Domain:     proxy.Domain,
 		TargetURL:  proxy.TargetURL,
 		SSLEnabled: proxy.SSLEnabled,
 		SSLPath:    "/etc/nginx/ssl",
+		CertPath:   fmt.Sprintf("/etc/ssl/certs/certs/%s.crt", proxy.Domain),
+		KeyPath:    fmt.Sprintf("/etc/ssl/certs/certs/%s.key", proxy.Domain),
 	}
 
 	// Generate config content

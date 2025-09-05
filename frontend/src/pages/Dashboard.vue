@@ -232,121 +232,20 @@
     </v-container>
 
     <!-- Create Proxy Dialog -->
-    <v-dialog v-model="createProxyDialog" max-width="600px">
-      <v-card>
-        <v-card-title>
-          <v-icon left>mdi-plus</v-icon>
-          Add New Proxy
-        </v-card-title>
-        <v-card-text>
-          <v-form ref="createProxyForm" v-model="createProxyFormValid">
-            <v-text-field
-              v-model="newProxy.name"
-              label="Proxy Name"
-              :rules="[v => !!v || 'Name is required']"
-              required
-              class="mb-2"
-            ></v-text-field>
-
-            <v-text-field
-              v-model="newProxy.domain"
-              label="Domain"
-              :rules="[v => !!v || 'Domain is required']"
-              required
-              class="mb-2"
-              hint="e.g., example.com"
-            ></v-text-field>
-
-            <v-text-field
-              v-model="newProxy.target_url"
-              label="Target URL"
-              :rules="[v => !!v || 'Target URL is required']"
-              required
-              class="mb-2"
-              hint="e.g., http://localhost:3000"
-            ></v-text-field>
-
-            <v-switch
-              v-model="newProxy.ssl_enabled"
-              label="Enable SSL"
-              color="success"
-              class="mb-2"
-            ></v-switch>
-          </v-form>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="grey" variant="text" @click="closeCreateProxyDialog">
-            Cancel
-          </v-btn>
-          <v-btn
-            color="primary"
-            @click="createProxy"
-            :loading="creatingProxy"
-            :disabled="!createProxyFormValid"
-          >
-            Create Proxy
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <ProxyFormDialog
+      v-model:show="createProxyDialog"
+      :initial-data="containerFormData"
+      @save="handleCreateProxy"
+      @cancel="closeCreateProxyDialog"
+    />
 
     <!-- Edit Proxy Dialog -->
-    <v-dialog v-model="editProxyDialog" max-width="600px">
-      <v-card>
-        <v-card-title>
-          <v-icon left>mdi-pencil</v-icon>
-          Edit Proxy
-        </v-card-title>
-        <v-card-text>
-          <v-form v-model="editProxyFormValid">
-            <v-text-field
-              v-model="editingProxy.name"
-              label="Proxy Name"
-              :rules="[v => !!v || 'Name is required']"
-              required
-              class="mb-3"
-            ></v-text-field>
-
-            <v-text-field
-              v-model="editingProxy.domain"
-              label="Domain"
-              :rules="[v => !!v || 'Domain is required']"
-              required
-              class="mb-3"
-            ></v-text-field>
-
-            <v-text-field
-              v-model="editingProxy.target_url"
-              label="Target URL"
-              :rules="[v => !!v || 'Target URL is required']"
-              required
-              class="mb-3"
-            ></v-text-field>
-
-            <v-switch
-              v-model="editingProxy.ssl_enabled"
-              label="Enable SSL"
-              color="success"
-            ></v-switch>
-          </v-form>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="grey" variant="text" @click="closeEditProxyDialog">
-            Cancel
-          </v-btn>
-          <v-btn
-            color="primary"
-            @click="updateProxy"
-            :loading="updatingProxy"
-            :disabled="!editProxyFormValid"
-          >
-            Update Proxy
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <ProxyFormDialog
+      v-model:show="editProxyDialog"
+      :editing-proxy="editingProxy"
+      @save="handleEditProxy"
+      @cancel="closeEditProxyDialog"
+    />
 
     <!-- Delete Confirmation Dialog -->
     <v-dialog v-model="deleteProxyDialog" max-width="400px">
@@ -374,17 +273,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { apiService } from '../services/api';
+import { computed, onMounted, ref } from 'vue';
 import AppLayout from '../components/AppLayout.vue';
 import ErrorAlert from '../components/ErrorAlert.vue';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import ProxyCard from '../components/ProxyCard.vue';
+import ProxyFormDialog from '../components/ProxyFormDialog.vue';
+import { apiService } from '../services/api';
 import type {
-  Proxy,
-  Container,
-  ProxyCreateRequest,
-  ProxyUpdateRequest,
+    Container,
+    Proxy,
+    ProxyCreateRequest,
+    ProxyUpdateRequest,
 } from '../types/api';
 
 const proxies = ref<Proxy[]>([]);
@@ -395,27 +295,13 @@ const error = ref<string | null>(null);
 const containerError = ref<string | null>(null);
 const showAllContainers = ref(false);
 
-// Create proxy dialog state
+// Dialog state
 const createProxyDialog = ref(false);
-const createProxyFormValid = ref(false);
-const creatingProxy = ref(false);
-const newProxy = ref<ProxyCreateRequest>({
-  name: '',
-  domain: '',
-  target_url: '',
-  ssl_enabled: false,
-});
-
-// Edit proxy dialog state
 const editProxyDialog = ref(false);
-const editProxyFormValid = ref(false);
+const creatingProxy = ref(false);
 const updatingProxy = ref(false);
-const editingProxy = ref<ProxyUpdateRequest>({
-  name: '',
-  domain: '',
-  target_url: '',
-  ssl_enabled: false,
-});
+const editingProxy = ref<Proxy | null>(null);
+const containerFormData = ref<Partial<ProxyCreateRequest> | null>(null);
 
 // Delete proxy dialog state
 const deleteProxyDialog = ref(false);
@@ -537,40 +423,33 @@ const toggleContainerDisplay = () => {
 
 // Create proxy dialog methods
 const openCreateProxyDialog = () => {
+  containerFormData.value = null;
   createProxyDialog.value = true;
-  // Reset form
-  newProxy.value = {
-    name: '',
-    domain: '',
-    target_url: '',
-    ssl_enabled: false,
-  };
-  createProxyFormValid.value = false;
 };
 
 const closeCreateProxyDialog = () => {
   createProxyDialog.value = false;
+  containerFormData.value = null;
   error.value = null;
 };
 
 const openCreateProxyForContainer = (container: Container) => {
   // Pre-fill the form with container information
-  newProxy.value = {
+  containerFormData.value = {
     name: `${container.name || 'container'}-proxy`,
     domain: `${container.name || 'container'}.example.com`,
     target_url: getContainerTargetUrl(container),
     ssl_enabled: false,
   };
   createProxyDialog.value = true;
-  createProxyFormValid.value = false;
 };
 
-const createProxy = async () => {
+const handleCreateProxy = async (data: ProxyCreateRequest | ProxyUpdateRequest, isEdit: boolean) => {
   try {
     creatingProxy.value = true;
     error.value = null;
 
-    const response = await apiService.createProxy(newProxy.value);
+    const response = await apiService.createProxy(data as ProxyCreateRequest);
 
     // Add the new proxy to the list
     if (response.data) {
@@ -588,49 +467,34 @@ const createProxy = async () => {
 
 // Edit proxy dialog methods
 const openEditProxyDialog = (proxy: Proxy) => {
-  editingProxy.value = {
-    name: proxy.name,
-    domain: proxy.domain,
-    target_url: proxy.target_url,
-    ssl_enabled: proxy.ssl_enabled,
-  };
-  // Store the original proxy ID for updating
-  editingProxy.value.id = proxy.id;
+  editingProxy.value = proxy;
   editProxyDialog.value = true;
-  editProxyFormValid.value = false;
 };
 
 const closeEditProxyDialog = () => {
   editProxyDialog.value = false;
+  editingProxy.value = null;
   error.value = null;
 };
 
-const updateProxy = async () => {
-  if (
-    !editingProxy.value.name ||
-    !editingProxy.value.domain ||
-    !editingProxy.value.target_url ||
-    !editingProxy.value.id
-  ) {
-    return;
-  }
+const handleEditProxy = async (data: ProxyCreateRequest | ProxyUpdateRequest, isEdit: boolean) => {
+  if (!editingProxy.value) return;
 
   try {
     updatingProxy.value = true;
     error.value = null;
 
-    const proxyId = editingProxy.value.id;
-    const response = await apiService.updateProxy(proxyId, editingProxy.value);
+    const response = await apiService.updateProxy(editingProxy.value.id, data as ProxyUpdateRequest);
 
     // Update the proxy in the list
     if (response.data) {
-      const proxyIndex = proxies.value.findIndex(p => p.id === proxyId);
+      const proxyIndex = proxies.value.findIndex(p => p.id === editingProxy.value!.id);
       if (proxyIndex !== -1) {
         proxies.value[proxyIndex] = response.data;
       }
     }
 
-    // Close dialog and reset form
+    // Close dialog
     closeEditProxyDialog();
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to update proxy';
