@@ -8,7 +8,15 @@ import type {
   UserLoginRequest,
   AuthResponse,
   Container,
-  ContainerListResponse
+  ContainerListResponse,
+  DNSConfig,
+  DNSConfigCreateRequest,
+  DNSConfigUpdateRequest,
+  DNSRecord,
+  DNSRecordCreateRequest,
+  DNSRecordUpdateRequest,
+  DNSUpdateResponse,
+  DNSStatus
 } from '../types/api'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:6081'
@@ -49,6 +57,11 @@ class ApiService {
 
     if (!response.ok) {
       throw new Error(`API Error: ${response.status} ${response.statusText}`)
+    }
+
+    // Handle 204 No Content responses (like DELETE operations)
+    if (response.status === 204) {
+      return {} as T
     }
 
     return response.json()
@@ -143,6 +156,96 @@ class ApiService {
 
   async getContainerStats(id: string): Promise<any> {
     return this.request(`/api/v1/containers/${id}/stats`)
+  }
+
+  // Nginx management endpoints
+  async reloadNginx(): Promise<{ message: string }> {
+    return this.request('/api/v1/nginx/reload', {
+      method: 'POST',
+    })
+  }
+
+  async testNginxConfig(): Promise<{ message: string }> {
+    return this.request('/api/v1/nginx/test', {
+      method: 'POST',
+    })
+  }
+
+  // DNS management endpoints
+  async getDNSConfigs(): Promise<{ configs: DNSConfig[] }> {
+    return this.request('/api/v1/dns/configs')
+  }
+
+  async getDNSConfig(id: number): Promise<{ config: DNSConfig }> {
+    return this.request(`/api/v1/dns/configs/${id}`)
+  }
+
+  async createDNSConfig(data: DNSConfigCreateRequest): Promise<{ config: DNSConfig }> {
+    return this.request('/api/v1/dns/configs', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async updateDNSConfig(id: number, data: DNSConfigUpdateRequest): Promise<{ config: DNSConfig }> {
+    return this.request(`/api/v1/dns/configs/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async deleteDNSConfig(id: number): Promise<{ message: string }> {
+    return this.request(`/api/v1/dns/configs/${id}`, {
+      method: 'DELETE',
+    })
+  }
+
+  async getDNSRecords(configId: number): Promise<{ records: DNSRecord[] }> {
+    return this.request(`/api/v1/dns/records?config_id=${configId}`)
+  }
+
+  async getDNSRecord(id: number): Promise<{ record: DNSRecord }> {
+    return this.request(`/api/v1/dns/records/${id}`)
+  }
+
+  async createDNSRecord(data: DNSRecordCreateRequest): Promise<{ record: DNSRecord }> {
+    return this.request('/api/v1/dns/records', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async updateDNSRecord(id: number, data: DNSRecordUpdateRequest): Promise<{ record: DNSRecord }> {
+    return this.request(`/api/v1/dns/records/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async deleteDNSRecord(id: number): Promise<{ message: string }> {
+    return this.request(`/api/v1/dns/records/${id}`, {
+      method: 'DELETE',
+    })
+  }
+
+  async updateDNSRecordNow(id: number): Promise<{ response: DNSUpdateResponse }> {
+    return this.request(`/api/v1/dns/records/${id}/update`, {
+      method: 'POST',
+    })
+  }
+
+  async updateAllDNSRecords(): Promise<{ responses: DNSUpdateResponse[] }> {
+    return this.request('/api/v1/dns/update-all', {
+      method: 'POST',
+    })
+  }
+
+  async getDNSStatus(): Promise<{ statuses: DNSStatus[] }> {
+    return this.request('/api/v1/dns/status')
+  }
+
+  async getPublicIP(): Promise<{ ip: string }> {
+    return this.request('/api/v1/dns/public-ip')
   }
 }
 

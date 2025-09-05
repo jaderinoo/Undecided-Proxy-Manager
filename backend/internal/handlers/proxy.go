@@ -10,17 +10,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var nginxService *services.NginxService
 var dbService *services.DatabaseService
-
-// SetNginxService sets the nginx service instance
-func SetNginxService(service *services.NginxService) {
-	nginxService = service
-}
 
 // SetDatabaseService sets the database service instance
 func SetDatabaseService(service *services.DatabaseService) {
 	dbService = service
+}
+
+// getNginxService gets the nginx service instance from the nginx handler
+func getNginxService() *services.NginxService {
+	// This is a simple way to access the nginx service
+	// In a more complex setup, you might want to use dependency injection
+	return GetNginxService()
 }
 
 // GetProxies godoc
@@ -122,6 +123,7 @@ func CreateProxy(c *gin.Context) {
 	}
 
 	// Generate nginx configuration
+	nginxService := getNginxService()
 	if nginxService != nil {
 		if err := nginxService.GenerateProxyConfig(proxy); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate nginx config: " + err.Error()})
@@ -203,6 +205,7 @@ func UpdateProxy(c *gin.Context) {
 	}
 
 	// Update nginx configuration
+	nginxService := getNginxService()
 	if nginxService != nil {
 		if err := nginxService.UpdateProxyConfig(proxy); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update nginx config: " + err.Error()})
@@ -256,6 +259,7 @@ func DeleteProxy(c *gin.Context) {
 	}
 
 	// Remove nginx configuration
+	nginxService := getNginxService()
 	if nginxService != nil {
 		if err := nginxService.RemoveProxyConfig(id); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to remove nginx config: " + err.Error()})

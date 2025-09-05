@@ -75,6 +75,14 @@ func main() {
 		log.Printf("Docker service initialized")
 	}
 
+	// Initialize DNS service
+	dnsService := services.NewDNSService(dbService)
+	handlers.SetDNSService(dnsService)
+	log.Printf("DNS service initialized")
+
+	// Start periodic DNS updates
+	dnsService.StartPeriodicUpdates()
+
 	// Initialize Gin router
 	r := gin.Default()
 
@@ -140,6 +148,37 @@ func main() {
 				containers.GET("", handlers.GetContainers)
 				containers.GET("/:id", handlers.GetContainer)
 				containers.GET("/:id/stats", handlers.GetContainerStats)
+			}
+
+			// Nginx management endpoints
+			nginx := protected.Group("/nginx")
+			{
+				nginx.POST("/reload", handlers.ReloadNginx)
+				nginx.POST("/test", handlers.TestNginxConfig)
+			}
+
+			// DNS management endpoints
+			dns := protected.Group("/dns")
+			{
+				// DNS Config endpoints
+				dns.GET("/configs", handlers.GetDNSConfigs)
+				dns.POST("/configs", handlers.CreateDNSConfig)
+				dns.GET("/configs/:id", handlers.GetDNSConfig)
+				dns.PUT("/configs/:id", handlers.UpdateDNSConfig)
+				dns.DELETE("/configs/:id", handlers.DeleteDNSConfig)
+
+				// DNS Record endpoints
+				dns.GET("/records", handlers.GetDNSRecords)
+				dns.POST("/records", handlers.CreateDNSRecord)
+				dns.GET("/records/:id", handlers.GetDNSRecord)
+				dns.PUT("/records/:id", handlers.UpdateDNSRecord)
+				dns.DELETE("/records/:id", handlers.DeleteDNSRecord)
+
+				// DNS Update endpoints
+				dns.POST("/records/:id/update", handlers.UpdateDNSRecordNow)
+				dns.POST("/update-all", handlers.UpdateAllDNSRecords)
+				dns.GET("/status", handlers.GetDNSStatus)
+				dns.GET("/public-ip", handlers.GetPublicIP)
 			}
 		}
 	}

@@ -92,6 +92,43 @@ func (d *DatabaseService) initTables() error {
 		return fmt.Errorf("failed to create certificates table: %w", err)
 	}
 
+	// Create DNS configurations table
+	dnsConfigTable := `
+	CREATE TABLE IF NOT EXISTS dns_configs (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		provider TEXT NOT NULL,
+		domain TEXT NOT NULL,
+		username TEXT NOT NULL,
+		password TEXT NOT NULL,
+		is_active BOOLEAN DEFAULT TRUE,
+		last_update DATETIME,
+		last_ip TEXT,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);`
+
+	if _, err := d.db.Exec(dnsConfigTable); err != nil {
+		return fmt.Errorf("failed to create dns_configs table: %w", err)
+	}
+
+	// Create DNS records table
+	dnsRecordsTable := `
+	CREATE TABLE IF NOT EXISTS dns_records (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		config_id INTEGER NOT NULL,
+		host TEXT NOT NULL,
+		current_ip TEXT,
+		last_update DATETIME,
+		is_active BOOLEAN DEFAULT TRUE,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (config_id) REFERENCES dns_configs (id) ON DELETE CASCADE
+	);`
+
+	if _, err := d.db.Exec(dnsRecordsTable); err != nil {
+		return fmt.Errorf("failed to create dns_records table: %w", err)
+	}
+
 	return nil
 }
 
@@ -221,6 +258,269 @@ func (d *DatabaseService) DeleteProxy(id int) error {
 
 	if rowsAffected == 0 {
 		return fmt.Errorf("proxy not found")
+	}
+
+	return nil
+}
+
+// DNS Config methods
+func (d *DatabaseService) GetDNSConfigs() ([]models.DNSConfig, error) {
+	query := `
+		SELECT id, provider, domain, username, password, is_active, last_update, last_ip, created_at, updated_at
+		FROM dns_configs
+		ORDER BY created_at DESC`
+
+	rows, err := d.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query dns configs: %w", err)
+	}
+	defer rows.Close()
+
+	var configs []models.DNSConfig
+	for rows.Next() {
+		var config models.DNSConfig
+		err := rows.Scan(
+			&config.ID,
+			&config.Provider,
+			&config.Domain,
+			&config.Username,
+			&config.Password,
+			&config.IsActive,
+			&config.LastUpdate,
+			&config.LastIP,
+			&config.CreatedAt,
+			&config.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan dns config: %w", err)
+		}
+		configs = append(configs, config)
+	}
+
+	return configs, nil
+}
+
+func (d *DatabaseService) GetDNSConfig(id int) (*models.DNSConfig, error) {
+	query := `
+		SELECT id, provider, domain, username, password, is_active, last_update, last_ip, created_at, updated_at
+		FROM dns_configs
+		WHERE id = ?`
+
+	var config models.DNSConfig
+	err := d.db.QueryRow(query, id).Scan(
+		&config.ID,
+		&config.Provider,
+		&config.Domain,
+		&config.Username,
+		&config.Password,
+		&config.IsActive,
+		&config.LastUpdate,
+		&config.LastIP,
+		&config.CreatedAt,
+		&config.UpdatedAt,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("dns config not found")
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to query dns config: %w", err)
+	}
+
+	return &config, nil
+}
+
+func (d *DatabaseService) CreateDNSConfig(config *models.DNSConfig) error {
+	query := `
+		INSERT INTO dns_configs (provider, domain, username, password, is_active)
+		VALUES (?, ?, ?, ?, ?)`
+
+	result, err := d.db.Exec(query, config.Provider, config.Domain, config.Username, config.Password, config.IsActive)
+	if err != nil {
+		return fmt.Errorf("failed to insert dns config: %w", err)
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return fmt.Errorf("failed to get last insert id: %w", err)
+	}
+
+	config.ID = int(id)
+	config.CreatedAt = time.Now()
+	config.UpdatedAt = time.Now()
+
+	return nil
+}
+
+func (d *DatabaseService) UpdateDNSConfig(config *models.DNSConfig) error {
+	query := `
+		UPDATE dns_configs 
+		SET provider = ?, domain = ?, username = ?, password = ?, is_active = ?, last_update = ?, last_ip = ?, updated_at = CURRENT_TIMESTAMP
+		WHERE id = ?`
+
+	result, err := d.db.Exec(query, config.Provider, config.Domain, config.Username, config.Password, config.IsActive, config.LastUpdate, config.LastIP, config.ID)
+	if err != nil {
+		return fmt.Errorf("failed to update dns config: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("dns config not found")
+	}
+
+	config.UpdatedAt = time.Now()
+	return nil
+}
+
+func (d *DatabaseService) DeleteDNSConfig(id int) error {
+	query := `DELETE FROM dns_configs WHERE id = ?`
+
+	result, err := d.db.Exec(query, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete dns config: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("dns config not found")
+	}
+
+	return nil
+}
+
+// DNS Record methods
+func (d *DatabaseService) GetDNSRecords(configID int) ([]models.DNSRecord, error) {
+	query := `
+		SELECT id, config_id, host, current_ip, last_update, is_active, created_at, updated_at
+		FROM dns_records
+		WHERE config_id = ?
+		ORDER BY created_at DESC`
+
+	rows, err := d.db.Query(query, configID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query dns records: %w", err)
+	}
+	defer rows.Close()
+
+	var records []models.DNSRecord
+	for rows.Next() {
+		var record models.DNSRecord
+		err := rows.Scan(
+			&record.ID,
+			&record.ConfigID,
+			&record.Host,
+			&record.CurrentIP,
+			&record.LastUpdate,
+			&record.IsActive,
+			&record.CreatedAt,
+			&record.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan dns record: %w", err)
+		}
+		records = append(records, record)
+	}
+
+	return records, nil
+}
+
+func (d *DatabaseService) GetDNSRecord(id int) (*models.DNSRecord, error) {
+	query := `
+		SELECT id, config_id, host, current_ip, last_update, is_active, created_at, updated_at
+		FROM dns_records
+		WHERE id = ?`
+
+	var record models.DNSRecord
+	err := d.db.QueryRow(query, id).Scan(
+		&record.ID,
+		&record.ConfigID,
+		&record.Host,
+		&record.CurrentIP,
+		&record.LastUpdate,
+		&record.IsActive,
+		&record.CreatedAt,
+		&record.UpdatedAt,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("dns record not found")
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to query dns record: %w", err)
+	}
+
+	return &record, nil
+}
+
+func (d *DatabaseService) CreateDNSRecord(record *models.DNSRecord) error {
+	query := `
+		INSERT INTO dns_records (config_id, host, current_ip, is_active)
+		VALUES (?, ?, ?, ?)`
+
+	result, err := d.db.Exec(query, record.ConfigID, record.Host, record.CurrentIP, record.IsActive)
+	if err != nil {
+		return fmt.Errorf("failed to insert dns record: %w", err)
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return fmt.Errorf("failed to get last insert id: %w", err)
+	}
+
+	record.ID = int(id)
+	record.CreatedAt = time.Now()
+	record.UpdatedAt = time.Now()
+
+	return nil
+}
+
+func (d *DatabaseService) UpdateDNSRecord(record *models.DNSRecord) error {
+	query := `
+		UPDATE dns_records 
+		SET host = ?, current_ip = ?, last_update = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP
+		WHERE id = ?`
+
+	result, err := d.db.Exec(query, record.Host, record.CurrentIP, record.LastUpdate, record.IsActive, record.ID)
+	if err != nil {
+		return fmt.Errorf("failed to update dns record: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("dns record not found")
+	}
+
+	record.UpdatedAt = time.Now()
+	return nil
+}
+
+func (d *DatabaseService) DeleteDNSRecord(id int) error {
+	query := `DELETE FROM dns_records WHERE id = ?`
+
+	result, err := d.db.Exec(query, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete dns record: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("dns record not found")
 	}
 
 	return nil

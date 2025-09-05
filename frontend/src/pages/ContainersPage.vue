@@ -85,8 +85,8 @@
                     <v-card color="green-lighten-5" variant="outlined">
                       <v-card-text class="text-center">
                         <v-icon color="green" size="large">mdi-play-circle</v-icon>
-                        <div class="text-h6">{{ runningCount }}</div>
-                        <div class="text-caption">Running</div>
+                        <div class="text-h6 text-grey-darken-3">{{ runningCount }}</div>
+                        <div class="text-caption text-grey-darken-2">Running</div>
                       </v-card-text>
                     </v-card>
                   </v-col>
@@ -94,8 +94,8 @@
                     <v-card color="red-lighten-5" variant="outlined">
                       <v-card-text class="text-center">
                         <v-icon color="red" size="large">mdi-stop-circle</v-icon>
-                        <div class="text-h6">{{ stoppedCount }}</div>
-                        <div class="text-caption">Stopped</div>
+                        <div class="text-h6 text-grey-darken-3">{{ stoppedCount }}</div>
+                        <div class="text-caption text-grey-darken-2">Stopped</div>
                       </v-card-text>
                     </v-card>
                   </v-col>
@@ -103,8 +103,8 @@
                     <v-card color="blue-lighten-5" variant="outlined">
                       <v-card-text class="text-center">
                         <v-icon color="blue" size="large">mdi-plus-circle</v-icon>
-                        <div class="text-h6">{{ createdCount }}</div>
-                        <div class="text-caption">Created</div>
+                        <div class="text-h6 text-grey-darken-3">{{ createdCount }}</div>
+                        <div class="text-caption text-grey-darken-2">Created</div>
                       </v-card-text>
                     </v-card>
                   </v-col>
@@ -112,8 +112,8 @@
                     <v-card color="orange-lighten-5" variant="outlined">
                       <v-card-text class="text-center">
                         <v-icon color="orange" size="large">mdi-pause-circle</v-icon>
-                        <div class="text-h6">{{ pausedCount }}</div>
-                        <div class="text-caption">Paused</div>
+                        <div class="text-h6 text-grey-darken-3">{{ pausedCount }}</div>
+                        <div class="text-caption text-grey-darken-2">Paused</div>
                       </v-card-text>
                     </v-card>
                   </v-col>
@@ -165,13 +165,14 @@ import AppLayout from '../components/AppLayout.vue'
 import ErrorAlert from '../components/ErrorAlert.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import ContainerCard from '../components/ContainerCard.vue'
-import type { Container } from '../types/api'
+import type { Container, Proxy } from '../types/api'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
 const containers = ref<Container[]>([])
 const filteredContainers = ref<Container[]>([])
+const proxies = ref<Proxy[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 const searchQuery = ref('')
@@ -216,6 +217,7 @@ const loadContainers = async () => {
     containers.value = response.containers || []
     filteredContainers.value = [...containers.value]
     filterContainers()
+    updateContainerProxyRelationships()
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load containers'
     containers.value = []
@@ -223,6 +225,58 @@ const loadContainers = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const loadProxies = async () => {
+  try {
+    const response = await apiService.getProxies()
+    proxies.value = response.data || []
+    updateContainerProxyRelationships()
+  } catch (err) {
+    console.error('Failed to load proxies:', err)
+    proxies.value = []
+  }
+}
+
+// Relationship matching logic
+const updateContainerProxyRelationships = () => {
+  // Clear existing relationships
+  containers.value.forEach(container => {
+    container.connected_proxies = []
+  })
+  proxies.value.forEach(proxy => {
+    proxy.connected_containers = []
+  })
+
+  // Match containers to proxies based on target URL
+  proxies.value.forEach(proxy => {
+    const targetUrl = new URL(proxy.target_url)
+    const targetPort = parseInt(targetUrl.port) || (targetUrl.protocol === 'https:' ? 443 : 80)
+    
+    containers.value.forEach(container => {
+      if (container.state === 'running' && container.ports) {
+        // Check if any container port matches the proxy target port
+        const matchingPort = container.ports.find(port => 
+          port.public_port === targetPort || 
+          (targetUrl.hostname === 'localhost' && port.public_port === targetPort)
+        )
+        
+        if (matchingPort) {
+          // Add container to proxy's connected containers
+          if (!proxy.connected_containers) {
+            proxy.connected_containers = []
+          }
+          proxy.connected_containers.push(container)
+          
+          // Add proxy to container's connected proxies
+          if (!container.connected_proxies) {
+            container.connected_proxies = []
+          }
+          container.connected_proxies.push(proxy)
+        }
+      }
+    })
+  })
 }
 
 const filterContainers = () => {
@@ -246,6 +300,17 @@ const filterContainers = () => {
 
   // Sort
   filtered.sort((a, b) => {
+    // Always prioritize containers with connected proxies first
+    const aHasProxies = a.connected_proxies && a.connected_proxies.length > 0
+    const bHasProxies = b.connected_proxies && b.connected_proxies.length > 0
+    
+    if (aHasProxies && !bHasProxies) return -1
+    if (bHasProxies && !aHasProxies) return 1
+    
+    // Then prioritize running containers
+    if (a.state === 'running' && b.state !== 'running') return -1
+    if (b.state === 'running' && a.state !== 'running') return 1
+    
     switch (sortBy.value) {
       case 'name':
         return a.name.localeCompare(b.name)
@@ -272,8 +337,11 @@ const handleLogout = () => {
   router.push('/login')
 }
 
-onMounted(() => {
-  loadContainers()
+onMounted(async () => {
+  await Promise.all([
+    loadContainers(),
+    loadProxies()
+  ])
 })
 </script>
 

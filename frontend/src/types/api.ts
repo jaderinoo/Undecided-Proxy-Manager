@@ -15,6 +15,8 @@ export interface Proxy {
   status: 'active' | 'inactive' | 'error';
   created_at: string;
   updated_at: string;
+  // Computed fields for UI
+  connected_containers?: Container[];
 }
 
 export interface ProxyCreateRequest {
@@ -25,6 +27,7 @@ export interface ProxyCreateRequest {
 }
 
 export interface ProxyUpdateRequest {
+  id?: number;
   name?: string;
   domain?: string;
   target_url?: string;
@@ -86,6 +89,8 @@ export interface Container {
   size_root_fs: number;
   network_mode: string;
   mounts: Mount[];
+  // Computed fields for UI
+  connected_proxies?: Proxy[];
 }
 
 export interface PortMapping {
@@ -107,4 +112,72 @@ export interface Mount {
 export interface ContainerListResponse {
   containers: Container[];
   count: number;
+}
+
+// DNS Types
+export interface DNSConfig {
+  id: number;
+  provider: 'namecheap';
+  domain: string;
+  username: string;
+  password: string;
+  is_active: boolean;
+  last_update?: string;
+  last_ip?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DNSConfigCreateRequest {
+  provider: string;
+  domain: string;
+  username: string;
+  password: string;
+}
+
+export interface DNSConfigUpdateRequest {
+  provider?: string;
+  domain?: string;
+  username?: string;
+  password?: string;
+  is_active?: boolean;
+}
+
+export interface DNSRecord {
+  id: number;
+  config_id: number;
+  host: string;
+  current_ip?: string;
+  last_update?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DNSRecordCreateRequest {
+  config_id: number;
+  host: string;
+}
+
+export interface DNSRecordUpdateRequest {
+  host?: string;
+  is_active?: boolean;
+}
+
+export interface DNSUpdateResponse {
+  success: boolean;
+  message: string;
+  new_ip?: string;
+  updated_at?: string;
+}
+
+export interface DNSStatus {
+  config_id: number;
+  domain: string;
+  provider: string;
+  is_active: boolean;
+  last_update?: string;
+  last_ip?: string;
+  record_count: number;
+  records?: DNSRecord[];
 }

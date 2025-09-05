@@ -1,0 +1,311 @@
+package handlers
+
+import (
+	"net/http"
+	"strconv"
+
+	"upm-backend/internal/models"
+	"upm-backend/internal/services"
+
+	"github.com/gin-gonic/gin"
+)
+
+type DNSHandler struct {
+	dnsService *services.DNSService
+}
+
+var dnsHandler *DNSHandler
+
+func NewDNSHandler(dnsService *services.DNSService) *DNSHandler {
+	return &DNSHandler{
+		dnsService: dnsService,
+	}
+}
+
+// SetDNSService sets the DNS service instance
+func SetDNSService(service *services.DNSService) {
+	dnsHandler = NewDNSHandler(service)
+}
+
+// DNS Config handlers
+
+// GetDNSConfigs returns all DNS configurations
+func GetDNSConfigs(c *gin.Context) {
+	configs, err := dnsHandler.dnsService.DbService.GetDNSConfigs()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"configs": configs})
+}
+
+// GetDNSConfig returns a specific DNS configuration
+func GetDNSConfig(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		return
+	}
+
+	config, err := dnsHandler.dnsService.DbService.GetDNSConfig(id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"config": config})
+}
+
+// CreateDNSConfig creates a new DNS configuration
+func CreateDNSConfig(c *gin.Context) {
+	var req models.DNSConfigCreateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config := &models.DNSConfig{
+		Provider: models.DNSProvider(req.Provider),
+		Domain:   req.Domain,
+		Username: req.Username,
+		Password: req.Password,
+		IsActive: true,
+	}
+
+	if err := dnsHandler.dnsService.DbService.CreateDNSConfig(config); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"config": config})
+}
+
+// UpdateDNSConfig updates an existing DNS configuration
+func UpdateDNSConfig(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		return
+	}
+
+	var req models.DNSConfigUpdateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := dnsHandler.dnsService.DbService.GetDNSConfig(id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Update fields if provided
+	if req.Provider != nil {
+		config.Provider = models.DNSProvider(*req.Provider)
+	}
+	if req.Domain != nil {
+		config.Domain = *req.Domain
+	}
+	if req.Username != nil {
+		config.Username = *req.Username
+	}
+	if req.Password != nil {
+		config.Password = *req.Password
+	}
+	if req.IsActive != nil {
+		config.IsActive = *req.IsActive
+	}
+
+	if err := dnsHandler.dnsService.DbService.UpdateDNSConfig(config); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"config": config})
+}
+
+// DeleteDNSConfig deletes a DNS configuration
+func DeleteDNSConfig(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		return
+	}
+
+	if err := dnsHandler.dnsService.DbService.DeleteDNSConfig(id); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "DNS configuration deleted successfully"})
+}
+
+// DNS Record handlers
+
+// GetDNSRecords returns all DNS records for a specific configuration
+func GetDNSRecords(c *gin.Context) {
+	configIDStr := c.Query("config_id")
+	if configIDStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "config_id query parameter is required"})
+		return
+	}
+	
+	configID, err := strconv.Atoi(configIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid config ID"})
+		return
+	}
+
+	records, err := dnsHandler.dnsService.DbService.GetDNSRecords(configID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"records": records})
+}
+
+// GetDNSRecord returns a specific DNS record
+func GetDNSRecord(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		return
+	}
+
+	record, err := dnsHandler.dnsService.DbService.GetDNSRecord(id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"record": record})
+}
+
+// CreateDNSRecord creates a new DNS record
+func CreateDNSRecord(c *gin.Context) {
+	var req models.DNSRecordCreateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	record := &models.DNSRecord{
+		ConfigID: req.ConfigID,
+		Host:     req.Host,
+		IsActive: true,
+	}
+
+	if err := dnsHandler.dnsService.DbService.CreateDNSRecord(record); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"record": record})
+}
+
+// UpdateDNSRecord updates an existing DNS record
+func UpdateDNSRecord(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		return
+	}
+
+	var req models.DNSRecordUpdateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	record, err := dnsHandler.dnsService.DbService.GetDNSRecord(id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Update fields if provided
+	if req.Host != nil {
+		record.Host = *req.Host
+	}
+	if req.IsActive != nil {
+		record.IsActive = *req.IsActive
+	}
+
+	if err := dnsHandler.dnsService.DbService.UpdateDNSRecord(record); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"record": record})
+}
+
+// DeleteDNSRecord deletes a DNS record
+func DeleteDNSRecord(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		return
+	}
+
+	if err := dnsHandler.dnsService.DbService.DeleteDNSRecord(id); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "DNS record deleted successfully"})
+}
+
+// DNS Update handlers
+
+// UpdateDNSRecord updates a specific DNS record
+func UpdateDNSRecordNow(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		return
+	}
+
+	response, err := dnsHandler.dnsService.UpdateDNSRecord(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "response": response})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"response": response})
+}
+
+// UpdateAllDNSRecords updates all active DNS records
+func UpdateAllDNSRecords(c *gin.Context) {
+	responses, err := dnsHandler.dnsService.UpdateAllDNSRecords()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"responses": responses})
+}
+
+// GetDNSStatus returns the current status of all DNS configurations
+func GetDNSStatus(c *gin.Context) {
+	statuses, err := dnsHandler.dnsService.GetDNSStatus()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"statuses": statuses})
+}
+
+// GetPublicIP returns the current public IP address
+func GetPublicIP(c *gin.Context) {
+	ip, err := dnsHandler.dnsService.GetPublicIP()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"ip": ip})
+}

@@ -55,9 +55,20 @@
                 size="small"
                 @click="loadProxies"
                 :loading="loading"
+                class="mr-2"
               >
                 <v-icon left>mdi-refresh</v-icon>
                 Refresh
+              </v-btn>
+              <v-btn
+                color="orange"
+                variant="outlined"
+                size="small"
+                @click="reloadNginx"
+                :loading="reloadingNginx"
+              >
+                <v-icon left>mdi-reload</v-icon>
+                Reload Nginx
               </v-btn>
             </v-card-title>
             <v-card-text>
@@ -71,6 +82,8 @@
                     v-for="proxy in proxies"
                     :key="proxy.id"
                     :proxy="proxy"
+                    @edit="openEditProxyDialog"
+                    @delete="openDeleteProxyDialog"
                   />
                 </v-list>
 
@@ -149,9 +162,21 @@
                           :color="getContainerStatusColor(container.state)"
                           size="x-small"
                           variant="outlined"
+                          class="mr-2"
                         >
                           {{ container.state }}
                         </v-chip>
+                        <v-btn
+                          icon
+                          size="small"
+                          variant="text"
+                          color="primary"
+                          @click="openCreateProxyForContainer(container)"
+                          :disabled="container.state !== 'running'"
+                          v-tooltip="container.state === 'running' ? 'Create proxy for this container' : 'Container must be running to create proxy'"
+                        >
+                          <v-icon size="small">mdi-plus-circle</v-icon>
+                        </v-btn>
                       </template>
                     </v-list-item>
                   </v-list>
@@ -250,6 +275,97 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Edit Proxy Dialog -->
+    <v-dialog v-model="editProxyDialog" max-width="600px">
+      <v-card>
+        <v-card-title>
+          <v-icon left>mdi-pencil</v-icon>
+          Edit Proxy
+        </v-card-title>
+        <v-card-text>
+          <v-form v-model="editProxyFormValid">
+            <v-text-field
+              v-model="editingProxy.name"
+              label="Proxy Name"
+              :rules="[v => !!v || 'Name is required']"
+              required
+              class="mb-3"
+            ></v-text-field>
+
+            <v-text-field
+              v-model="editingProxy.domain"
+              label="Domain"
+              :rules="[v => !!v || 'Domain is required']"
+              required
+              class="mb-3"
+            ></v-text-field>
+
+            <v-text-field
+              v-model="editingProxy.target_url"
+              label="Target URL"
+              :rules="[v => !!v || 'Target URL is required']"
+              required
+              class="mb-3"
+            ></v-text-field>
+
+            <v-switch
+              v-model="editingProxy.ssl_enabled"
+              label="Enable SSL"
+              color="success"
+            ></v-switch>
+          </v-form>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            color="grey"
+            variant="text"
+            @click="closeEditProxyDialog"
+          >
+            Cancel
+          </v-btn>
+          <v-btn
+            color="primary"
+            @click="updateProxy"
+            :loading="updatingProxy"
+            :disabled="!editProxyFormValid"
+          >
+            Update Proxy
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Delete Confirmation Dialog -->
+    <v-dialog v-model="deleteProxyDialog" max-width="400px">
+      <v-card>
+        <v-card-title>
+          <v-icon left color="error">mdi-delete</v-icon>
+          Delete Proxy
+        </v-card-title>
+        <v-card-text>
+          Are you sure you want to delete the proxy "{{ proxyToDelete?.name }}"? This action cannot be undone.
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            color="grey"
+            variant="text"
+            @click="closeDeleteProxyDialog"
+          >
+            Cancel
+          </v-btn>
+          <v-btn
+            color="error"
+            @click="deleteProxy"
+            :loading="deletingProxy"
+          >
+            Delete
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </AppLayout>
 </template>
 
@@ -262,7 +378,7 @@ import AppLayout from '../components/AppLayout.vue'
 import ErrorAlert from '../components/ErrorAlert.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import ProxyCard from '../components/ProxyCard.vue'
-import type { Proxy, Container, ProxyCreateRequest } from '../types/api'
+import type { Proxy, Container, ProxyCreateRequest, ProxyUpdateRequest } from '../types/api'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -285,6 +401,25 @@ const newProxy = ref<ProxyCreateRequest>({
   target_url: '',
   ssl_enabled: false
 })
+
+// Edit proxy dialog state
+const editProxyDialog = ref(false)
+const editProxyFormValid = ref(false)
+const updatingProxy = ref(false)
+const editingProxy = ref<ProxyUpdateRequest>({
+  name: '',
+  domain: '',
+  target_url: '',
+  ssl_enabled: false
+})
+
+// Delete proxy dialog state
+const deleteProxyDialog = ref(false)
+const deletingProxy = ref(false)
+const proxyToDelete = ref<Proxy | null>(null)
+
+// Nginx reload state
+const reloadingNginx = ref(false)
 
 // Computed properties
 const sslCount = computed(() => 
@@ -363,6 +498,27 @@ const getContainerStatusIcon = (state: string) => {
   }
 }
 
+const getContainerTargetUrl = (container: Container) => {
+  // Try to find a port mapping for common web ports
+  const webPorts = [80, 3000, 5000, 8000, 8080, 9000]
+  
+  for (const port of webPorts) {
+    const portMapping = container.ports?.find(p => p.private_port === port)
+    if (portMapping) {
+      return `http://localhost:${portMapping.public_port}`
+    }
+  }
+  
+  // If no web port found, use the first available port
+  if (container.ports && container.ports.length > 0) {
+    const firstPort = container.ports[0]
+    return `http://localhost:${firstPort.public_port}`
+  }
+  
+  // Fallback to localhost:3000
+  return 'http://localhost:3000'
+}
+
 const toggleContainerDisplay = () => {
   showAllContainers.value = !showAllContainers.value
 }
@@ -385,6 +541,18 @@ const closeCreateProxyDialog = () => {
   error.value = null
 }
 
+const openCreateProxyForContainer = (container: Container) => {
+  // Pre-fill the form with container information
+  newProxy.value = {
+    name: `${container.name || 'container'}-proxy`,
+    domain: `${container.name || 'container'}.example.com`,
+    target_url: getContainerTargetUrl(container),
+    ssl_enabled: false
+  }
+  createProxyDialog.value = true
+  createProxyFormValid.value = false
+}
+
 const createProxy = async () => {
   try {
     creatingProxy.value = true
@@ -404,6 +572,112 @@ const createProxy = async () => {
     error.value = err instanceof Error ? err.message : 'Failed to create proxy'
   } finally {
     creatingProxy.value = false
+  }
+}
+
+// Edit proxy dialog methods
+const openEditProxyDialog = (proxy: Proxy) => {
+  editingProxy.value = {
+    name: proxy.name,
+    domain: proxy.domain,
+    target_url: proxy.target_url,
+    ssl_enabled: proxy.ssl_enabled
+  }
+  // Store the original proxy ID for updating
+  editingProxy.value.id = proxy.id
+  editProxyDialog.value = true
+  editProxyFormValid.value = false
+}
+
+const closeEditProxyDialog = () => {
+  editProxyDialog.value = false
+  error.value = null
+}
+
+const updateProxy = async () => {
+  if (!editingProxy.value.name || !editingProxy.value.domain || !editingProxy.value.target_url || !editingProxy.value.id) {
+    return
+  }
+
+  try {
+    updatingProxy.value = true
+    error.value = null
+    
+    const proxyId = editingProxy.value.id
+    const response = await apiService.updateProxy(proxyId, editingProxy.value)
+    
+    // Update the proxy in the list
+    if (response.data) {
+      const proxyIndex = proxies.value.findIndex(p => p.id === proxyId)
+      if (proxyIndex !== -1) {
+        proxies.value[proxyIndex] = response.data
+      }
+    }
+    
+    // Close dialog and reset form
+    closeEditProxyDialog()
+    
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to update proxy'
+  } finally {
+    updatingProxy.value = false
+  }
+}
+
+// Delete proxy dialog methods
+const openDeleteProxyDialog = (proxy: Proxy) => {
+  proxyToDelete.value = proxy
+  deleteProxyDialog.value = true
+}
+
+const closeDeleteProxyDialog = () => {
+  deleteProxyDialog.value = false
+  proxyToDelete.value = null
+  error.value = null
+}
+
+const deleteProxy = async () => {
+  if (!proxyToDelete.value) return
+
+  try {
+    deletingProxy.value = true
+    error.value = null
+    
+    // Store the proxy ID before deletion
+    const proxyId = proxyToDelete.value.id
+    
+    await apiService.deleteProxy(proxyId)
+    
+    // Remove the proxy from the list
+    const proxyIndex = proxies.value.findIndex(p => p.id === proxyId)
+    if (proxyIndex !== -1) {
+      proxies.value.splice(proxyIndex, 1)
+    }
+    
+    // Close dialog
+    closeDeleteProxyDialog()
+    
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to delete proxy'
+  } finally {
+    deletingProxy.value = false
+  }
+}
+
+const reloadNginx = async () => {
+  try {
+    reloadingNginx.value = true
+    error.value = null
+    
+    await apiService.reloadNginx()
+    
+    // Show success message (you could add a toast notification here)
+    console.log('Nginx reloaded successfully')
+    
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to reload nginx'
+  } finally {
+    reloadingNginx.value = false
   }
 }
 
