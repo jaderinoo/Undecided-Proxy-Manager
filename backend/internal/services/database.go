@@ -129,6 +129,20 @@ func (d *DatabaseService) initTables() error {
 		return fmt.Errorf("failed to create dns_records table: %w", err)
 	}
 
+	// Create ui_settings table
+	uiSettingsTable := `
+	CREATE TABLE IF NOT EXISTS ui_settings (
+		id INTEGER PRIMARY KEY DEFAULT 1,
+		display_name TEXT NOT NULL DEFAULT 'UPM Admin',
+		theme TEXT NOT NULL DEFAULT 'auto',
+		language TEXT NOT NULL DEFAULT 'en',
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);`
+
+	if _, err := d.db.Exec(uiSettingsTable); err != nil {
+		return fmt.Errorf("failed to create ui_settings table: %w", err)
+	}
+
 	return nil
 }
 
@@ -279,6 +293,9 @@ func (d *DatabaseService) GetDNSConfigs() ([]models.DNSConfig, error) {
 	var configs []models.DNSConfig
 	for rows.Next() {
 		var config models.DNSConfig
+		var lastUpdate sql.NullTime
+		var lastIP sql.NullString
+		
 		err := rows.Scan(
 			&config.ID,
 			&config.Provider,
@@ -286,14 +303,23 @@ func (d *DatabaseService) GetDNSConfigs() ([]models.DNSConfig, error) {
 			&config.Username,
 			&config.Password,
 			&config.IsActive,
-			&config.LastUpdate,
-			&config.LastIP,
+			&lastUpdate,
+			&lastIP,
 			&config.CreatedAt,
 			&config.UpdatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan dns config: %w", err)
 		}
+		
+		// Handle nullable fields
+		if lastUpdate.Valid {
+			config.LastUpdate = &lastUpdate.Time
+		}
+		if lastIP.Valid {
+			config.LastIP = lastIP.String
+		}
+		
 		configs = append(configs, config)
 	}
 
@@ -307,6 +333,9 @@ func (d *DatabaseService) GetDNSConfig(id int) (*models.DNSConfig, error) {
 		WHERE id = ?`
 
 	var config models.DNSConfig
+	var lastUpdate sql.NullTime
+	var lastIP sql.NullString
+	
 	err := d.db.QueryRow(query, id).Scan(
 		&config.ID,
 		&config.Provider,
@@ -314,8 +343,8 @@ func (d *DatabaseService) GetDNSConfig(id int) (*models.DNSConfig, error) {
 		&config.Username,
 		&config.Password,
 		&config.IsActive,
-		&config.LastUpdate,
-		&config.LastIP,
+		&lastUpdate,
+		&lastIP,
 		&config.CreatedAt,
 		&config.UpdatedAt,
 	)
@@ -325,6 +354,14 @@ func (d *DatabaseService) GetDNSConfig(id int) (*models.DNSConfig, error) {
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to query dns config: %w", err)
+	}
+
+	// Handle nullable fields
+	if lastUpdate.Valid {
+		config.LastUpdate = &lastUpdate.Time
+	}
+	if lastIP.Valid {
+		config.LastIP = lastIP.String
 	}
 
 	return &config, nil
@@ -413,12 +450,15 @@ func (d *DatabaseService) GetDNSRecords(configID int) ([]models.DNSRecord, error
 	var records []models.DNSRecord
 	for rows.Next() {
 		var record models.DNSRecord
+		var currentIP sql.NullString
+		var lastUpdate sql.NullTime
+		
 		err := rows.Scan(
 			&record.ID,
 			&record.ConfigID,
 			&record.Host,
-			&record.CurrentIP,
-			&record.LastUpdate,
+			&currentIP,
+			&lastUpdate,
 			&record.IsActive,
 			&record.CreatedAt,
 			&record.UpdatedAt,
@@ -426,6 +466,15 @@ func (d *DatabaseService) GetDNSRecords(configID int) ([]models.DNSRecord, error
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan dns record: %w", err)
 		}
+		
+		// Handle nullable fields
+		if currentIP.Valid {
+			record.CurrentIP = currentIP.String
+		}
+		if lastUpdate.Valid {
+			record.LastUpdate = &lastUpdate.Time
+		}
+		
 		records = append(records, record)
 	}
 
@@ -439,12 +488,15 @@ func (d *DatabaseService) GetDNSRecord(id int) (*models.DNSRecord, error) {
 		WHERE id = ?`
 
 	var record models.DNSRecord
+	var currentIP sql.NullString
+	var lastUpdate sql.NullTime
+	
 	err := d.db.QueryRow(query, id).Scan(
 		&record.ID,
 		&record.ConfigID,
 		&record.Host,
-		&record.CurrentIP,
-		&record.LastUpdate,
+		&currentIP,
+		&lastUpdate,
 		&record.IsActive,
 		&record.CreatedAt,
 		&record.UpdatedAt,
@@ -455,6 +507,14 @@ func (d *DatabaseService) GetDNSRecord(id int) (*models.DNSRecord, error) {
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to query dns record: %w", err)
+	}
+
+	// Handle nullable fields
+	if currentIP.Valid {
+		record.CurrentIP = currentIP.String
+	}
+	if lastUpdate.Valid {
+		record.LastUpdate = &lastUpdate.Time
 	}
 
 	return &record, nil
@@ -684,6 +744,36 @@ func (d *DatabaseService) GetProxiesByDomain(domain string) ([]models.Proxy, err
 	}
 
 	return proxies, nil
+}
+
+// UI Settings methods
+func (d *DatabaseService) GetUISettings() (models.UISettings, error) {
+	var settings models.UISettings
+	query := `SELECT display_name, theme, language 
+			  FROM ui_settings WHERE id = 1`
+	
+	err := d.db.QueryRow(query).Scan(
+		&settings.DisplayName,
+		&settings.Theme,
+		&settings.Language,
+	)
+	
+	return settings, err
+}
+
+func (d *DatabaseService) SaveUISettings(settings models.UISettings) error {
+	query := `INSERT OR REPLACE INTO ui_settings 
+			  (id, display_name, theme, language, updated_at) 
+			  VALUES (1, ?, ?, ?, ?)`
+	
+	_, err := d.db.Exec(query,
+		settings.DisplayName,
+		settings.Theme,
+		settings.Language,
+		time.Now(),
+	)
+	
+	return err
 }
 
 func (d *DatabaseService) Close() error {

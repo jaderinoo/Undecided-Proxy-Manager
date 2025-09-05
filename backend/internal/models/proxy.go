@@ -55,3 +55,7 @@ type CertificateUpdateRequest struct {
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`
 	IsValid   *bool      `json:"is_valid,omitempty"`
 }
+
+type LetsEncryptRequest struct {
+	Domain string `json:"domain" binding:"required"`
+}

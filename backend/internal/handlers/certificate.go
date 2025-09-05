@@ -284,16 +284,70 @@ func RenewCertificate(c *gin.Context) {
 		return
 	}
 
-	// TODO: Implement Let's Encrypt renewal logic
-	// For now, just update the expiration date
-	certificate.ExpiresAt = time.Now().AddDate(0, 0, 90) // 90 days from now
-	certificate.IsValid = true
-
-	// Save to database
-	if err := dbService.UpdateCertificate(certificate); err != nil {
+	// Create certificate service
+	certService := services.NewCertificateService("/etc/ssl/certs")
+	
+	// Renew certificate using Let's Encrypt
+	renewedCert, err := certService.RenewCertificate(certificate)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to renew certificate: " + err.Error()})
 		return
 	}
 
+	// Update certificate in database
+	certificate.CertPath = renewedCert.CertPath
+	certificate.KeyPath = renewedCert.KeyPath
+	certificate.ExpiresAt = renewedCert.ExpiresAt
+	certificate.IsValid = renewedCert.IsValid
+	certificate.UpdatedAt = time.Now()
+
+	// Save to database
+	if err := dbService.UpdateCertificate(certificate); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update certificate: " + err.Error()})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"data": certificate, "message": "Certificate renewed successfully"})
+}
+
+// GenerateLetsEncryptCertificate godoc
+// @Summary      Generate Let's Encrypt certificate
+// @Description  Generate a new SSL certificate using Let's Encrypt
+// @Tags         certificates
+// @Accept       json
+// @Produce      json
+// @Param        request  body      models.LetsEncryptRequest  true  "Let's Encrypt certificate request"
+// @Success      201      {object}  models.Certificate
+// @Failure      400      {object}  map[string]string
+// @Failure      500      {object}  map[string]string
+// @Router       /certificates/letsencrypt [post]
+func GenerateLetsEncryptCertificate(c *gin.Context) {
+	var req models.LetsEncryptRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if dbService == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database service not initialized"})
+		return
+	}
+
+	// Create certificate service
+	certService := services.NewCertificateService("/etc/ssl/certs")
+	
+	// Generate Let's Encrypt certificate
+	certificate, err := certService.GenerateLetsEncryptCertificate(req.Domain)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate certificate: " + err.Error()})
+		return
+	}
+
+	// Save to database
+	if err := dbService.CreateCertificate(certificate); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save certificate: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"data": certificate, "message": "Let's Encrypt certificate generated successfully"})
 }

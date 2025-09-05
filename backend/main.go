@@ -186,11 +186,19 @@ func main() {
 			{
 				certificates.GET("", handlers.GetCertificates)
 				certificates.POST("", handlers.CreateCertificate)
+				certificates.POST("/letsencrypt", handlers.GenerateLetsEncryptCertificate)
 				certificates.GET("/:id", handlers.GetCertificate)
 				certificates.PUT("/:id", handlers.UpdateCertificate)
 				certificates.DELETE("/:id", handlers.DeleteCertificate)
 				certificates.GET("/:id/proxies", handlers.GetCertificateProxies)
 				certificates.POST("/:id/renew", handlers.RenewCertificate)
+			}
+
+			// Settings management endpoints
+			settings := protected.Group("/settings")
+			{
+				settings.GET("", handlers.GetSettings)
+				settings.PUT("", handlers.UpdateSettings)
 			}
 		}
 	}

@@ -1,6 +1,6 @@
 <template>
   <div class="d-flex align-center justify-space-between mb-4">
-    <v-chip :color="chipColor" :variant="chipVariant">
+    <v-chip v-if="showChip" :color="chipColor" :variant="chipVariant">
       {{ count }} {{ itemName }}
     </v-chip>
     
@@ -30,9 +30,11 @@ interface Props {
   chipVariant?: 'flat' | 'outlined' | 'text' | 'tonal'
   showRefresh?: boolean
   loading?: boolean
+  showChip?: boolean
 }
 
 withDefaults(defineProps<Props>(), {
+  showChip: true,
   chipColor: 'primary',
   chipVariant: 'flat',
   showRefresh: true,

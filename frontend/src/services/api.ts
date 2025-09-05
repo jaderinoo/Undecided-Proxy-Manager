@@ -19,7 +19,9 @@ import type {
   DNSStatus,
   Certificate,
   CertificateCreateRequest,
-  CertificateUpdateRequest
+  CertificateUpdateRequest,
+  Settings,
+  SettingsUpdateRequest
 } from '../types/api'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:6081'
@@ -287,6 +289,18 @@ class ApiService {
   async renewCertificate(id: number): Promise<ApiResponse<Certificate>> {
     return this.request(`/api/v1/certificates/${id}/renew`, {
       method: 'POST',
+    })
+  }
+
+  // Settings endpoints
+  async getSettings(): Promise<Settings> {
+    return this.request('/api/v1/settings')
+  }
+
+  async updateSettings(settings: SettingsUpdateRequest): Promise<Settings> {
+    return this.request('/api/v1/settings', {
+      method: 'PUT',
+      body: JSON.stringify(settings),
     })
   }
 }

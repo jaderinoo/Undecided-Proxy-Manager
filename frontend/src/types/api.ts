@@ -196,3 +196,34 @@ export interface DNSStatus {
   record_count: number;
   records?: DNSRecord[];
 }
+
+// Settings Types
+export interface Settings {
+  core_settings: CoreSettings;
+  ui_settings: UISettings;
+}
+
+export interface CoreSettings {
+  database_path: string;
+  environment: string;
+  backend_port: string;
+  admin_password: string; // Masked for security
+  jwt_secret: string; // Masked for security
+  letsencrypt_email: string;
+  letsencrypt_webroot: string;
+  letsencrypt_cert_path: string;
+  dns_check_interval: string;
+  public_ip_service: string;
+}
+
+export interface UISettings {
+  display_name: string;
+  theme: string;
+  language: string;
+}
+
+export interface SettingsUpdateRequest {
+  display_name?: string;
+  theme?: string;
+  language?: string;
+}
