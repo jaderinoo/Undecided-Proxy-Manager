@@ -1,241 +1,377 @@
 <template>
   <AppLayout>
-    <div class="dns-page">
-      <div class="page-header">
-        <h1 class="page-title">DNS Management</h1>
-        <p class="page-description">Manage dynamic DNS configurations and records</p>
-      </div>
+    <v-container>
+      <v-row>
+        <v-col cols="12">
+          <v-card>
+            <v-card-title>
+              <v-icon left>mdi-dns</v-icon>
+              DNS Management
+            </v-card-title>
+            <v-card-text>
+              <ErrorAlert v-if="error" :error="error" @clear="error = null" />
 
-      <!-- Public IP Display -->
-      <div class="public-ip-section">
-        <div class="card">
-          <div class="card-header">
-            <h3>Current Public IP</h3>
-            <button @click="refreshPublicIP" :disabled="loadingPublicIP" class="btn btn-secondary">
-              <i class="icon-refresh" :class="{ spinning: loadingPublicIP }"></i>
-              Refresh
-            </button>
-          </div>
-          <div class="card-content">
-            <div class="ip-display">
-              <span class="ip-label">Public IP:</span>
-              <span class="ip-value">{{ publicIP || 'Loading...' }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
+              <PageHeader
+                :count="dnsConfigs?.length || 0"
+                item-name="DNS Configurations"
+                :show-refresh="false"
+              >
+                <template #actions>
+                  <v-btn
+                    color="success"
+                    variant="outlined"
+                    size="small"
+                    @click="showCreateConfigModal = true"
+                  >
+                    <v-icon left>mdi-plus</v-icon>
+                    Add Configuration
+                  </v-btn>
+                </template>
+              </PageHeader>
 
-      <!-- DNS Configurations -->
-      <div class="dns-configs-section">
-        <div class="section-header">
-          <h2>DNS Configurations</h2>
-          <button @click="showCreateConfigModal = true" class="btn btn-primary">
-            <i class="icon-plus"></i>
-            Add Configuration
-          </button>
-        </div>
-
-        <div v-if="loadingConfigs" class="loading-container">
-          <LoadingSpinner />
-        </div>
-
-        <div v-else-if="!dnsConfigs || dnsConfigs.length === 0" class="empty-state">
-          <i class="icon-dns"></i>
-          <h3>No DNS Configurations</h3>
-          <p>Create your first DNS configuration to start managing dynamic DNS records.</p>
-          <button @click="showCreateConfigModal = true" class="btn btn-primary">
-            <i class="icon-plus"></i>
-            Add Configuration
-          </button>
-        </div>
-
-        <div v-else class="configs-grid">
-          <div v-for="config in dnsConfigs || []" :key="config.id" class="config-card">
-            <div class="config-header">
-              <div class="config-info">
-                <h3>{{ config.domain }}</h3>
-                <span class="provider-badge">{{ config.provider }}</span>
-              </div>
-              <div class="config-actions">
-                <button @click="editConfig(config)" class="btn btn-sm btn-secondary">
-                  <i class="icon-edit"></i>
-                </button>
-                <button @click="deleteConfig(config.id)" class="btn btn-sm btn-danger">
-                  <i class="icon-trash"></i>
-                </button>
-              </div>
-            </div>
-            
-            <div class="config-details">
-              <div class="detail-row">
-                <span class="label">Status:</span>
-                <span class="value" :class="{ active: config.is_active, inactive: !config.is_active }">
-                  {{ config.is_active ? 'Active' : 'Inactive' }}
-                </span>
-              </div>
-              <div class="detail-row">
-                <span class="label">Last Update:</span>
-                <span class="value">{{ formatDate(config.last_update) || 'Never' }}</span>
-              </div>
-              <div class="detail-row">
-                <span class="label">Last IP:</span>
-                <span class="value">{{ config.last_ip || 'Unknown' }}</span>
-              </div>
-            </div>
-
-            <div class="config-records">
-              <div class="records-header">
-                <h4>DNS Records</h4>
-                <button @click="openCreateRecordModal(config.id)" class="btn btn-sm btn-primary">
-                  <i class="icon-plus"></i>
-                  Add Record
-                </button>
-              </div>
-              
-              <div v-if="configRecords[config.id]?.length === 0" class="no-records">
-                <p>No DNS records configured</p>
-              </div>
-              
-              <div v-else class="records-list">
-                <div v-for="record in configRecords[config.id] || []" :key="record.id" class="record-item">
-                  <div class="record-info">
-                    <span class="host">{{ record.host === '@' ? config.domain : `${record.host}.${config.domain}` }}</span>
-                    <span class="ip">{{ record.current_ip || 'Not set' }}</span>
+              <!-- Public IP Display -->
+              <v-card class="mb-4" variant="outlined">
+                <v-card-title>
+                  <v-icon left>mdi-earth</v-icon>
+                  Current Public IP
+                  <v-spacer></v-spacer>
+                  <v-btn
+                    color="primary"
+                    variant="outlined"
+                    size="small"
+                    @click="refreshPublicIP"
+                    :loading="loadingPublicIP"
+                  >
+                    <v-icon left>mdi-refresh</v-icon>
+                    Refresh
+                  </v-btn>
+                </v-card-title>
+                <v-card-text>
+                  <div class="d-flex align-center">
+                    <span class="text-body-1 mr-2">Public IP:</span>
+                    <v-chip color="primary" variant="outlined" class="font-mono">
+                      {{ publicIP || 'Loading...' }}
+                    </v-chip>
                   </div>
-                  <div class="record-actions">
-                    <button @click="updateRecordNow(record.id)" :disabled="loadingUpdates[record.id]" class="btn btn-sm btn-success">
-                      <i class="icon-refresh" :class="{ spinning: loadingUpdates[record.id] }"></i>
-                      Update
-                    </button>
-                    <button @click="editRecord(record)" class="btn btn-sm btn-secondary">
-                      <i class="icon-edit"></i>
-                    </button>
-                    <button @click="deleteRecord(record.id)" class="btn btn-sm btn-danger">
-                      <i class="icon-trash"></i>
-                    </button>
-                  </div>
-                </div>
+                </v-card-text>
+              </v-card>
+
+              <!-- DNS Stats -->
+              <StatsCards :stats="dnsStats" />
+
+              <!-- DNS Configurations -->
+              <div v-if="loadingConfigs" class="text-center py-8">
+                <v-progress-circular indeterminate color="primary" size="64" class="mb-4"></v-progress-circular>
+                <p class="text-body-1 text-grey-darken-2">Loading DNS configurations...</p>
               </div>
-            </div>
-          </div>
-        </div>
-      </div>
+
+              <div v-else-if="!dnsConfigs || dnsConfigs.length === 0" class="text-center py-8">
+                <v-icon size="64" color="grey-lighten-1" class="mb-4">mdi-dns</v-icon>
+                <h3 class="text-h5 font-weight-medium text-grey-darken-2 mb-2">No DNS Configurations</h3>
+                <p class="text-body-1 text-grey-darken-1 mb-4">Create your first DNS configuration to start managing dynamic DNS records.</p>
+                <v-btn
+                  color="primary"
+                  prepend-icon="mdi-plus"
+                  @click="showCreateConfigModal = true"
+                >
+                  Add Configuration
+                </v-btn>
+              </div>
+
+              <div v-else class="dns-configs-grid">
+
+                <v-row>
+                  <v-col
+                    v-for="config in dnsConfigs || []"
+                    :key="config.id"
+                    cols="12"
+                    md="6"
+                    lg="4"
+                  >
+                    <v-card variant="outlined" class="mb-4">
+                      <v-card-title>
+                        <div class="d-flex align-center justify-space-between w-100">
+                          <div>
+                            <div class="text-h6">{{ config.domain }}</div>
+                            <v-chip size="small" color="primary" variant="outlined">
+                              {{ config.provider }}
+                            </v-chip>
+                          </div>
+                          <div class="d-flex" style="gap: 4px;">
+                            <v-btn
+                              icon="mdi-pencil"
+                              size="small"
+                              variant="text"
+                              @click="editConfig(config)"
+                            />
+                            <v-btn
+                              icon="mdi-delete"
+                              size="small"
+                              variant="text"
+                              color="error"
+                              @click="deleteConfig(config.id)"
+                            />
+                          </div>
+                        </div>
+                      </v-card-title>
+                      
+                      <v-card-text>
+                        <div class="mb-3">
+                          <div class="d-flex justify-space-between align-center mb-1">
+                            <span class="text-caption text-grey-darken-2">Status:</span>
+                            <v-chip
+                              :color="config.is_active ? 'green' : 'orange'"
+                              size="small"
+                              variant="outlined"
+                            >
+                              {{ config.is_active ? 'Active' : 'Inactive' }}
+                            </v-chip>
+                          </div>
+                          <div class="d-flex justify-space-between align-center mb-1">
+                            <span class="text-caption text-grey-darken-2">Last Update:</span>
+                            <span class="text-body-2">{{ formatDate(config.last_update) || 'Never' }}</span>
+                          </div>
+                          <div class="d-flex justify-space-between align-center">
+                            <span class="text-caption text-grey-darken-2">Last IP:</span>
+                            <span class="text-body-2 font-mono">{{ config.last_ip || 'Unknown' }}</span>
+                          </div>
+                        </div>
+
+                        <v-divider class="my-3"></v-divider>
+
+                        <div class="d-flex justify-space-between align-center mb-2">
+                          <span class="text-subtitle-2">DNS Records</span>
+                          <v-btn
+                            size="small"
+                            color="primary"
+                            variant="outlined"
+                            prepend-icon="mdi-plus"
+                            @click="openCreateRecordModal(config.id)"
+                          >
+                            Add Record
+                          </v-btn>
+                        </div>
+                        
+                        <div v-if="configRecords[config.id]?.length === 0" class="text-center py-4">
+                          <v-icon color="grey-lighten-1">mdi-dns</v-icon>
+                          <p class="text-caption text-grey-darken-1 mt-2">No DNS records configured</p>
+                        </div>
+                        
+                        <div v-else>
+                          <v-list density="compact">
+                            <v-list-item
+                              v-for="record in configRecords[config.id] || []"
+                              :key="record.id"
+                              class="px-0"
+                            >
+                              <template v-slot:prepend>
+                                <v-icon size="small">mdi-dns</v-icon>
+                              </template>
+                              
+                              <v-list-item-title class="text-body-2">
+                                {{ record.host === '@' ? config.domain : `${record.host}.${config.domain}` }}
+                              </v-list-item-title>
+                              
+                              <v-list-item-subtitle class="font-mono text-caption">
+                                {{ record.current_ip || 'Not set' }}
+                              </v-list-item-subtitle>
+                              
+                              <template v-slot:append>
+                                <div class="d-flex" style="gap: 4px;">
+                                  <v-btn
+                                    icon="mdi-refresh"
+                                    size="x-small"
+                                    variant="text"
+                                    color="success"
+                                    :loading="loadingUpdates[record.id]"
+                                    @click="updateRecordNow(record.id)"
+                                  />
+                                  <v-btn
+                                    icon="mdi-pencil"
+                                    size="x-small"
+                                    variant="text"
+                                    @click="editRecord(record)"
+                                  />
+                                  <v-btn
+                                    icon="mdi-delete"
+                                    size="x-small"
+                                    variant="text"
+                                    color="error"
+                                    @click="deleteRecord(record.id)"
+                                  />
+                                </div>
+                              </template>
+                            </v-list-item>
+                          </v-list>
+                        </div>
+                      </v-card-text>
+                    </v-card>
+                  </v-col>
+                </v-row>
+              </div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+      </v-row>
+    </v-container>
 
       <!-- Create/Edit Config Modal -->
-      <div v-if="showCreateConfigModal || showEditConfigModal" class="modal-overlay" @click="closeConfigModal">
-        <div class="modal" @click.stop>
-          <div class="modal-header">
-            <h3>{{ showCreateConfigModal ? 'Create DNS Configuration' : 'Edit DNS Configuration' }}</h3>
-            <button @click="closeConfigModal" class="btn btn-close">
-              <i class="icon-close"></i>
-            </button>
-          </div>
-          <div class="modal-content">
-            <form @submit.prevent="saveConfig">
-              <div class="form-group">
-                <label for="provider">Provider</label>
-                <select id="provider" v-model="configForm.provider" required>
-                  <option value="namecheap">Namecheap</option>
-                </select>
-              </div>
-              
-              <div class="form-group">
-                <label for="domain">Domain</label>
-                <input 
-                  id="domain" 
-                  type="text" 
-                  v-model="configForm.domain" 
-                  placeholder="example.com"
-                  required
-                />
-              </div>
-              
-              <div class="form-group">
-                <label for="username">Username</label>
-                <input 
-                  id="username" 
-                  type="text" 
-                  v-model="configForm.username" 
-                  placeholder="yourdomain.com"
-                  required
-                />
-              </div>
-              
-              <div class="form-group">
-                <label for="password">Password</label>
-                <input 
-                  id="password" 
-                  type="password" 
-                  v-model="configForm.password" 
-                  placeholder="Dynamic DNS password"
-                  required
-                />
-              </div>
-              
-              <div class="form-group">
-                <label class="checkbox-label">
-                  <input type="checkbox" v-model="configForm.is_active" />
-                  <span class="checkmark"></span>
-                  Active
-                </label>
-              </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button @click="closeConfigModal" class="btn btn-secondary">Cancel</button>
-            <button @click="saveConfig" :disabled="savingConfig" class="btn btn-primary">
-              <i class="icon-save" :class="{ spinning: savingConfig }"></i>
+      <v-dialog v-model="showConfigDialog" max-width="600px" persistent>
+        <v-card>
+          <v-card-title class="d-flex align-center">
+            <v-icon left>mdi-dns</v-icon>
+            {{ showCreateConfigModal ? 'Create DNS Configuration' : 'Edit DNS Configuration' }}
+            <v-spacer></v-spacer>
+            <v-btn icon @click="closeConfigModal">
+              <v-icon>mdi-close</v-icon>
+            </v-btn>
+          </v-card-title>
+          
+          <v-card-text>
+            <v-form @submit.prevent="saveConfig">
+              <v-row>
+                <v-col cols="12">
+                  <v-select
+                    v-model="configForm.provider"
+                    label="Provider"
+                    :items="['namecheap']"
+                    required
+                  ></v-select>
+                </v-col>
+                
+                <v-col cols="12">
+                  <v-text-field
+                    v-model="configForm.domain"
+                    label="Domain"
+                    placeholder="example.com"
+                    required
+                  ></v-text-field>
+                </v-col>
+                
+                <v-col cols="12">
+                  <v-text-field
+                    v-model="configForm.username"
+                    label="Username"
+                    placeholder="yourdomain.com"
+                    required
+                  ></v-text-field>
+                </v-col>
+                
+                <v-col cols="12">
+                  <v-text-field
+                    v-model="configForm.password"
+                    label="Password"
+                    type="password"
+                    placeholder="Dynamic DNS password"
+                    required
+                  ></v-text-field>
+                </v-col>
+                
+                <v-col cols="12">
+                  <v-checkbox
+                    v-model="configForm.is_active"
+                    label="Active"
+                    color="primary"
+                  ></v-checkbox>
+                </v-col>
+              </v-row>
+            </v-form>
+          </v-card-text>
+          
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn @click="closeConfigModal" color="grey">
+              Cancel
+            </v-btn>
+            <v-btn 
+              @click="saveConfig" 
+              :loading="savingConfig" 
+              color="primary"
+            >
               {{ showCreateConfigModal ? 'Create' : 'Update' }}
-            </button>
-          </div>
-        </div>
-      </div>
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
 
       <!-- Create/Edit Record Modal -->
-      <div v-if="showCreateRecordModal || showEditRecordModal" class="modal-overlay" @click="closeRecordModal">
-        <div class="modal" @click.stop>
-          <div class="modal-header">
-            <h3>{{ showCreateRecordModal ? 'Create DNS Record' : 'Edit DNS Record' }}</h3>
-            <button @click="closeRecordModal" class="btn btn-close">
-              <i class="icon-close"></i>
-            </button>
-          </div>
-          <div class="modal-content">
-            <form @submit.prevent="saveRecord">
-              <div class="form-group">
-                <label for="host">Host</label>
-                <input 
-                  id="host" 
-                  type="text" 
-                  v-model="recordForm.host" 
-                  placeholder="@ for root domain, www for subdomain"
-                  required
-                />
-                <small class="form-help">Use "@" for root domain or enter subdomain name</small>
-              </div>
-              
-              <div class="form-group">
-                <label class="checkbox-label">
-                  <input type="checkbox" v-model="recordForm.is_active" />
-                  <span class="checkmark"></span>
-                  Active
-                </label>
-              </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button @click="closeRecordModal" class="btn btn-secondary">Cancel</button>
-            <button @click="saveRecord" :disabled="savingRecord" class="btn btn-primary">
-              <i class="icon-save" :class="{ spinning: savingRecord }"></i>
+      <v-dialog v-model="showRecordDialog" max-width="500px" persistent>
+        <v-card>
+          <v-card-title class="d-flex align-center">
+            <v-icon left>mdi-dns</v-icon>
+            {{ showCreateRecordModal ? 'Create DNS Record' : 'Edit DNS Record' }}
+            <v-spacer></v-spacer>
+            <v-btn icon @click="closeRecordModal">
+              <v-icon>mdi-close</v-icon>
+            </v-btn>
+          </v-card-title>
+          
+          <v-card-text>
+            <v-form @submit.prevent="saveRecord">
+              <v-row>
+                <v-col cols="12">
+                  <v-text-field
+                    v-model="recordForm.host"
+                    label="Host"
+                    placeholder="@ for root domain, www for subdomain"
+                    hint="Use '@' for root domain or enter subdomain name"
+                    persistent-hint
+                    required
+                  ></v-text-field>
+                </v-col>
+                
+                <v-col cols="12">
+                  <v-checkbox
+                    v-model="recordForm.is_active"
+                    label="Active"
+                    color="primary"
+                  ></v-checkbox>
+                </v-col>
+              </v-row>
+            </v-form>
+          </v-card-text>
+          
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn @click="closeRecordModal" color="grey">
+              Cancel
+            </v-btn>
+            <v-btn 
+              @click="saveRecord" 
+              :loading="savingRecord" 
+              color="primary"
+            >
               {{ showCreateRecordModal ? 'Create' : 'Update' }}
-            </button>
-          </div>
-        </div>
-      </div>
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
 
       <!-- Error Alert -->
-      <ErrorAlert v-if="error" :message="error" @close="error = null" />
-    </div>
+      <ErrorAlert v-if="error" :error="error" @clear="error = null" />
+
+      <!-- Delete Confirmation Dialogs -->
+      <ConfirmationDialog
+        v-model:show="showDeleteConfigDialog"
+        title="Delete DNS Configuration"
+        message="Are you sure you want to delete this DNS configuration? This will also delete all associated records."
+        icon="mdi-delete-alert"
+        icon-color="error"
+        confirm-text="Delete"
+        confirm-color="error"
+        @confirm="confirmDeleteConfig"
+      />
+
+      <ConfirmationDialog
+        v-model:show="showDeleteRecordDialog"
+        title="Delete DNS Record"
+        message="Are you sure you want to delete this DNS record?"
+        icon="mdi-delete-alert"
+        icon-color="error"
+        confirm-text="Delete"
+        confirm-color="error"
+        @confirm="confirmDeleteRecord"
+      />
   </AppLayout>
 </template>
 
@@ -244,6 +380,9 @@ import { ref, onMounted, computed } from 'vue'
 import AppLayout from '../components/AppLayout.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import ErrorAlert from '../components/ErrorAlert.vue'
+import PageHeader from '../components/PageHeader.vue'
+import StatsCards from '../components/StatsCards.vue'
+import ConfirmationDialog from '../components/ConfirmationDialog.vue'
 import apiService from '../services/api'
 import type { 
   DNSConfig, 
@@ -271,6 +410,10 @@ const showCreateConfigModal = ref(false)
 const showEditConfigModal = ref(false)
 const showCreateRecordModal = ref(false)
 const showEditRecordModal = ref(false)
+const showDeleteConfigDialog = ref(false)
+const showDeleteRecordDialog = ref(false)
+const deletingConfigId = ref<number | null>(null)
+const deletingRecordId = ref<number | null>(null)
 
 // Form data
 const configForm = ref<DNSConfigCreateRequest & { is_active: boolean }>({
@@ -297,6 +440,61 @@ const selectedConfigId = computed(() => {
   }
   return editingRecord.value?.config_id || 0
 })
+
+const showConfigDialog = computed({
+  get: () => showCreateConfigModal.value || showEditConfigModal.value,
+  set: (value) => {
+    if (!value) {
+      showCreateConfigModal.value = false
+      showEditConfigModal.value = false
+    }
+  }
+})
+
+const showRecordDialog = computed({
+  get: () => showCreateRecordModal.value || showEditRecordModal.value,
+  set: (value) => {
+    if (!value) {
+      showCreateRecordModal.value = false
+      showEditRecordModal.value = false
+    }
+  }
+})
+
+const dnsStats = computed(() => [
+  {
+    key: 'configs',
+    value: dnsConfigs.value?.length || 0,
+    label: 'Configurations',
+    icon: 'mdi-dns',
+    color: 'blue-lighten-5',
+    iconColor: 'blue'
+  },
+  {
+    key: 'active',
+    value: dnsConfigs.value?.filter(c => c.is_active).length || 0,
+    label: 'Active',
+    icon: 'mdi-check-circle',
+    color: 'green-lighten-5',
+    iconColor: 'green'
+  },
+  {
+    key: 'records',
+    value: Object.values(configRecords.value).flat().length,
+    label: 'Total Records',
+    icon: 'mdi-list',
+    color: 'orange-lighten-5',
+    iconColor: 'orange'
+  },
+  {
+    key: 'public-ip',
+    value: publicIP.value ? 'Set' : 'Unknown',
+    label: 'Public IP',
+    icon: 'mdi-earth',
+    color: 'purple-lighten-5',
+    iconColor: 'purple'
+  }
+])
 
 // Methods
 const loadDNSConfigs = async () => {
@@ -352,13 +550,18 @@ const editConfig = (config: DNSConfig) => {
 }
 
 const deleteConfig = async (id: number) => {
-  if (!confirm('Are you sure you want to delete this DNS configuration? This will also delete all associated records.')) {
-    return
-  }
+  deletingConfigId.value = id
+  showDeleteConfigDialog.value = true
+}
+
+const confirmDeleteConfig = async () => {
+  if (!deletingConfigId.value) return
   
   try {
-    await apiService.deleteDNSConfig(id)
+    await apiService.deleteDNSConfig(deletingConfigId.value)
     await loadDNSConfigs()
+    showDeleteConfigDialog.value = false
+    deletingConfigId.value = null
   } catch (err) {
     error.value = `Failed to delete DNS configuration: ${err}`
   }
@@ -410,13 +613,18 @@ const editRecord = (record: DNSRecord) => {
 }
 
 const deleteRecord = async (id: number) => {
-  if (!confirm('Are you sure you want to delete this DNS record?')) {
-    return
-  }
+  deletingRecordId.value = id
+  showDeleteRecordDialog.value = true
+}
+
+const confirmDeleteRecord = async () => {
+  if (!deletingRecordId.value) return
   
   try {
-    await apiService.deleteDNSRecord(id)
+    await apiService.deleteDNSRecord(deletingRecordId.value)
     await loadDNSConfigs()
+    showDeleteRecordDialog.value = false
+    deletingRecordId.value = null
   } catch (err) {
     error.value = `Failed to delete DNS record: ${err}`
   }
@@ -499,448 +707,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.dns-page {
-  padding: 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.page-header {
-  margin-bottom: 2rem;
-}
-
-.page-title {
-  font-size: 2rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0 0 0.5rem 0;
-}
-
-.page-description {
-  color: var(--text-secondary);
-  margin: 0;
-}
-
-.public-ip-section {
-  margin-bottom: 2rem;
-}
-
-.card {
-  background: var(--bg-secondary);
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-  overflow: hidden;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--border-color);
-  background: var(--bg-tertiary);
-}
-
-.card-header h3 {
-  margin: 0;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.card-content {
-  padding: 1.5rem;
-}
-
-.ip-display {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.ip-label {
-  font-weight: 500;
-  color: var(--text-secondary);
-}
-
-.ip-value {
+.font-mono {
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  background: var(--bg-primary);
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  border: 1px solid var(--border-color);
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-}
-
-.section-header h2 {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.configs-grid {
-  display: grid;
-  gap: 1.5rem;
-  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-}
-
-.config-card {
-  background: var(--bg-secondary);
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-  overflow: hidden;
-}
-
-.config-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--border-color);
-  background: var(--bg-tertiary);
-}
-
-.config-info h3 {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.provider-badge {
-  display: inline-block;
-  padding: 0.25rem 0.5rem;
-  background: var(--accent-color);
-  color: white;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  font-weight: 500;
-  text-transform: uppercase;
-}
-
-.config-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.config-details {
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.detail-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.5rem;
-}
-
-.detail-row:last-child {
-  margin-bottom: 0;
-}
-
-.detail-row .label {
-  font-weight: 500;
-  color: var(--text-secondary);
-}
-
-.detail-row .value {
-  color: var(--text-primary);
-}
-
-.detail-row .value.active {
-  color: var(--success-color);
-}
-
-.detail-row .value.inactive {
-  color: var(--warning-color);
-}
-
-.config-records {
-  padding: 1rem 1.5rem;
-}
-
-.records-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-
-.records-header h4 {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.no-records {
-  text-align: center;
-  padding: 2rem;
-  color: var(--text-secondary);
-}
-
-.records-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.record-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.75rem;
-  background: var(--bg-primary);
-  border-radius: 6px;
-  border: 1px solid var(--border-color);
-}
-
-.record-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.record-info .host {
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.record-info .ip {
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-}
-
-.record-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal {
-  background: var(--bg-secondary);
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-  width: 90%;
-  max-width: 500px;
-  max-height: 90vh;
-  overflow: hidden;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem;
-  border-bottom: 1px solid var(--border-color);
-  background: var(--bg-tertiary);
-}
-
-.modal-header h3 {
-  margin: 0;
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.modal-content {
-  padding: 1.5rem;
-  max-height: 60vh;
-  overflow-y: auto;
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  padding: 1.5rem;
-  border-top: 1px solid var(--border-color);
-  background: var(--bg-tertiary);
-}
-
-.form-group {
-  margin-bottom: 1.5rem;
-}
-
-.form-group:last-child {
-  margin-bottom: 0;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.form-group input,
-.form-group select {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  font-size: 1rem;
-}
-
-.form-group input:focus,
-.form-group select:focus {
-  outline: none;
-  border-color: var(--accent-color);
-  box-shadow: 0 0 0 2px rgba(var(--accent-color-rgb), 0.2);
-}
-
-.form-help {
-  display: block;
-  margin-top: 0.25rem;
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  font-weight: normal;
-}
-
-.checkbox-label input[type="checkbox"] {
-  width: auto;
-  margin: 0;
-}
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  text-decoration: none;
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  background: var(--accent-color);
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: var(--accent-color-dark);
-}
-
-.btn-secondary {
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: var(--bg-primary);
-}
-
-.btn-success {
-  background: var(--success-color);
-  color: white;
-}
-
-.btn-success:hover:not(:disabled) {
-  background: var(--success-color-dark);
-}
-
-.btn-danger {
-  background: var(--danger-color);
-  color: white;
-}
-
-.btn-danger:hover:not(:disabled) {
-  background: var(--danger-color-dark);
-}
-
-.btn-sm {
-  padding: 0.375rem 0.75rem;
-  font-size: 0.8rem;
-}
-
-.btn-close {
-  background: none;
-  color: var(--text-secondary);
-  padding: 0.5rem;
-}
-
-.btn-close:hover {
-  color: var(--text-primary);
-}
-
-.spinning {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.empty-state {
-  text-align: center;
-  padding: 3rem;
-  color: var(--text-secondary);
-}
-
-.empty-state i {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-  opacity: 0.5;
-}
-
-.empty-state h3 {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.2rem;
-  color: var(--text-primary);
-}
-
-.empty-state p {
-  margin: 0 0 1.5rem 0;
-}
-
-.loading-container {
-  display: flex;
-  justify-content: center;
-  padding: 2rem;
 }
 </style>

@@ -14,23 +14,13 @@
               <LoadingSpinner v-if="isLoading" />
 
               <div v-else>
-                <div class="d-flex align-center justify-space-between mb-4">
-                  <v-chip color="primary">
-                    {{ certificates?.length || 0 }} Certificates
-                  </v-chip>
-                  
-                  <div class="d-flex gap-2">
-                    <v-btn
-                      color="primary"
-                      variant="outlined"
-                      size="small"
-                      @click="loadCertificates"
-                      :loading="isLoading"
-                    >
-                      <v-icon left>mdi-refresh</v-icon>
-                      Refresh
-                    </v-btn>
-                    
+                <PageHeader
+                  :count="certificates?.length || 0"
+                  item-name="Certificates"
+                  :loading="isLoading"
+                  @refresh="loadCertificates"
+                >
+                  <template #actions>
                     <v-btn
                       color="success"
                       variant="outlined"
@@ -40,84 +30,22 @@
                       <v-icon left>mdi-plus</v-icon>
                       Add Certificate
                     </v-btn>
-                  </div>
-                </div>
+                  </template>
+                </PageHeader>
 
                 <!-- Filter and Search -->
-                <v-row class="mb-4">
-                  <v-col cols="12" md="6">
-                    <v-text-field
-                      v-model="searchQuery"
-                      label="Search certificates..."
-                      prepend-inner-icon="mdi-magnify"
-                      variant="outlined"
-                      density="compact"
-                      clearable
-                      @input="filterCertificates"
-                    />
-                  </v-col>
-                  <v-col cols="12" md="3">
-                    <v-select
-                      v-model="statusFilter"
-                      label="Filter by status"
-                      :items="statusFilterItems"
-                      variant="outlined"
-                      density="compact"
-                      clearable
-                      @update:model-value="filterCertificates"
-                    />
-                  </v-col>
-                  <v-col cols="12" md="3">
-                    <v-select
-                      v-model="sortBy"
-                      label="Sort by"
-                      :items="sortOptions"
-                      variant="outlined"
-                      density="compact"
-                      @update:model-value="sortCertificates"
-                    />
-                  </v-col>
-                </v-row>
+                <FilterBar
+                  v-model:search-query="searchQuery"
+                  v-model:status-filter="statusFilter"
+                  v-model:sort-by="sortBy"
+                  search-label="Search certificates..."
+                  :status-options="statusFilterItems"
+                  :sort-options="sortOptions"
+                  @search="filterCertificates"
+                />
 
                 <!-- Certificate Stats -->
-                <v-row class="mb-4">
-                  <v-col cols="12" sm="6" md="3">
-                    <v-card color="green-lighten-5" variant="outlined">
-                      <v-card-text class="text-center">
-                        <v-icon color="green" size="large">mdi-check-circle</v-icon>
-                        <div class="text-h6 text-grey-darken-3">{{ validCertificates }}</div>
-                        <div class="text-caption text-grey-darken-2">Valid</div>
-                      </v-card-text>
-                    </v-card>
-                  </v-col>
-                  <v-col cols="12" sm="6" md="3">
-                    <v-card color="red-lighten-5" variant="outlined">
-                      <v-card-text class="text-center">
-                        <v-icon color="red" size="large">mdi-alert-circle</v-icon>
-                        <div class="text-h6 text-grey-darken-3">{{ invalidCertificates }}</div>
-                        <div class="text-caption text-grey-darken-2">Invalid</div>
-                      </v-card-text>
-                    </v-card>
-                  </v-col>
-                  <v-col cols="12" sm="6" md="3">
-                    <v-card color="orange-lighten-5" variant="outlined">
-                      <v-card-text class="text-center">
-                        <v-icon color="orange" size="large">mdi-clock-alert</v-icon>
-                        <div class="text-h6 text-grey-darken-3">{{ expiringSoon }}</div>
-                        <div class="text-caption text-grey-darken-2">Expiring Soon</div>
-                      </v-card-text>
-                    </v-card>
-                  </v-col>
-                  <v-col cols="12" sm="6" md="3">
-                    <v-card color="blue-lighten-5" variant="outlined">
-                      <v-card-text class="text-center">
-                        <v-icon color="blue" size="large">mdi-lock</v-icon>
-                        <div class="text-h6 text-grey-darken-3">{{ sslEnabledCount }}</div>
-                        <div class="text-caption text-grey-darken-2">SSL Enabled</div>
-                      </v-card-text>
-                    </v-card>
-                  </v-col>
-                </v-row>
+                <StatsCards :stats="certificateStats" />
 
                 <!-- Certificate List -->
                 <div v-if="filteredCertificates && filteredCertificates.length > 0">
@@ -236,6 +164,9 @@ import AppLayout from '../components/AppLayout.vue'
 import ErrorAlert from '../components/ErrorAlert.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import CertificateCard from '../components/CertificateCard.vue'
+import PageHeader from '../components/PageHeader.vue'
+import StatsCards from '../components/StatsCards.vue'
+import FilterBar from '../components/FilterBar.vue'
 
 const certificates = ref<Certificate[]>([])
 const filteredCertificates = ref<Certificate[]>([])
@@ -289,6 +220,41 @@ const expiringSoon = computed(() =>
 const sslEnabledCount = computed(() => 
   certificates.value.filter(cert => cert.is_valid).length
 )
+
+const certificateStats = computed(() => [
+  {
+    key: 'valid',
+    value: validCertificates.value,
+    label: 'Valid',
+    icon: 'mdi-check-circle',
+    color: 'green-lighten-5',
+    iconColor: 'green'
+  },
+  {
+    key: 'invalid',
+    value: invalidCertificates.value,
+    label: 'Invalid',
+    icon: 'mdi-alert-circle',
+    color: 'red-lighten-5',
+    iconColor: 'red'
+  },
+  {
+    key: 'expiring',
+    value: expiringSoon.value,
+    label: 'Expiring Soon',
+    icon: 'mdi-clock-alert',
+    color: 'orange-lighten-5',
+    iconColor: 'orange'
+  },
+  {
+    key: 'ssl',
+    value: sslEnabledCount.value,
+    label: 'SSL Enabled',
+    icon: 'mdi-lock',
+    color: 'blue-lighten-5',
+    iconColor: 'blue'
+  }
+])
 
 const loadCertificates = async () => {
   try {
@@ -359,9 +325,6 @@ const filterCertificates = () => {
   filteredCertificates.value = filtered
 }
 
-const sortCertificates = () => {
-  filterCertificates()
-}
 
 const createCertificate = async () => {
   if (isCreating.value) return

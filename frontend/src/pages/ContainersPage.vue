@@ -14,23 +14,13 @@
               <LoadingSpinner v-if="loading" />
 
               <div v-else>
-                <div class="d-flex align-center justify-space-between mb-4">
-                  <v-chip color="primary">
-                    {{ containers?.length || 0 }} Containers
-                  </v-chip>
-                  
-                  <div class="d-flex gap-2">
-                    <v-btn
-                      color="primary"
-                      variant="outlined"
-                      size="small"
-                      @click="loadContainers"
-                      :loading="loading"
-                    >
-                      <v-icon left>mdi-refresh</v-icon>
-                      Refresh
-                    </v-btn>
-                    
+                <PageHeader
+                  :count="containers?.length || 0"
+                  item-name="Containers"
+                  :loading="loading"
+                  @refresh="loadContainers"
+                >
+                  <template #actions>
                     <v-btn
                       color="success"
                       variant="outlined"
@@ -40,84 +30,22 @@
                       <v-icon left>mdi-docker</v-icon>
                       View All
                     </v-btn>
-                  </div>
-                </div>
+                  </template>
+                </PageHeader>
 
                 <!-- Filter and Search -->
-                <v-row class="mb-4">
-                  <v-col cols="12" md="6">
-                    <v-text-field
-                      v-model="searchQuery"
-                      label="Search containers..."
-                      prepend-inner-icon="mdi-magnify"
-                      variant="outlined"
-                      density="compact"
-                      clearable
-                      @input="filterContainers"
-                    />
-                  </v-col>
-                  <v-col cols="12" md="3">
-                    <v-select
-                      v-model="statusFilter"
-                      label="Filter by status"
-                      :items="statusOptions"
-                      variant="outlined"
-                      density="compact"
-                      clearable
-                      @update:model-value="filterContainers"
-                    />
-                  </v-col>
-                  <v-col cols="12" md="3">
-                    <v-select
-                      v-model="sortBy"
-                      label="Sort by"
-                      :items="sortOptions"
-                      variant="outlined"
-                      density="compact"
-                      @update:model-value="sortContainers"
-                    />
-                  </v-col>
-                </v-row>
+                <FilterBar
+                  v-model:search-query="searchQuery"
+                  v-model:status-filter="statusFilter"
+                  v-model:sort-by="sortBy"
+                  search-label="Search containers..."
+                  :status-options="statusOptions"
+                  :sort-options="sortOptions"
+                  @search="filterContainers"
+                />
 
                 <!-- Container Stats -->
-                <v-row class="mb-4">
-                  <v-col cols="12" sm="6" md="3">
-                    <v-card color="green-lighten-5" variant="outlined">
-                      <v-card-text class="text-center">
-                        <v-icon color="green" size="large">mdi-play-circle</v-icon>
-                        <div class="text-h6 text-grey-darken-3">{{ runningCount }}</div>
-                        <div class="text-caption text-grey-darken-2">Running</div>
-                      </v-card-text>
-                    </v-card>
-                  </v-col>
-                  <v-col cols="12" sm="6" md="3">
-                    <v-card color="red-lighten-5" variant="outlined">
-                      <v-card-text class="text-center">
-                        <v-icon color="red" size="large">mdi-stop-circle</v-icon>
-                        <div class="text-h6 text-grey-darken-3">{{ stoppedCount }}</div>
-                        <div class="text-caption text-grey-darken-2">Stopped</div>
-                      </v-card-text>
-                    </v-card>
-                  </v-col>
-                  <v-col cols="12" sm="6" md="3">
-                    <v-card color="blue-lighten-5" variant="outlined">
-                      <v-card-text class="text-center">
-                        <v-icon color="blue" size="large">mdi-plus-circle</v-icon>
-                        <div class="text-h6 text-grey-darken-3">{{ createdCount }}</div>
-                        <div class="text-caption text-grey-darken-2">Created</div>
-                      </v-card-text>
-                    </v-card>
-                  </v-col>
-                  <v-col cols="12" sm="6" md="3">
-                    <v-card color="orange-lighten-5" variant="outlined">
-                      <v-card-text class="text-center">
-                        <v-icon color="orange" size="large">mdi-pause-circle</v-icon>
-                        <div class="text-h6 text-grey-darken-3">{{ pausedCount }}</div>
-                        <div class="text-caption text-grey-darken-2">Paused</div>
-                      </v-card-text>
-                    </v-card>
-                  </v-col>
-                </v-row>
+                <StatsCards :stats="containerStats" />
 
                 <!-- Container List -->
                 <div v-if="filteredContainers && filteredContainers.length > 0">
@@ -155,6 +83,9 @@ import AppLayout from '../components/AppLayout.vue'
 import ErrorAlert from '../components/ErrorAlert.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import ContainerCard from '../components/ContainerCard.vue'
+import PageHeader from '../components/PageHeader.vue'
+import StatsCards from '../components/StatsCards.vue'
+import FilterBar from '../components/FilterBar.vue'
 import type { Container, Proxy } from '../types/api'
 
 const containers = ref<Container[]>([])
@@ -195,6 +126,41 @@ const createdCount = computed(() =>
 const pausedCount = computed(() => 
   containers.value.filter(c => c.state === 'paused').length
 )
+
+const containerStats = computed(() => [
+  {
+    key: 'running',
+    value: runningCount.value,
+    label: 'Running',
+    icon: 'mdi-play-circle',
+    color: 'green-lighten-5',
+    iconColor: 'green'
+  },
+  {
+    key: 'stopped',
+    value: stoppedCount.value,
+    label: 'Stopped',
+    icon: 'mdi-stop-circle',
+    color: 'red-lighten-5',
+    iconColor: 'red'
+  },
+  {
+    key: 'created',
+    value: createdCount.value,
+    label: 'Created',
+    icon: 'mdi-plus-circle',
+    color: 'blue-lighten-5',
+    iconColor: 'blue'
+  },
+  {
+    key: 'paused',
+    value: pausedCount.value,
+    label: 'Paused',
+    icon: 'mdi-pause-circle',
+    color: 'orange-lighten-5',
+    iconColor: 'orange'
+  }
+])
 
 const loadContainers = async () => {
   try {

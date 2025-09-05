@@ -14,23 +14,13 @@
               <LoadingSpinner v-if="loading" />
 
               <div v-else>
-                <div class="d-flex align-center justify-space-between mb-4">
-                  <v-chip color="primary">
-                    {{ proxies?.length || 0 }} Proxies
-                  </v-chip>
-                  
-                  <div class="d-flex gap-2">
-                    <v-btn
-                      color="primary"
-                      variant="outlined"
-                      size="small"
-                      @click="loadProxies"
-                      :loading="loading"
-                    >
-                      <v-icon left>mdi-refresh</v-icon>
-                      Refresh
-                    </v-btn>
-                    
+                <PageHeader
+                  :count="proxies?.length || 0"
+                  item-name="Proxies"
+                  :loading="loading"
+                  @refresh="loadProxies"
+                >
+                  <template #actions>
                     <v-btn
                       color="success"
                       variant="outlined"
@@ -61,84 +51,22 @@
                       <v-icon left>mdi-reload</v-icon>
                       Reload Nginx
                     </v-btn>
-                  </div>
-                </div>
+                  </template>
+                </PageHeader>
 
                 <!-- Filter and Search -->
-                <v-row class="mb-4">
-                  <v-col cols="12" md="6">
-                    <v-text-field
-                      v-model="searchQuery"
-                      label="Search proxies..."
-                      prepend-inner-icon="mdi-magnify"
-                      variant="outlined"
-                      density="compact"
-                      clearable
-                      @input="filterProxies"
-                    />
-                  </v-col>
-                  <v-col cols="12" md="3">
-                    <v-select
-                      v-model="statusFilter"
-                      label="Filter by status"
-                      :items="statusOptions"
-                      variant="outlined"
-                      density="compact"
-                      clearable
-                      @update:model-value="filterProxies"
-                    />
-                  </v-col>
-                  <v-col cols="12" md="3">
-                    <v-select
-                      v-model="sortBy"
-                      label="Sort by"
-                      :items="sortOptions"
-                      variant="outlined"
-                      density="compact"
-                      @update:model-value="sortProxies"
-                    />
-                  </v-col>
-                </v-row>
+                <FilterBar
+                  v-model:search-query="searchQuery"
+                  v-model:status-filter="statusFilter"
+                  v-model:sort-by="sortBy"
+                  search-label="Search proxies..."
+                  :status-options="statusOptions"
+                  :sort-options="sortOptions"
+                  @search="filterProxies"
+                />
 
                 <!-- Proxy Stats -->
-                <v-row class="mb-4">
-                  <v-col cols="12" sm="6" md="3">
-                    <v-card color="green-lighten-5" variant="outlined">
-                      <v-card-text class="text-center">
-                        <v-icon color="green" size="large">mdi-check-circle</v-icon>
-                        <div class="text-h6 text-grey-darken-3">{{ activeCount }}</div>
-                        <div class="text-caption text-grey-darken-2">Active</div>
-                      </v-card-text>
-                    </v-card>
-                  </v-col>
-                  <v-col cols="12" sm="6" md="3">
-                    <v-card color="orange-lighten-5" variant="outlined">
-                      <v-card-text class="text-center">
-                        <v-icon color="orange" size="large">mdi-pause-circle</v-icon>
-                        <div class="text-h6 text-grey-darken-3">{{ inactiveCount }}</div>
-                        <div class="text-caption text-grey-darken-2">Inactive</div>
-                      </v-card-text>
-                    </v-card>
-                  </v-col>
-                  <v-col cols="12" sm="6" md="3">
-                    <v-card color="red-lighten-5" variant="outlined">
-                      <v-card-text class="text-center">
-                        <v-icon color="red" size="large">mdi-alert-circle</v-icon>
-                        <div class="text-h6 text-grey-darken-3">{{ errorCount }}</div>
-                        <div class="text-caption text-grey-darken-2">Error</div>
-                      </v-card-text>
-                    </v-card>
-                  </v-col>
-                  <v-col cols="12" sm="6" md="3">
-                    <v-card color="blue-lighten-5" variant="outlined">
-                      <v-card-text class="text-center">
-                        <v-icon color="blue" size="large">mdi-lock</v-icon>
-                        <div class="text-h6 text-grey-darken-3">{{ sslCount }}</div>
-                        <div class="text-caption text-grey-darken-2">SSL Enabled</div>
-                      </v-card-text>
-                    </v-card>
-                  </v-col>
-                </v-row>
+                <StatsCards :stats="proxyStats" />
 
                 <!-- Proxy List -->
                 <div v-if="filteredProxies && filteredProxies.length > 0">
@@ -250,37 +178,17 @@
     </v-dialog>
 
     <!-- Delete Confirmation Dialog -->
-    <v-dialog v-model="showDeleteDialog" max-width="400px">
-      <v-card>
-        <v-card-title>
-          <v-icon left color="error">mdi-delete-alert</v-icon>
-          Confirm Delete
-        </v-card-title>
-        
-        <v-card-text>
-          Are you sure you want to delete the proxy "{{ deletingProxy?.name }}"? This action cannot be undone.
-        </v-card-text>
-        
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn
-            color="grey"
-            variant="text"
-            @click="showDeleteDialog = false"
-            :disabled="deleting"
-          >
-            Cancel
-          </v-btn>
-          <v-btn
-            color="error"
-            @click="confirmDelete"
-            :loading="deleting"
-          >
-            Delete
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <ConfirmationDialog
+      v-model:show="showDeleteDialog"
+      title="Confirm Delete"
+              :message="deleteMessage"
+      icon="mdi-delete-alert"
+      icon-color="error"
+      confirm-text="Delete"
+      confirm-color="error"
+      :loading="deleting"
+      @confirm="confirmDelete"
+    />
 
     <!-- Container Selection Dialog -->
     <v-dialog v-model="showContainerDialog" max-width="800px">
@@ -380,11 +288,7 @@
             v-else
             title="No containers found"
             text="No Docker containers are currently available"
-          >
-            <template v-slot:icon>
-              <v-icon size="100" color="grey-lighten-1">mdi-docker</v-icon>
-            </template>
-          </v-empty-state>
+          />
         </v-card-text>
         
         <v-card-actions>
@@ -418,6 +322,10 @@ import AppLayout from '../components/AppLayout.vue'
 import ErrorAlert from '../components/ErrorAlert.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import ProxyCard from '../components/ProxyCard.vue'
+import PageHeader from '../components/PageHeader.vue'
+import StatsCards from '../components/StatsCards.vue'
+import FilterBar from '../components/FilterBar.vue'
+import ConfirmationDialog from '../components/ConfirmationDialog.vue'
 import type { Proxy, ProxyCreateRequest, ProxyUpdateRequest, Container } from '../types/api'
 
 const proxies = ref<Proxy[]>([])
@@ -483,6 +391,45 @@ const errorCount = computed(() =>
 
 const sslCount = computed(() => 
   proxies.value.filter(p => p.ssl_enabled).length
+)
+
+const proxyStats = computed(() => [
+  {
+    key: 'active',
+    value: activeCount.value,
+    label: 'Active',
+    icon: 'mdi-check-circle',
+    color: 'green-lighten-5',
+    iconColor: 'green'
+  },
+  {
+    key: 'inactive',
+    value: inactiveCount.value,
+    label: 'Inactive',
+    icon: 'mdi-pause-circle',
+    color: 'orange-lighten-5',
+    iconColor: 'orange'
+  },
+  {
+    key: 'error',
+    value: errorCount.value,
+    label: 'Error',
+    icon: 'mdi-alert-circle',
+    color: 'red-lighten-5',
+    iconColor: 'red'
+  },
+  {
+    key: 'ssl',
+    value: sslCount.value,
+    label: 'SSL Enabled',
+    icon: 'mdi-lock',
+    color: 'blue-lighten-5',
+    iconColor: 'blue'
+  }
+])
+
+const deleteMessage = computed(() => 
+  `Are you sure you want to delete the proxy "${deletingProxy.value?.name || ''}"? This action cannot be undone.`
 )
 
 // Container filtering
