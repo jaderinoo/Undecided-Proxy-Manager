@@ -93,7 +93,9 @@
                   text="Create your first proxy to get started"
                 >
                   <template v-slot:image>
-                    <v-icon size="100" color="grey-lighten-1">mdi-server-network</v-icon>
+                    <v-icon size="100" color="grey-lighten-1"
+                      >mdi-server-network</v-icon
+                    >
                   </template>
                 </v-empty-state>
               </div>
@@ -119,7 +121,10 @@
               </v-btn>
             </v-card-title>
             <v-card-text>
-              <ErrorAlert :error="containerError" @clear="containerError = null" />
+              <ErrorAlert
+                :error="containerError"
+                @clear="containerError = null"
+              />
 
               <LoadingSpinner v-if="loadingContainers" />
 
@@ -136,7 +141,7 @@
                       {{ createdContainers }} Created
                     </v-chip>
                   </div>
-                  
+
                   <v-list density="compact">
                     <v-list-item
                       v-for="container in displayedContainers"
@@ -144,7 +149,7 @@
                       class="px-0"
                     >
                       <template v-slot:prepend>
-                        <v-icon 
+                        <v-icon
                           :color="getContainerStatusColor(container.state)"
                           size="small"
                         >
@@ -173,14 +178,18 @@
                           color="primary"
                           @click="openCreateProxyForContainer(container)"
                           :disabled="container.state !== 'running'"
-                          v-tooltip="container.state === 'running' ? 'Create proxy for this container' : 'Container must be running to create proxy'"
+                          v-tooltip="
+                            container.state === 'running'
+                              ? 'Create proxy for this container'
+                              : 'Container must be running to create proxy'
+                          "
                         >
                           <v-icon size="small">mdi-plus-circle</v-icon>
                         </v-btn>
                       </template>
                     </v-list-item>
                   </v-list>
-                  
+
                   <v-btn
                     v-if="hasMoreContainers"
                     color="primary"
@@ -190,9 +199,17 @@
                     @click="toggleContainerDisplay"
                   >
                     <v-icon left>
-                      {{ showAllContainers ? 'mdi-chevron-up' : 'mdi-chevron-down' }}
+                      {{
+                        showAllContainers
+                          ? 'mdi-chevron-up'
+                          : 'mdi-chevron-down'
+                      }}
                     </v-icon>
-                    {{ showAllContainers ? 'Show Less' : `Show All ${containers.length} Containers` }}
+                    {{
+                      showAllContainers
+                        ? 'Show Less'
+                        : `Show All ${containers.length} Containers`
+                    }}
                   </v-btn>
                 </div>
 
@@ -202,7 +219,9 @@
                   text="No Docker containers are currently available"
                 >
                   <template v-slot:image>
-                    <v-icon size="100" color="grey-lighten-1">mdi-docker</v-icon>
+                    <v-icon size="100" color="grey-lighten-1"
+                      >mdi-docker</v-icon
+                    >
                   </template>
                 </v-empty-state>
               </div>
@@ -228,7 +247,7 @@
               required
               class="mb-2"
             ></v-text-field>
-            
+
             <v-text-field
               v-model="newProxy.domain"
               label="Domain"
@@ -237,7 +256,7 @@
               class="mb-2"
               hint="e.g., example.com"
             ></v-text-field>
-            
+
             <v-text-field
               v-model="newProxy.target_url"
               label="Target URL"
@@ -246,7 +265,7 @@
               class="mb-2"
               hint="e.g., http://localhost:3000"
             ></v-text-field>
-            
+
             <v-switch
               v-model="newProxy.ssl_enabled"
               label="Enable SSL"
@@ -257,11 +276,7 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn
-            color="grey"
-            variant="text"
-            @click="closeCreateProxyDialog"
-          >
+          <v-btn color="grey" variant="text" @click="closeCreateProxyDialog">
             Cancel
           </v-btn>
           <v-btn
@@ -318,11 +333,7 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn
-            color="grey"
-            variant="text"
-            @click="closeEditProxyDialog"
-          >
+          <v-btn color="grey" variant="text" @click="closeEditProxyDialog">
             Cancel
           </v-btn>
           <v-btn
@@ -345,22 +356,15 @@
           Delete Proxy
         </v-card-title>
         <v-card-text>
-          Are you sure you want to delete the proxy "{{ proxyToDelete?.name }}"? This action cannot be undone.
+          Are you sure you want to delete the proxy "{{ proxyToDelete?.name }}"?
+          This action cannot be undone.
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn
-            color="grey"
-            variant="text"
-            @click="closeDeleteProxyDialog"
-          >
+          <v-btn color="grey" variant="text" @click="closeDeleteProxyDialog">
             Cancel
           </v-btn>
-          <v-btn
-            color="error"
-            @click="deleteProxy"
-            :loading="deletingProxy"
-          >
+          <v-btn color="error" @click="deleteProxy" :loading="deletingProxy">
             Delete
           </v-btn>
         </v-card-actions>
@@ -370,171 +374,184 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { apiService } from '../services/api'
-import AppLayout from '../components/AppLayout.vue'
-import ErrorAlert from '../components/ErrorAlert.vue'
-import LoadingSpinner from '../components/LoadingSpinner.vue'
-import ProxyCard from '../components/ProxyCard.vue'
-import type { Proxy, Container, ProxyCreateRequest, ProxyUpdateRequest } from '../types/api'
+import { ref, computed, onMounted } from 'vue';
+import { apiService } from '../services/api';
+import AppLayout from '../components/AppLayout.vue';
+import ErrorAlert from '../components/ErrorAlert.vue';
+import LoadingSpinner from '../components/LoadingSpinner.vue';
+import ProxyCard from '../components/ProxyCard.vue';
+import type {
+  Proxy,
+  Container,
+  ProxyCreateRequest,
+  ProxyUpdateRequest,
+} from '../types/api';
 
-const proxies = ref<Proxy[]>([])
-const containers = ref<Container[]>([])
-const loading = ref(true)
-const loadingContainers = ref(false)
-const error = ref<string | null>(null)
-const containerError = ref<string | null>(null)
-const showAllContainers = ref(false)
+const proxies = ref<Proxy[]>([]);
+const containers = ref<Container[]>([]);
+const loading = ref(true);
+const loadingContainers = ref(false);
+const error = ref<string | null>(null);
+const containerError = ref<string | null>(null);
+const showAllContainers = ref(false);
 
 // Create proxy dialog state
-const createProxyDialog = ref(false)
-const createProxyFormValid = ref(false)
-const creatingProxy = ref(false)
+const createProxyDialog = ref(false);
+const createProxyFormValid = ref(false);
+const creatingProxy = ref(false);
 const newProxy = ref<ProxyCreateRequest>({
   name: '',
   domain: '',
   target_url: '',
-  ssl_enabled: false
-})
+  ssl_enabled: false,
+});
 
 // Edit proxy dialog state
-const editProxyDialog = ref(false)
-const editProxyFormValid = ref(false)
-const updatingProxy = ref(false)
+const editProxyDialog = ref(false);
+const editProxyFormValid = ref(false);
+const updatingProxy = ref(false);
 const editingProxy = ref<ProxyUpdateRequest>({
   name: '',
   domain: '',
   target_url: '',
-  ssl_enabled: false
-})
+  ssl_enabled: false,
+});
 
 // Delete proxy dialog state
-const deleteProxyDialog = ref(false)
-const deletingProxy = ref(false)
-const proxyToDelete = ref<Proxy | null>(null)
+const deleteProxyDialog = ref(false);
+const deletingProxy = ref(false);
+const proxyToDelete = ref<Proxy | null>(null);
 
 // Nginx reload state
-const reloadingNginx = ref(false)
+const reloadingNginx = ref(false);
 
 // Computed properties
-const sslCount = computed(() => 
-  proxies.value.filter(p => p.ssl_enabled).length
-)
+const sslCount = computed(
+  () => proxies.value.filter(p => p.ssl_enabled).length
+);
 
-const runningContainers = computed(() => 
-  containers.value.filter(c => c.state === 'running').length
-)
+const runningContainers = computed(
+  () => containers.value.filter(c => c.state === 'running').length
+);
 
-const stoppedContainers = computed(() => 
-  containers.value.filter(c => c.state === 'exited').length
-)
+const stoppedContainers = computed(
+  () => containers.value.filter(c => c.state === 'exited').length
+);
 
-const createdContainers = computed(() => 
-  containers.value.filter(c => c.state === 'created').length
-)
+const createdContainers = computed(
+  () => containers.value.filter(c => c.state === 'created').length
+);
 
 const displayedContainers = computed(() => {
   if (showAllContainers.value) {
-    return containers.value
+    return containers.value;
   }
-  return containers.value.slice(0, 5)
-})
+  return containers.value.slice(0, 5);
+});
 
-const hasMoreContainers = computed(() => 
-  containers.value.length > 5
-)
+const hasMoreContainers = computed(() => containers.value.length > 5);
 
 const loadProxies = async () => {
   try {
-    loading.value = true
-    error.value = null
-    const response = await apiService.getProxies()
-    proxies.value = response.data || []
+    loading.value = true;
+    error.value = null;
+    const response = await apiService.getProxies();
+    proxies.value = response.data || [];
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to load proxies'
-    proxies.value = [] // Ensure proxies is always an array
+    error.value = err instanceof Error ? err.message : 'Failed to load proxies';
+    proxies.value = []; // Ensure proxies is always an array
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 const loadContainers = async () => {
   try {
-    loadingContainers.value = true
-    containerError.value = null
-    const response = await apiService.getContainers()
-    containers.value = response.containers || []
+    loadingContainers.value = true;
+    containerError.value = null;
+    const response = await apiService.getContainers();
+    containers.value = response.containers || [];
   } catch (err) {
-    containerError.value = err instanceof Error ? err.message : 'Failed to load containers'
-    containers.value = []
+    containerError.value =
+      err instanceof Error ? err.message : 'Failed to load containers';
+    containers.value = [];
   } finally {
-    loadingContainers.value = false
+    loadingContainers.value = false;
   }
-}
-
+};
 
 const getContainerStatusColor = (state: string) => {
   switch (state) {
-    case 'running': return 'green'
-    case 'exited': return 'red'
-    case 'created': return 'blue'
-    case 'paused': return 'orange'
-    default: return 'grey'
+    case 'running':
+      return 'green';
+    case 'exited':
+      return 'red';
+    case 'created':
+      return 'blue';
+    case 'paused':
+      return 'orange';
+    default:
+      return 'grey';
   }
-}
+};
 
 const getContainerStatusIcon = (state: string) => {
   switch (state) {
-    case 'running': return 'mdi-play-circle'
-    case 'exited': return 'mdi-stop-circle'
-    case 'created': return 'mdi-plus-circle'
-    case 'paused': return 'mdi-pause-circle'
-    default: return 'mdi-help-circle'
+    case 'running':
+      return 'mdi-play-circle';
+    case 'exited':
+      return 'mdi-stop-circle';
+    case 'created':
+      return 'mdi-plus-circle';
+    case 'paused':
+      return 'mdi-pause-circle';
+    default:
+      return 'mdi-help-circle';
   }
-}
+};
 
 const getContainerTargetUrl = (container: Container) => {
   // Try to find a port mapping for common web ports
-  const webPorts = [80, 3000, 5000, 8000, 8080, 9000]
-  
+  const webPorts = [80, 3000, 5000, 8000, 8080, 9000];
+
   for (const port of webPorts) {
-    const portMapping = container.ports?.find(p => p.private_port === port)
+    const portMapping = container.ports?.find(p => p.private_port === port);
     if (portMapping) {
-      return `http://localhost:${portMapping.public_port}`
+      return `http://localhost:${portMapping.public_port}`;
     }
   }
-  
+
   // If no web port found, use the first available port
   if (container.ports && container.ports.length > 0) {
-    const firstPort = container.ports[0]
-    return `http://localhost:${firstPort.public_port}`
+    const firstPort = container.ports[0];
+    return `http://localhost:${firstPort.public_port}`;
   }
-  
+
   // Fallback to localhost:3000
-  return 'http://localhost:3000'
-}
+  return 'http://localhost:3000';
+};
 
 const toggleContainerDisplay = () => {
-  showAllContainers.value = !showAllContainers.value
-}
+  showAllContainers.value = !showAllContainers.value;
+};
 
 // Create proxy dialog methods
 const openCreateProxyDialog = () => {
-  createProxyDialog.value = true
+  createProxyDialog.value = true;
   // Reset form
   newProxy.value = {
     name: '',
     domain: '',
     target_url: '',
-    ssl_enabled: false
-  }
-  createProxyFormValid.value = false
-}
+    ssl_enabled: false,
+  };
+  createProxyFormValid.value = false;
+};
 
 const closeCreateProxyDialog = () => {
-  createProxyDialog.value = false
-  error.value = null
-}
+  createProxyDialog.value = false;
+  error.value = null;
+};
 
 const openCreateProxyForContainer = (container: Container) => {
   // Pre-fill the form with container information
@@ -542,33 +559,32 @@ const openCreateProxyForContainer = (container: Container) => {
     name: `${container.name || 'container'}-proxy`,
     domain: `${container.name || 'container'}.example.com`,
     target_url: getContainerTargetUrl(container),
-    ssl_enabled: false
-  }
-  createProxyDialog.value = true
-  createProxyFormValid.value = false
-}
+    ssl_enabled: false,
+  };
+  createProxyDialog.value = true;
+  createProxyFormValid.value = false;
+};
 
 const createProxy = async () => {
   try {
-    creatingProxy.value = true
-    error.value = null
-    
-    const response = await apiService.createProxy(newProxy.value)
-    
+    creatingProxy.value = true;
+    error.value = null;
+
+    const response = await apiService.createProxy(newProxy.value);
+
     // Add the new proxy to the list
     if (response.data) {
-      proxies.value.unshift(response.data)
+      proxies.value.unshift(response.data);
     }
-    
+
     // Close dialog and reset form
-    closeCreateProxyDialog()
-    
+    closeCreateProxyDialog();
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to create proxy'
+    error.value = err instanceof Error ? err.message : 'Failed to create proxy';
   } finally {
-    creatingProxy.value = false
+    creatingProxy.value = false;
   }
-}
+};
 
 // Edit proxy dialog methods
 const openEditProxyDialog = (proxy: Proxy) => {
@@ -576,114 +592,112 @@ const openEditProxyDialog = (proxy: Proxy) => {
     name: proxy.name,
     domain: proxy.domain,
     target_url: proxy.target_url,
-    ssl_enabled: proxy.ssl_enabled
-  }
+    ssl_enabled: proxy.ssl_enabled,
+  };
   // Store the original proxy ID for updating
-  editingProxy.value.id = proxy.id
-  editProxyDialog.value = true
-  editProxyFormValid.value = false
-}
+  editingProxy.value.id = proxy.id;
+  editProxyDialog.value = true;
+  editProxyFormValid.value = false;
+};
 
 const closeEditProxyDialog = () => {
-  editProxyDialog.value = false
-  error.value = null
-}
+  editProxyDialog.value = false;
+  error.value = null;
+};
 
 const updateProxy = async () => {
-  if (!editingProxy.value.name || !editingProxy.value.domain || !editingProxy.value.target_url || !editingProxy.value.id) {
-    return
+  if (
+    !editingProxy.value.name ||
+    !editingProxy.value.domain ||
+    !editingProxy.value.target_url ||
+    !editingProxy.value.id
+  ) {
+    return;
   }
 
   try {
-    updatingProxy.value = true
-    error.value = null
-    
-    const proxyId = editingProxy.value.id
-    const response = await apiService.updateProxy(proxyId, editingProxy.value)
-    
+    updatingProxy.value = true;
+    error.value = null;
+
+    const proxyId = editingProxy.value.id;
+    const response = await apiService.updateProxy(proxyId, editingProxy.value);
+
     // Update the proxy in the list
     if (response.data) {
-      const proxyIndex = proxies.value.findIndex(p => p.id === proxyId)
+      const proxyIndex = proxies.value.findIndex(p => p.id === proxyId);
       if (proxyIndex !== -1) {
-        proxies.value[proxyIndex] = response.data
+        proxies.value[proxyIndex] = response.data;
       }
     }
-    
+
     // Close dialog and reset form
-    closeEditProxyDialog()
-    
+    closeEditProxyDialog();
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to update proxy'
+    error.value = err instanceof Error ? err.message : 'Failed to update proxy';
   } finally {
-    updatingProxy.value = false
+    updatingProxy.value = false;
   }
-}
+};
 
 // Delete proxy dialog methods
 const openDeleteProxyDialog = (proxy: Proxy) => {
-  proxyToDelete.value = proxy
-  deleteProxyDialog.value = true
-}
+  proxyToDelete.value = proxy;
+  deleteProxyDialog.value = true;
+};
 
 const closeDeleteProxyDialog = () => {
-  deleteProxyDialog.value = false
-  proxyToDelete.value = null
-  error.value = null
-}
+  deleteProxyDialog.value = false;
+  proxyToDelete.value = null;
+  error.value = null;
+};
 
 const deleteProxy = async () => {
-  if (!proxyToDelete.value) return
+  if (!proxyToDelete.value) return;
 
   try {
-    deletingProxy.value = true
-    error.value = null
-    
+    deletingProxy.value = true;
+    error.value = null;
+
     // Store the proxy ID before deletion
-    const proxyId = proxyToDelete.value.id
-    
-    await apiService.deleteProxy(proxyId)
-    
+    const proxyId = proxyToDelete.value.id;
+
+    await apiService.deleteProxy(proxyId);
+
     // Remove the proxy from the list
-    const proxyIndex = proxies.value.findIndex(p => p.id === proxyId)
+    const proxyIndex = proxies.value.findIndex(p => p.id === proxyId);
     if (proxyIndex !== -1) {
-      proxies.value.splice(proxyIndex, 1)
+      proxies.value.splice(proxyIndex, 1);
     }
-    
+
     // Close dialog
-    closeDeleteProxyDialog()
-    
+    closeDeleteProxyDialog();
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to delete proxy'
+    error.value = err instanceof Error ? err.message : 'Failed to delete proxy';
   } finally {
-    deletingProxy.value = false
+    deletingProxy.value = false;
   }
-}
+};
 
 const reloadNginx = async () => {
   try {
-    reloadingNginx.value = true
-    error.value = null
-    
-    await apiService.reloadNginx()
-    
-    // Show success message (you could add a toast notification here)
-    console.log('Nginx reloaded successfully')
-    
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to reload nginx'
-  } finally {
-    reloadingNginx.value = false
-  }
-}
+    reloadingNginx.value = true;
+    error.value = null;
 
+    await apiService.reloadNginx();
+
+    // Show success message (you could add a toast notification here)
+    console.log('Nginx reloaded successfully');
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to reload nginx';
+  } finally {
+    reloadingNginx.value = false;
+  }
+};
 
 onMounted(async () => {
   // Load all data when component mounts
-  await Promise.all([
-    loadProxies(),
-    loadContainers()
-  ])
-})
+  await Promise.all([loadProxies(), loadContainers()]);
+});
 </script>
 
 <style>

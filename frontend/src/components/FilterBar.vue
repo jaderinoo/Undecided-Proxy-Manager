@@ -38,31 +38,31 @@
 
 <script setup lang="ts">
 interface FilterOption {
-  title: string
-  value: string
+  title: string;
+  value: string;
 }
 
 interface Props {
-  searchQuery: string
-  statusFilter: string
-  sortBy: string
-  searchLabel?: string
-  statusLabel?: string
-  sortLabel?: string
-  statusOptions: FilterOption[]
-  sortOptions: FilterOption[]
+  searchQuery: string;
+  statusFilter: string;
+  sortBy: string;
+  searchLabel?: string;
+  statusLabel?: string;
+  sortLabel?: string;
+  statusOptions: FilterOption[];
+  sortOptions: FilterOption[];
 }
 
 withDefaults(defineProps<Props>(), {
   searchLabel: 'Search...',
   statusLabel: 'Filter by status',
-  sortLabel: 'Sort by'
-})
+  sortLabel: 'Sort by',
+});
 
 defineEmits<{
-  'update:searchQuery': [value: string]
-  'update:statusFilter': [value: string]
-  'update:sortBy': [value: string]
-  search: []
-}>()
+  'update:searchQuery': [value: string];
+  'update:statusFilter': [value: string];
+  'update:sortBy': [value: string];
+  search: [];
+}>();
 </script>

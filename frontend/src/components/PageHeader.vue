@@ -3,7 +3,6 @@
     <v-chip v-if="showChip" :color="chipColor" :variant="chipVariant">
       {{ count }} {{ itemName }}
     </v-chip>
-    
     <div class="d-flex gap-2">
       <v-btn
         v-if="showRefresh"
@@ -16,7 +15,6 @@
         <v-icon left>mdi-refresh</v-icon>
         Refresh
       </v-btn>
-      
       <slot name="actions" />
     </div>
   </div>
@@ -24,13 +22,13 @@
 
 <script setup lang="ts">
 interface Props {
-  count: number
-  itemName: string
-  chipColor?: string
-  chipVariant?: 'flat' | 'outlined' | 'text' | 'tonal'
-  showRefresh?: boolean
-  loading?: boolean
-  showChip?: boolean
+  count: number;
+  itemName: string;
+  chipColor?: string;
+  chipVariant?: 'flat' | 'outlined' | 'text' | 'tonal';
+  showRefresh?: boolean;
+  loading?: boolean;
+  showChip?: boolean;
 }
 
 withDefaults(defineProps<Props>(), {
@@ -38,12 +36,12 @@ withDefaults(defineProps<Props>(), {
   chipColor: 'primary',
   chipVariant: 'flat',
   showRefresh: true,
-  loading: false
-})
+  loading: false,
+});
 
 defineEmits<{
-  refresh: []
-}>()
+  refresh: [];
+}>();
 </script>
 
 <style scoped>

@@ -44,9 +44,9 @@ func GetProxies(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch proxies: " + err.Error()})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
-		"data": proxies,
+		"data":  proxies,
 		"count": len(proxies),
 	})
 }

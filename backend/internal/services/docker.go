@@ -31,7 +31,7 @@ func NewDockerService() (*DockerService, error) {
 // GetRunningContainers returns all running containers
 func (d *DockerService) GetRunningContainers() ([]models.Container, error) {
 	ctx := context.Background()
-	
+
 	// Get all containers (running and stopped)
 	containers, err := d.client.ContainerList(ctx, container.ListOptions{
 		All: true,
@@ -52,7 +52,7 @@ func (d *DockerService) GetRunningContainers() ([]models.Container, error) {
 // GetContainerByID returns a specific container by ID
 func (d *DockerService) GetContainerByID(containerID string) (*models.Container, error) {
 	ctx := context.Background()
-	
+
 	// Get container details
 	containerInfo, err := d.client.ContainerInspect(ctx, containerID)
 	if err != nil {
@@ -67,7 +67,7 @@ func (d *DockerService) GetContainerByID(containerID string) (*models.Container,
 // GetContainerStats returns real-time stats for a container
 func (d *DockerService) GetContainerStats(containerID string) (interface{}, error) {
 	ctx := context.Background()
-	
+
 	stats, err := d.client.ContainerStats(ctx, containerID, false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get container stats: %w", err)
@@ -99,18 +99,18 @@ func (d *DockerService) convertToContainer(c types.Container) models.Container {
 	created := time.Unix(c.Created, 0)
 
 	return models.Container{
-		ID:         c.ID,
-		Name:       name,
-		Image:      c.Image,
-		ImageID:    c.ImageID,
-		Status:     c.Status,
-		State:      c.State,
-		Created:    created,
-		Ports:      ports,
-		Labels:     c.Labels,
-		Command:    c.Command,
-		SizeRw:     c.SizeRw,
-		SizeRootFs: c.SizeRootFs,
+		ID:          c.ID,
+		Name:        name,
+		Image:       c.Image,
+		ImageID:     c.ImageID,
+		Status:      c.Status,
+		State:       c.State,
+		Created:     created,
+		Ports:       ports,
+		Labels:      c.Labels,
+		Command:     c.Command,
+		SizeRw:      c.SizeRw,
+		SizeRootFs:  c.SizeRootFs,
 		NetworkMode: "default",
 	}
 }
@@ -133,10 +133,10 @@ func (d *DockerService) convertInspectToContainer(info types.ContainerJSON) mode
 			if len(portParts) > 0 {
 				fmt.Sscanf(portParts[0], "%d", &privatePort)
 			}
-			
+
 			var publicPort int
 			fmt.Sscanf(binding.HostPort, "%d", &publicPort)
-			
+
 			ports = append(ports, models.PortMapping{
 				IP:          binding.HostIP,
 				PrivatePort: privatePort,
@@ -163,13 +163,13 @@ func (d *DockerService) convertInspectToContainer(info types.ContainerJSON) mode
 	created, _ := time.Parse(time.RFC3339Nano, info.Created)
 	var startedAt *time.Time
 	var finishedAt *time.Time
-	
+
 	if info.State.StartedAt != "" {
 		if started, err := time.Parse(time.RFC3339Nano, info.State.StartedAt); err == nil {
 			startedAt = &started
 		}
 	}
-	
+
 	if info.State.FinishedAt != "" {
 		if finished, err := time.Parse(time.RFC3339Nano, info.State.FinishedAt); err == nil {
 			finishedAt = &finished

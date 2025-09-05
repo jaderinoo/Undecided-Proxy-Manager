@@ -121,7 +121,7 @@ func (l *LetsEncryptService) RenewCertificate(cert *models.Certificate) (*models
 	// Check if certificate is close to expiration (less than 30 days)
 	now := time.Now()
 	daysUntilExpiry := int(cert.ExpiresAt.Sub(now).Hours() / 24)
-	
+
 	if daysUntilExpiry > 30 {
 		return cert, fmt.Errorf("certificate is not close to expiration (%d days remaining)", daysUntilExpiry)
 	}
@@ -343,11 +343,11 @@ func (l *LetsEncryptService) GetCertificateInfo(certPath string) (*CertificateIn
 	}
 
 	return &CertificateInfo{
-		Subject:    cert.Subject.CommonName,
-		Issuer:     cert.Issuer.CommonName,
-		NotBefore:  cert.NotBefore,
-		NotAfter:   cert.NotAfter,
-		DNSNames:   cert.DNSNames,
-		IsValid:    time.Now().After(cert.NotBefore) && time.Now().Before(cert.NotAfter),
+		Subject:   cert.Subject.CommonName,
+		Issuer:    cert.Issuer.CommonName,
+		NotBefore: cert.NotBefore,
+		NotAfter:  cert.NotAfter,
+		DNSNames:  cert.DNSNames,
+		IsValid:   time.Now().After(cert.NotBefore) && time.Now().Before(cert.NotAfter),
 	}, nil
 }

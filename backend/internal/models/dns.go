@@ -13,28 +13,28 @@ const (
 
 // DNSConfig represents the configuration for a DNS provider
 type DNSConfig struct {
-	ID           int          `json:"id" db:"id"`
-	Provider     DNSProvider  `json:"provider" db:"provider"`
-	Domain       string       `json:"domain" db:"domain"`
-	Username     string       `json:"username" db:"username"`
-	Password     string       `json:"password" db:"password"`
-	IsActive     bool         `json:"is_active" db:"is_active"`
-	LastUpdate   *time.Time   `json:"last_update,omitempty" db:"last_update"`
-	LastIP       string       `json:"last_ip,omitempty" db:"last_ip"`
-	CreatedAt    time.Time    `json:"created_at" db:"created_at"`
-	UpdatedAt    time.Time    `json:"updated_at" db:"updated_at"`
+	ID         int         `json:"id" db:"id"`
+	Provider   DNSProvider `json:"provider" db:"provider"`
+	Domain     string      `json:"domain" db:"domain"`
+	Username   string      `json:"username" db:"username"`
+	Password   string      `json:"password" db:"password"`
+	IsActive   bool        `json:"is_active" db:"is_active"`
+	LastUpdate *time.Time  `json:"last_update,omitempty" db:"last_update"`
+	LastIP     string      `json:"last_ip,omitempty" db:"last_ip"`
+	CreatedAt  time.Time   `json:"created_at" db:"created_at"`
+	UpdatedAt  time.Time   `json:"updated_at" db:"updated_at"`
 }
 
 // DNSRecord represents a DNS record that can be updated dynamically
 type DNSRecord struct {
-	ID           int          `json:"id" db:"id"`
-	ConfigID     int          `json:"config_id" db:"config_id"`
-	Host         string       `json:"host" db:"host"` // "@" for root domain, "www" for subdomain
-	CurrentIP    string       `json:"current_ip" db:"current_ip"`
-	LastUpdate   *time.Time   `json:"last_update,omitempty" db:"last_update"`
-	IsActive     bool         `json:"is_active" db:"is_active"`
-	CreatedAt    time.Time    `json:"created_at" db:"created_at"`
-	UpdatedAt    time.Time    `json:"updated_at" db:"updated_at"`
+	ID         int        `json:"id" db:"id"`
+	ConfigID   int        `json:"config_id" db:"config_id"`
+	Host       string     `json:"host" db:"host"` // "@" for root domain, "www" for subdomain
+	CurrentIP  string     `json:"current_ip" db:"current_ip"`
+	LastUpdate *time.Time `json:"last_update,omitempty" db:"last_update"`
+	IsActive   bool       `json:"is_active" db:"is_active"`
+	CreatedAt  time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt  time.Time  `json:"updated_at" db:"updated_at"`
 }
 
 // DNSConfigCreateRequest represents the request to create a DNS configuration
@@ -76,12 +76,12 @@ type DNSUpdateResponse struct {
 
 // DNSStatus represents the current status of DNS configuration
 type DNSStatus struct {
-	ConfigID     int       `json:"config_id"`
-	Domain       string    `json:"domain"`
-	Provider     string    `json:"provider"`
-	IsActive     bool      `json:"is_active"`
-	LastUpdate   *time.Time `json:"last_update,omitempty"`
-	LastIP       string    `json:"last_ip,omitempty"`
-	RecordCount  int       `json:"record_count"`
-	Records      []DNSRecord `json:"records,omitempty"`
+	ConfigID    int         `json:"config_id"`
+	Domain      string      `json:"domain"`
+	Provider    string      `json:"provider"`
+	IsActive    bool        `json:"is_active"`
+	LastUpdate  *time.Time  `json:"last_update,omitempty"`
+	LastIP      string      `json:"last_ip,omitempty"`
+	RecordCount int         `json:"record_count"`
+	Records     []DNSRecord `json:"records,omitempty"`
 }

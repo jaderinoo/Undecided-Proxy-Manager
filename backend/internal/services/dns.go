@@ -19,11 +19,11 @@ type DNSService struct {
 
 // Namecheap API response structures
 type NamecheapResponse struct {
-	XMLName xml.Name `xml:"interface-response"`
-	Command string   `xml:"Command"`
-	IP      string   `xml:"IP"`
-	ErrCount int     `xml:"ErrCount"`
-	Errors  []Error  `xml:"errors>Error"`
+	XMLName  xml.Name `xml:"interface-response"`
+	Command  string   `xml:"Command"`
+	IP       string   `xml:"IP"`
+	ErrCount int      `xml:"ErrCount"`
+	Errors   []Error  `xml:"errors>Error"`
 }
 
 type Error struct {

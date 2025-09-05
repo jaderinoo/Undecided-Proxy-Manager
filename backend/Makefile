@@ -1,4 +1,4 @@
-.PHONY: swagger build run clean
+.PHONY: swagger build run clean format lint
 
 # Generate Swagger documentation
 swagger:
@@ -36,6 +36,19 @@ install-swagger:
 	@echo "Installing Swagger CLI..."
 	@go install github.com/swaggo/swag/cmd/swag@latest
 	@echo "Swagger CLI installed!"
+
+# Format Go code
+format:
+	@echo "Formatting Go code..."
+	@go fmt ./...
+	@$(shell go env GOPATH)/bin/goimports -w .
+	@echo "Formatting completed!"
+
+# Lint Go code
+lint:
+	@echo "Linting Go code..."
+	@go vet ./...
+	@echo "Linting completed!"
 
 # Full setup
 setup: install-swagger deps swagger

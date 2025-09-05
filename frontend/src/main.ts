@@ -1,22 +1,22 @@
-import { createApp } from 'vue'
-import { createPinia } from 'pinia'
-import { createRouter, createWebHistory } from 'vue-router'
-import { createVuetify } from 'vuetify'
-import * as components from 'vuetify/components'
-import * as directives from 'vuetify/directives'
-import { aliases, mdi } from 'vuetify/iconsets/mdi'
-import '@mdi/font/css/materialdesignicons.css'
-import 'vuetify/styles'
-import './styles/main.scss'
-import App from './App.vue'
-import LoginPage from './pages/LoginPage.vue'
-import Dashboard from './pages/Dashboard.vue'
-import DNSPage from './pages/DNSPage.vue'
-import ContainersPage from './pages/ContainersPage.vue'
-import ProxiesPage from './pages/ProxiesPage.vue'
-import CertificatesPage from './pages/CertificatesPage.vue'
-import SettingsPage from './pages/SettingsPage.vue'
-import { useAuthStore } from './stores/auth'
+import { createApp } from 'vue';
+import { createPinia } from 'pinia';
+import { createRouter, createWebHistory } from 'vue-router';
+import { createVuetify } from 'vuetify';
+import * as components from 'vuetify/components';
+import * as directives from 'vuetify/directives';
+import { aliases, mdi } from 'vuetify/iconsets/mdi';
+import '@mdi/font/css/materialdesignicons.css';
+import 'vuetify/styles';
+import './styles/main.scss';
+import App from './App.vue';
+import LoginPage from './pages/LoginPage.vue';
+import Dashboard from './pages/Dashboard.vue';
+import DNSPage from './pages/DNSPage.vue';
+import ContainersPage from './pages/ContainersPage.vue';
+import ProxiesPage from './pages/ProxiesPage.vue';
+import CertificatesPage from './pages/CertificatesPage.vue';
+import SettingsPage from './pages/SettingsPage.vue';
+import { useAuthStore } from './stores/auth';
 
 // Vuetify configuration
 const vuetify = createVuetify({
@@ -68,7 +68,7 @@ const vuetify = createVuetify({
       },
     },
   },
-})
+});
 
 // Router configuration
 const router = createRouter({
@@ -78,67 +78,67 @@ const router = createRouter({
       path: '/login',
       name: 'Login',
       component: LoginPage,
-      meta: { requiresGuest: true }
+      meta: { requiresGuest: true },
     },
     {
       path: '/',
       name: 'Dashboard',
       component: Dashboard,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true },
     },
     {
       path: '/dashboard',
-      redirect: '/'
+      redirect: '/',
     },
     {
       path: '/proxies',
       name: 'Proxies',
       component: ProxiesPage,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true },
     },
     {
       path: '/certificates',
       name: 'Certificates',
       component: CertificatesPage,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true },
     },
     {
       path: '/containers',
       name: 'Containers',
       component: ContainersPage,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true },
     },
     {
       path: '/dns',
       name: 'DNS',
       component: DNSPage,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true },
     },
     {
       path: '/settings',
       name: 'Settings',
       component: SettingsPage,
-      meta: { requiresAuth: true }
-    }
-  ]
-})
+      meta: { requiresAuth: true },
+    },
+  ],
+});
 
 // Navigation guards
 router.beforeEach((to, from, next) => {
-  const authStore = useAuthStore()
-  
+  const authStore = useAuthStore();
+
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    next('/login')
+    next('/login');
   } else if (to.meta.requiresGuest && authStore.isAuthenticated) {
-    next('/')
+    next('/');
   } else {
-    next()
+    next();
   }
-})
+});
 
-const app = createApp(App)
+const app = createApp(App);
 
-app.use(createPinia())
-app.use(vuetify)
-app.use(router)
-app.mount('#app')
+app.use(createPinia());
+app.use(vuetify);
+app.use(router);
+app.mount('#app');

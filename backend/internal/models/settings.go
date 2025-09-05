@@ -4,7 +4,7 @@ package models
 type Settings struct {
 	// Core settings (from .env - read-only in UI)
 	CoreSettings CoreSettings `json:"core_settings"`
-	
+
 	// UI-manageable settings (stored in database)
 	UISettings UISettings `json:"ui_settings"`
 }

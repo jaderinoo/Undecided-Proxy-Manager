@@ -28,9 +28,9 @@ func GetUsers(c *gin.Context) {
 			IsActive: true,
 		},
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
-		"data": users,
+		"data":  users,
 		"count": len(users),
 	})
 }
@@ -56,10 +56,10 @@ func GetUser(c *gin.Context) {
 
 	// TODO: Implement database query
 	user := models.User{
-		ID:        id,
-		Username:  "admin",
-		Email:     "admin@example.com",
-		IsActive:  true,
+		ID:       id,
+		Username: "admin",
+		Email:    "admin@example.com",
+		IsActive: true,
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": user})

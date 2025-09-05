@@ -99,8 +99,8 @@ func (n *NginxService) ReloadNginx() error {
 	if err != nil {
 		// If nginx is not available (e.g., in backend container), log warning but don't fail
 		if strings.Contains(string(output), "not found") ||
-		   strings.Contains(err.Error(), "not found") ||
-		   strings.Contains(string(output), "command not found") {
+			strings.Contains(err.Error(), "not found") ||
+			strings.Contains(string(output), "command not found") {
 			// nginx not available in this container, skip reload
 			return nil
 		}
@@ -115,9 +115,9 @@ func (n *NginxService) TestNginxConfig() error {
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		// If nginx is not available (e.g., in backend container), log warning but don't fail
-		if strings.Contains(string(output), "executable file not found") || 
-		   strings.Contains(string(output), "not found") ||
-		   strings.Contains(err.Error(), "executable file not found") {
+		if strings.Contains(string(output), "executable file not found") ||
+			strings.Contains(string(output), "not found") ||
+			strings.Contains(err.Error(), "executable file not found") {
 			// nginx not available in this container, skip test
 			return nil
 		}

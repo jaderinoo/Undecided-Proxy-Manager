@@ -20,17 +20,17 @@
 
 <script setup lang="ts">
 interface StatItem {
-  key: string
-  value: number | string
-  label: string
-  icon: string
-  color: string
-  iconColor: string
+  key: string;
+  value: number | string;
+  label: string;
+  icon: string;
+  color: string;
+  iconColor: string;
 }
 
 interface Props {
-  stats: StatItem[]
+  stats: StatItem[];
 }
 
-defineProps<Props>()
+defineProps<Props>();
 </script>

@@ -12,10 +12,10 @@
 
 <script setup lang="ts">
 defineProps<{
-  error: string | null
-}>()
+  error: string | null;
+}>();
 
 defineEmits<{
-  clear: []
-}>()
+  clear: [];
+}>();
 </script>

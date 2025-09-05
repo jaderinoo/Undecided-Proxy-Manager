@@ -22,7 +22,7 @@ import (
 func GetSettings(c *gin.Context) {
 	// Load current configuration
 	cfg := config.Load()
-	
+
 	// Create core settings and mask sensitive data
 	coreSettings := models.CoreSettings{
 		DatabasePath:        cfg.DatabasePath,

@@ -31,9 +31,9 @@ func GetCertificates(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch certificates: " + err.Error()})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
-		"data": certificates,
+		"data":  certificates,
 		"count": len(certificates),
 	})
 }
@@ -248,7 +248,7 @@ func GetCertificateProxies(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"data": proxies,
+		"data":  proxies,
 		"count": len(proxies),
 	})
 }
@@ -286,7 +286,7 @@ func RenewCertificate(c *gin.Context) {
 
 	// Create certificate service
 	certService := services.NewCertificateService("/etc/ssl/certs")
-	
+
 	// Renew certificate using Let's Encrypt
 	renewedCert, err := certService.RenewCertificate(certificate)
 	if err != nil {
@@ -335,7 +335,7 @@ func GenerateLetsEncryptCertificate(c *gin.Context) {
 
 	// Create certificate service
 	certService := services.NewCertificateService("/etc/ssl/certs")
-	
+
 	// Generate Let's Encrypt certificate
 	certificate, err := certService.GenerateLetsEncryptCertificate(req.Domain)
 	if err != nil {

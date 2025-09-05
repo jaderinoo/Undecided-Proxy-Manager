@@ -4,53 +4,57 @@
       <v-icon :color="getStatusIconColor()" class="mr-2" size="small">
         {{ getStatusIcon() }}
       </v-icon>
-      <span class="text-subtitle-1 font-weight-medium text-grey-darken-3">{{ certificate.domain }}</span>
+      <span class="text-subtitle-1 font-weight-medium text-grey-darken-3">{{
+        certificate.domain
+      }}</span>
       <v-spacer></v-spacer>
-      <v-chip 
-        :color="getValidityChipColor()" 
-        size="x-small"
-        class="mr-2"
-      >
+      <v-chip :color="getValidityChipColor()" size="x-small" class="mr-2">
         {{ certificate.is_valid ? 'Valid' : 'Invalid' }}
       </v-chip>
-      <v-chip 
-        :color="getExpiryChipColor()" 
-        size="x-small"
-        class="mr-2"
-      >
+      <v-chip :color="getExpiryChipColor()" size="x-small" class="mr-2">
         {{ getExpiryText() }}
       </v-chip>
-      <v-btn
-        icon
-        size="x-small"
-        @click="toggleExpanded"
-      >
-        <v-icon size="small" color="grey-darken-2">{{ expanded ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+      <v-btn icon size="x-small" @click="toggleExpanded">
+        <v-icon size="small" color="grey-darken-2">{{
+          expanded ? 'mdi-chevron-up' : 'mdi-chevron-down'
+        }}</v-icon>
       </v-btn>
     </v-card-title>
 
     <v-card-text class="py-2">
       <v-row>
         <v-col cols="12" md="6">
-          <div class="text-caption text-grey-darken-2 mb-1">Certificate Path</div>
-          <div class="text-body-2 text-grey-darken-3 mb-1 font-mono">{{ certificate.cert_path }}</div>
-          
+          <div class="text-caption text-grey-darken-2 mb-1">
+            Certificate Path
+          </div>
+          <div class="text-body-2 text-grey-darken-3 mb-1 font-mono">
+            {{ certificate.cert_path }}
+          </div>
+
           <div class="text-caption text-grey-darken-2 mb-1">Key Path</div>
-          <div class="text-body-2 text-grey-darken-3 mb-1 font-mono">{{ certificate.key_path }}</div>
+          <div class="text-body-2 text-grey-darken-3 mb-1 font-mono">
+            {{ certificate.key_path }}
+          </div>
         </v-col>
-        
+
         <v-col cols="12" md="6">
           <div class="text-caption text-grey-darken-2 mb-1">Expires At</div>
-          <div class="text-body-2 text-grey-darken-3 mb-1">{{ formatDate(certificate.expires_at) }}</div>
-          
+          <div class="text-body-2 text-grey-darken-3 mb-1">
+            {{ formatDate(certificate.expires_at) }}
+          </div>
+
           <div class="text-caption text-grey-darken-2 mb-1">Created</div>
-          <div class="text-body-2 text-grey-darken-3 mb-1">{{ formatDate(certificate.created_at) }}</div>
+          <div class="text-body-2 text-grey-darken-3 mb-1">
+            {{ formatDate(certificate.created_at) }}
+          </div>
         </v-col>
       </v-row>
 
       <!-- Associated Proxies -->
       <div v-if="proxies.length > 0" class="mt-2">
-        <div class="text-caption text-grey-darken-2 mb-1">Associated Proxies</div>
+        <div class="text-caption text-grey-darken-2 mb-1">
+          Associated Proxies
+        </div>
         <div class="d-flex flex-wrap gap-1">
           <v-chip
             v-for="proxy in proxies"
@@ -69,16 +73,24 @@
       <v-expand-transition>
         <div v-if="expanded" class="mt-2">
           <v-divider class="mb-2"></v-divider>
-          
+
           <v-row>
             <v-col cols="12" md="6">
-              <div class="text-caption text-grey-darken-2 mb-1">Last Updated</div>
-              <div class="text-body-2 text-grey-darken-3 mb-2">{{ formatDate(certificate.updated_at) }}</div>
-              
-              <div class="text-caption text-grey-darken-2 mb-1">Days Until Expiry</div>
-              <div class="text-body-2 text-grey-darken-3 mb-2">{{ getDaysUntilExpiry() }}</div>
+              <div class="text-caption text-grey-darken-2 mb-1">
+                Last Updated
+              </div>
+              <div class="text-body-2 text-grey-darken-3 mb-2">
+                {{ formatDate(certificate.updated_at) }}
+              </div>
+
+              <div class="text-caption text-grey-darken-2 mb-1">
+                Days Until Expiry
+              </div>
+              <div class="text-body-2 text-grey-darken-3 mb-2">
+                {{ getDaysUntilExpiry() }}
+              </div>
             </v-col>
-            
+
             <v-col cols="12" md="6">
               <div class="text-caption text-grey-darken-2 mb-1">Actions</div>
               <div class="d-flex flex-wrap gap-1">
@@ -117,7 +129,9 @@
 
           <!-- Proxies List -->
           <div v-if="showProxies && proxies.length > 0" class="mt-2">
-            <div class="text-caption text-grey-darken-2 mb-1">Proxy Details</div>
+            <div class="text-caption text-grey-darken-2 mb-1">
+              Proxy Details
+            </div>
             <v-list density="compact">
               <v-list-item
                 v-for="proxy in proxies"
@@ -125,7 +139,9 @@
                 class="px-0 py-1"
               >
                 <template v-slot:prepend>
-                  <v-icon size="x-small" color="grey-darken-2">mdi-server-network</v-icon>
+                  <v-icon size="x-small" color="grey-darken-2"
+                    >mdi-server-network</v-icon
+                  >
                 </template>
                 <v-list-item-title class="text-body-2 text-grey-darken-3">
                   {{ proxy.name }}
@@ -152,172 +168,190 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import type { Certificate, Proxy } from '../types/api'
-import apiService from '../services/api'
+import { ref } from 'vue';
+import type { Certificate, Proxy } from '../types/api';
+import apiService from '../services/api';
 
 interface Props {
-  certificate: Certificate
+  certificate: Certificate;
 }
 
-const props = defineProps<Props>()
+const props = defineProps<Props>();
 
 const emit = defineEmits<{
-  deleted: [id: number]
-  renewed: [certificate: Certificate]
-}>()
+  deleted: [id: number];
+  renewed: [certificate: Certificate];
+}>();
 
-const expanded = ref(false)
-const showProxies = ref(false)
-const proxies = ref<Proxy[]>([])
-const isRenewing = ref(false)
-const isDeleting = ref(false)
+const expanded = ref(false);
+const showProxies = ref(false);
+const proxies = ref<Proxy[]>([]);
+const isRenewing = ref(false);
+const isDeleting = ref(false);
 
 const toggleExpanded = () => {
-  expanded.value = !expanded.value
-}
+  expanded.value = !expanded.value;
+};
 
 const viewProxies = async () => {
   if (showProxies.value) {
-    showProxies.value = false
-    return
+    showProxies.value = false;
+    return;
   }
 
   try {
-    const response = await apiService.getCertificateProxies(props.certificate.id)
-    proxies.value = response.data
-    showProxies.value = true
+    const response = await apiService.getCertificateProxies(
+      props.certificate.id
+    );
+    proxies.value = response.data;
+    showProxies.value = true;
   } catch (error) {
-    console.error('Failed to fetch certificate proxies:', error)
+    console.error('Failed to fetch certificate proxies:', error);
   }
-}
+};
 
 const renewCertificate = async () => {
-  if (isRenewing.value) return
+  if (isRenewing.value) return;
 
-  isRenewing.value = true
+  isRenewing.value = true;
   try {
-    const response = await apiService.renewCertificate(props.certificate.id)
-    emit('renewed', response.data)
+    const response = await apiService.renewCertificate(props.certificate.id);
+    emit('renewed', response.data);
   } catch (error) {
-    console.error('Failed to renew certificate:', error)
+    console.error('Failed to renew certificate:', error);
   } finally {
-    isRenewing.value = false
+    isRenewing.value = false;
   }
-}
+};
 
 const deleteCertificate = async () => {
-  if (isDeleting.value) return
+  if (isDeleting.value) return;
 
-  if (!confirm(`Are you sure you want to delete the certificate for ${props.certificate.domain}?`)) {
-    return
+  if (
+    !confirm(
+      `Are you sure you want to delete the certificate for ${props.certificate.domain}?`
+    )
+  ) {
+    return;
   }
 
-  isDeleting.value = true
+  isDeleting.value = true;
   try {
-    await apiService.deleteCertificate(props.certificate.id)
-    emit('deleted', props.certificate.id)
+    await apiService.deleteCertificate(props.certificate.id);
+    emit('deleted', props.certificate.id);
   } catch (error) {
-    console.error('Failed to delete certificate:', error)
+    console.error('Failed to delete certificate:', error);
   } finally {
-    isDeleting.value = false
+    isDeleting.value = false;
   }
-}
+};
 
 const getStatusColor = () => {
-  if (!props.certificate.is_valid) return 'red-lighten-5'
-  
-  const now = new Date()
-  const expiry = new Date(props.certificate.expires_at)
-  const daysUntilExpiry = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-  
-  if (daysUntilExpiry < 0) return 'red-lighten-5'
-  if (daysUntilExpiry < 7) return 'orange-lighten-5'
-  if (daysUntilExpiry < 30) return 'yellow-lighten-5'
-  return 'green-lighten-5'
-}
+  if (!props.certificate.is_valid) return 'red-lighten-5';
+
+  const now = new Date();
+  const expiry = new Date(props.certificate.expires_at);
+  const daysUntilExpiry = Math.ceil(
+    (expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  if (daysUntilExpiry < 0) return 'red-lighten-5';
+  if (daysUntilExpiry < 7) return 'orange-lighten-5';
+  if (daysUntilExpiry < 30) return 'yellow-lighten-5';
+  return 'green-lighten-5';
+};
 
 const getStatusIconColor = () => {
-  if (!props.certificate.is_valid) return 'red'
-  
-  const now = new Date()
-  const expiry = new Date(props.certificate.expires_at)
-  const daysUntilExpiry = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-  
-  if (daysUntilExpiry < 0) return 'red'
-  if (daysUntilExpiry < 7) return 'orange'
-  if (daysUntilExpiry < 30) return 'yellow'
-  return 'green'
-}
+  if (!props.certificate.is_valid) return 'red';
+
+  const now = new Date();
+  const expiry = new Date(props.certificate.expires_at);
+  const daysUntilExpiry = Math.ceil(
+    (expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  if (daysUntilExpiry < 0) return 'red';
+  if (daysUntilExpiry < 7) return 'orange';
+  if (daysUntilExpiry < 30) return 'yellow';
+  return 'green';
+};
 
 const getStatusIcon = () => {
-  if (!props.certificate.is_valid) return 'mdi-certificate-remove'
-  
-  const now = new Date()
-  const expiry = new Date(props.certificate.expires_at)
-  const daysUntilExpiry = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-  
-  if (daysUntilExpiry < 0) return 'mdi-certificate-remove'
-  if (daysUntilExpiry < 7) return 'mdi-certificate-alert'
-  if (daysUntilExpiry < 30) return 'mdi-certificate-clock'
-  return 'mdi-certificate'
-}
+  if (!props.certificate.is_valid) return 'mdi-certificate-remove';
+
+  const now = new Date();
+  const expiry = new Date(props.certificate.expires_at);
+  const daysUntilExpiry = Math.ceil(
+    (expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  if (daysUntilExpiry < 0) return 'mdi-certificate-remove';
+  if (daysUntilExpiry < 7) return 'mdi-certificate-alert';
+  if (daysUntilExpiry < 30) return 'mdi-certificate-clock';
+  return 'mdi-certificate';
+};
 
 const getValidityChipColor = () => {
-  return props.certificate.is_valid ? 'green' : 'red'
-}
+  return props.certificate.is_valid ? 'green' : 'red';
+};
 
 const getExpiryChipColor = () => {
-  const now = new Date()
-  const expiry = new Date(props.certificate.expires_at)
-  const daysUntilExpiry = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-  
-  if (daysUntilExpiry < 0) return 'red'
-  if (daysUntilExpiry < 7) return 'orange'
-  if (daysUntilExpiry < 30) return 'yellow'
-  return 'green'
-}
+  const now = new Date();
+  const expiry = new Date(props.certificate.expires_at);
+  const daysUntilExpiry = Math.ceil(
+    (expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  if (daysUntilExpiry < 0) return 'red';
+  if (daysUntilExpiry < 7) return 'orange';
+  if (daysUntilExpiry < 30) return 'yellow';
+  return 'green';
+};
 
 const getExpiryText = () => {
-  const now = new Date()
-  const expiry = new Date(props.certificate.expires_at)
-  const daysUntilExpiry = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+  const now = new Date();
+  const expiry = new Date(props.certificate.expires_at);
+  const daysUntilExpiry = Math.ceil(
+    (expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+  );
 
-  if (daysUntilExpiry < 0) return 'Expired'
-  if (daysUntilExpiry === 0) return 'Today'
-  if (daysUntilExpiry === 1) return 'Tomorrow'
-  if (daysUntilExpiry < 7) return `${daysUntilExpiry}d`
-  if (daysUntilExpiry < 30) return `${daysUntilExpiry}d`
-  return `${daysUntilExpiry}d`
-}
+  if (daysUntilExpiry < 0) return 'Expired';
+  if (daysUntilExpiry === 0) return 'Today';
+  if (daysUntilExpiry === 1) return 'Tomorrow';
+  if (daysUntilExpiry < 7) return `${daysUntilExpiry}d`;
+  if (daysUntilExpiry < 30) return `${daysUntilExpiry}d`;
+  return `${daysUntilExpiry}d`;
+};
 
 const getDaysUntilExpiry = () => {
-  const now = new Date()
-  const expiry = new Date(props.certificate.expires_at)
-  const daysUntilExpiry = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-  
-  if (daysUntilExpiry < 0) return 'Expired'
-  if (daysUntilExpiry === 0) return 'Expires today'
-  if (daysUntilExpiry === 1) return 'Expires tomorrow'
-  return `${daysUntilExpiry} days`
-}
+  const now = new Date();
+  const expiry = new Date(props.certificate.expires_at);
+  const daysUntilExpiry = Math.ceil(
+    (expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  if (daysUntilExpiry < 0) return 'Expired';
+  if (daysUntilExpiry === 0) return 'Expires today';
+  if (daysUntilExpiry === 1) return 'Expires tomorrow';
+  return `${daysUntilExpiry} days`;
+};
 
 const getProxyStatusColor = (status: string): string => {
   switch (status) {
     case 'active':
-      return 'green'
+      return 'green';
     case 'inactive':
-      return 'orange'
+      return 'orange';
     case 'error':
-      return 'red'
+      return 'red';
     default:
-      return 'grey'
+      return 'grey';
   }
-}
+};
 
 const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleString()
-}
+  return new Date(dateString).toLocaleString();
+};
 </script>
 
 <style scoped>

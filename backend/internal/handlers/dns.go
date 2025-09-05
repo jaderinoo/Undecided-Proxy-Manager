@@ -151,7 +151,7 @@ func GetDNSRecords(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "config_id query parameter is required"})
 		return
 	}
-	
+
 	configID, err := strconv.Atoi(configIDStr)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid config ID"})

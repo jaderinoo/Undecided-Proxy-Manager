@@ -30,7 +30,7 @@
                       <v-icon left>mdi-plus</v-icon>
                       Add Proxy
                     </v-btn>
-                    
+
                     <v-btn
                       color="primary"
                       variant="outlined"
@@ -40,7 +40,7 @@
                       <v-icon left>mdi-docker</v-icon>
                       From Container
                     </v-btn>
-                    
+
                     <v-btn
                       color="orange"
                       variant="outlined"
@@ -104,7 +104,7 @@
           <v-icon left>mdi-server-plus</v-icon>
           {{ editingProxy ? 'Edit Proxy' : 'Create New Proxy' }}
         </v-card-title>
-        
+
         <v-card-text>
           <v-form ref="formRef" v-model="formValid">
             <v-row>
@@ -118,7 +118,7 @@
                   required
                 />
               </v-col>
-              
+
               <v-col cols="12">
                 <v-text-field
                   v-model="form.domain"
@@ -130,7 +130,7 @@
                   required
                 />
               </v-col>
-              
+
               <v-col cols="12">
                 <v-text-field
                   v-model="form.target_url"
@@ -142,7 +142,7 @@
                   required
                 />
               </v-col>
-              
+
               <v-col cols="12">
                 <v-switch
                   v-model="form.ssl_enabled"
@@ -154,7 +154,7 @@
             </v-row>
           </v-form>
         </v-card-text>
-        
+
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn
@@ -181,7 +181,7 @@
     <ConfirmationDialog
       v-model:show="showDeleteDialog"
       title="Confirm Delete"
-              :message="deleteMessage"
+      :message="deleteMessage"
       icon="mdi-delete-alert"
       icon-color="error"
       confirm-text="Delete"
@@ -197,12 +197,12 @@
           <v-icon left>mdi-docker</v-icon>
           Create Proxy from Container
         </v-card-title>
-        
+
         <v-card-text>
           <ErrorAlert :error="containerError" @clear="containerError = null" />
-          
+
           <LoadingSpinner v-if="loadingContainers" />
-          
+
           <div v-else-if="containers && containers.length > 0">
             <v-text-field
               v-model="containerSearchQuery"
@@ -213,36 +213,39 @@
               clearable
               class="mb-4"
             />
-            
+
             <v-list>
               <v-list-item
                 v-for="container in filteredContainerList"
                 :key="container.id"
                 class="mb-2"
-                :class="{ 'bg-grey-lighten-4': selectedContainer?.id === container.id }"
+                :class="{
+                  'bg-grey-lighten-4': selectedContainer?.id === container.id,
+                }"
                 @click="selectContainer(container)"
                 :disabled="container.state !== 'running'"
               >
                 <template v-slot:prepend>
-                  <v-icon 
+                  <v-icon
                     :color="getContainerStatusColor(container.state)"
                     size="small"
                   >
                     {{ getContainerStatusIcon(container.state) }}
                   </v-icon>
                 </template>
-                
+
                 <v-list-item-title class="text-body-1">
                   {{ container.name || 'Unnamed Container' }}
                 </v-list-item-title>
-                
+
                 <v-list-item-subtitle class="text-caption">
                   {{ container.image }} • {{ container.state }}
                   <span v-if="container.ports && container.ports.length > 0">
-                    • Ports: {{ container.ports.map(p => p.public_port).join(', ') }}
+                    • Ports:
+                    {{ container.ports.map(p => p.public_port).join(', ') }}
                   </span>
                 </v-list-item-subtitle>
-                
+
                 <template v-slot:append>
                   <v-chip
                     :color="getContainerStatusColor(container.state)"
@@ -252,7 +255,7 @@
                   >
                     {{ container.state }}
                   </v-chip>
-                  
+
                   <v-btn
                     v-if="container.state === 'running'"
                     color="primary"
@@ -263,7 +266,7 @@
                     <v-icon left size="small">mdi-plus</v-icon>
                     Create Proxy
                   </v-btn>
-                  
+
                   <v-tooltip v-else>
                     <template v-slot:activator="{ props }">
                       <v-btn
@@ -283,14 +286,14 @@
               </v-list-item>
             </v-list>
           </div>
-          
+
           <v-empty-state
             v-else
             title="No containers found"
             text="No Docker containers are currently available"
           />
         </v-card-text>
-        
+
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn
@@ -316,82 +319,87 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { apiService } from '../services/api'
-import AppLayout from '../components/AppLayout.vue'
-import ErrorAlert from '../components/ErrorAlert.vue'
-import LoadingSpinner from '../components/LoadingSpinner.vue'
-import ProxyCard from '../components/ProxyCard.vue'
-import PageHeader from '../components/PageHeader.vue'
-import StatsCards from '../components/StatsCards.vue'
-import FilterBar from '../components/FilterBar.vue'
-import ConfirmationDialog from '../components/ConfirmationDialog.vue'
-import type { Proxy, ProxyCreateRequest, ProxyUpdateRequest, Container } from '../types/api'
+import { ref, computed, onMounted } from 'vue';
+import { apiService } from '../services/api';
+import AppLayout from '../components/AppLayout.vue';
+import ErrorAlert from '../components/ErrorAlert.vue';
+import LoadingSpinner from '../components/LoadingSpinner.vue';
+import ProxyCard from '../components/ProxyCard.vue';
+import PageHeader from '../components/PageHeader.vue';
+import StatsCards from '../components/StatsCards.vue';
+import FilterBar from '../components/FilterBar.vue';
+import ConfirmationDialog from '../components/ConfirmationDialog.vue';
+import type {
+  Proxy,
+  ProxyCreateRequest,
+  ProxyUpdateRequest,
+  Container,
+} from '../types/api';
 
-const proxies = ref<Proxy[]>([])
-const filteredProxies = ref<Proxy[]>([])
-const loading = ref(true)
-const error = ref<string | null>(null)
-const searchQuery = ref('')
-const statusFilter = ref('')
-const sortBy = ref('name')
+const proxies = ref<Proxy[]>([]);
+const filteredProxies = ref<Proxy[]>([]);
+const loading = ref(true);
+const error = ref<string | null>(null);
+const searchQuery = ref('');
+const statusFilter = ref('');
+const sortBy = ref('name');
 
 // Container-related state
-const containers = ref<Container[]>([])
-const loadingContainers = ref(false)
-const containerError = ref<string | null>(null)
-const containerSearchQuery = ref('')
-const selectedContainer = ref<Container | null>(null)
+const containers = ref<Container[]>([]);
+const loadingContainers = ref(false);
+const containerError = ref<string | null>(null);
+const containerSearchQuery = ref('');
+const selectedContainer = ref<Container | null>(null);
 
 // Dialog states
-const showCreateDialog = ref(false)
-const showDeleteDialog = ref(false)
-const showContainerDialog = ref(false)
-const editingProxy = ref<Proxy | null>(null)
-const deletingProxy = ref<Proxy | null>(null)
-const saving = ref(false)
-const deleting = ref(false)
-const formValid = ref(false)
-const reloadingNginx = ref(false)
+const showCreateDialog = ref(false);
+const showDeleteDialog = ref(false);
+const showContainerDialog = ref(false);
+const editingProxy = ref<Proxy | null>(null);
+const deletingProxy = ref<Proxy | null>(null);
+const saving = ref(false);
+const deleting = ref(false);
+const formValid = ref(false);
+const reloadingNginx = ref(false);
 
 // Form data
 const form = ref<ProxyCreateRequest & { id?: number }>({
   name: '',
   domain: '',
   target_url: '',
-  ssl_enabled: false
-})
+  ssl_enabled: false,
+});
 
-const formRef = ref()
+const formRef = ref();
 
 const statusOptions = [
   { title: 'Active', value: 'active' },
   { title: 'Inactive', value: 'inactive' },
-  { title: 'Error', value: 'error' }
-]
+  { title: 'Error', value: 'error' },
+];
 
 const sortOptions = [
   { title: 'Name', value: 'name' },
   { title: 'Status', value: 'status' },
   { title: 'Domain', value: 'domain' },
-  { title: 'Created', value: 'created_at' }
-]
+  { title: 'Created', value: 'created_at' },
+];
 
-const activeCount = computed(() => 
-  proxies.value.filter(p => p.status === 'active').length
-)
+const activeCount = computed(
+  () => proxies.value.filter(p => p.status === 'active').length
+);
 
-const inactiveCount = computed(() => 
-  proxies.value.filter(p => p.status === 'inactive').length
-)
+const inactiveCount = computed(
+  () => proxies.value.filter(p => p.status === 'inactive').length
+);
 
-const errorCount = computed(() => 
-  proxies.value.filter(p => p.status === 'error').length
-)
+const errorCount = computed(
+  () => proxies.value.filter(p => p.status === 'error').length
+);
 
-const sslCount = computed(() => 
-  proxies.value.filter(p => p.ssl_enabled).length
-)
+const sslCount = computed(
+  () => proxies.value.filter(p => p.ssl_enabled).length
+);
 
 const proxyStats = computed(() => [
   {
@@ -400,7 +408,7 @@ const proxyStats = computed(() => [
     label: 'Active',
     icon: 'mdi-check-circle',
     color: 'green-lighten-5',
-    iconColor: 'green'
+    iconColor: 'green',
   },
   {
     key: 'inactive',
@@ -408,7 +416,7 @@ const proxyStats = computed(() => [
     label: 'Inactive',
     icon: 'mdi-pause-circle',
     color: 'orange-lighten-5',
-    iconColor: 'orange'
+    iconColor: 'orange',
   },
   {
     key: 'error',
@@ -416,7 +424,7 @@ const proxyStats = computed(() => [
     label: 'Error',
     icon: 'mdi-alert-circle',
     color: 'red-lighten-5',
-    iconColor: 'red'
+    iconColor: 'red',
   },
   {
     key: 'ssl',
@@ -424,180 +432,189 @@ const proxyStats = computed(() => [
     label: 'SSL Enabled',
     icon: 'mdi-lock',
     color: 'blue-lighten-5',
-    iconColor: 'blue'
-  }
-])
+    iconColor: 'blue',
+  },
+]);
 
-const deleteMessage = computed(() => 
-  `Are you sure you want to delete the proxy "${deletingProxy.value?.name || ''}"? This action cannot be undone.`
-)
+const deleteMessage = computed(
+  () =>
+    `Are you sure you want to delete the proxy "${deletingProxy.value?.name || ''}"? This action cannot be undone.`
+);
 
 // Container filtering
 const filteredContainerList = computed(() => {
-  let filtered = [...containers.value]
+  let filtered = [...containers.value];
 
   if (containerSearchQuery.value) {
-    const query = containerSearchQuery.value.toLowerCase()
-    filtered = filtered.filter(container => 
-      container.name.toLowerCase().includes(query) ||
-      container.image.toLowerCase().includes(query) ||
-      container.status.toLowerCase().includes(query)
-    )
+    const query = containerSearchQuery.value.toLowerCase();
+    filtered = filtered.filter(
+      container =>
+        container.name.toLowerCase().includes(query) ||
+        container.image.toLowerCase().includes(query) ||
+        container.status.toLowerCase().includes(query)
+    );
   }
 
-  return filtered
-})
+  return filtered;
+});
 
 const loadProxies = async () => {
   try {
-    loading.value = true
-    error.value = null
-    const response = await apiService.getProxies()
-    proxies.value = response.data || []
-    filteredProxies.value = [...proxies.value]
-    filterProxies()
-    updateProxyContainerRelationships()
+    loading.value = true;
+    error.value = null;
+    const response = await apiService.getProxies();
+    proxies.value = response.data || [];
+    filteredProxies.value = [...proxies.value];
+    filterProxies();
+    updateProxyContainerRelationships();
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to load proxies'
-    proxies.value = []
-    filteredProxies.value = []
+    error.value = err instanceof Error ? err.message : 'Failed to load proxies';
+    proxies.value = [];
+    filteredProxies.value = [];
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 const loadContainers = async () => {
   try {
-    loadingContainers.value = true
-    containerError.value = null
-    const response = await apiService.getContainers()
-    containers.value = response.containers || []
-    updateProxyContainerRelationships()
+    loadingContainers.value = true;
+    containerError.value = null;
+    const response = await apiService.getContainers();
+    containers.value = response.containers || [];
+    updateProxyContainerRelationships();
   } catch (err) {
-    containerError.value = err instanceof Error ? err.message : 'Failed to load containers'
-    containers.value = []
+    containerError.value =
+      err instanceof Error ? err.message : 'Failed to load containers';
+    containers.value = [];
   } finally {
-    loadingContainers.value = false
+    loadingContainers.value = false;
   }
-}
+};
 
 const filterProxies = () => {
-  let filtered = [...proxies.value]
+  let filtered = [...proxies.value];
 
   // Search filter
   if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(proxy => 
-      proxy.name.toLowerCase().includes(query) ||
-      proxy.domain.toLowerCase().includes(query) ||
-      proxy.target_url.toLowerCase().includes(query)
-    )
+    const query = searchQuery.value.toLowerCase();
+    filtered = filtered.filter(
+      proxy =>
+        proxy.name.toLowerCase().includes(query) ||
+        proxy.domain.toLowerCase().includes(query) ||
+        proxy.target_url.toLowerCase().includes(query)
+    );
   }
 
   // Status filter
   if (statusFilter.value) {
-    filtered = filtered.filter(proxy => proxy.status === statusFilter.value)
+    filtered = filtered.filter(proxy => proxy.status === statusFilter.value);
   }
 
   // Sort
   filtered.sort((a, b) => {
     switch (sortBy.value) {
       case 'name':
-        return a.name.localeCompare(b.name)
+        return a.name.localeCompare(b.name);
       case 'status':
-        return a.status.localeCompare(b.status)
+        return a.status.localeCompare(b.status);
       case 'domain':
-        return a.domain.localeCompare(b.domain)
+        return a.domain.localeCompare(b.domain);
       case 'created_at':
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        return (
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
       default:
-        return 0
+        return 0;
     }
-  })
+  });
 
-  filteredProxies.value = filtered
-}
+  filteredProxies.value = filtered;
+};
 
 const sortProxies = () => {
-  filterProxies()
-}
+  filterProxies();
+};
 
 // Relationship matching logic
 const updateProxyContainerRelationships = () => {
   // Clear existing relationships
   proxies.value.forEach(proxy => {
-    proxy.connected_containers = []
-  })
+    proxy.connected_containers = [];
+  });
   containers.value.forEach(container => {
-    container.connected_proxies = []
-  })
+    container.connected_proxies = [];
+  });
 
   // Match proxies to containers based on target URL
   proxies.value.forEach(proxy => {
-    const targetUrl = new URL(proxy.target_url)
-    const targetPort = parseInt(targetUrl.port) || (targetUrl.protocol === 'https:' ? 443 : 80)
-    
+    const targetUrl = new URL(proxy.target_url);
+    const targetPort =
+      parseInt(targetUrl.port) || (targetUrl.protocol === 'https:' ? 443 : 80);
+
     containers.value.forEach(container => {
       if (container.state === 'running' && container.ports) {
         // Check if any container port matches the proxy target port
-        const matchingPort = container.ports.find(port => 
-          port.public_port === targetPort || 
-          (targetUrl.hostname === 'localhost' && port.public_port === targetPort)
-        )
-        
+        const matchingPort = container.ports.find(
+          port =>
+            port.public_port === targetPort ||
+            (targetUrl.hostname === 'localhost' &&
+              port.public_port === targetPort)
+        );
+
         if (matchingPort) {
           // Add container to proxy's connected containers
           if (!proxy.connected_containers) {
-            proxy.connected_containers = []
+            proxy.connected_containers = [];
           }
-          proxy.connected_containers.push(container)
-          
+          proxy.connected_containers.push(container);
+
           // Add proxy to container's connected proxies
           if (!container.connected_proxies) {
-            container.connected_proxies = []
+            container.connected_proxies = [];
           }
-          container.connected_proxies.push(proxy)
+          container.connected_proxies.push(proxy);
         }
       }
-    })
-  })
-}
+    });
+  });
+};
 
 const editProxy = (proxy: Proxy) => {
-  editingProxy.value = proxy
+  editingProxy.value = proxy;
   form.value = {
     id: proxy.id,
     name: proxy.name,
     domain: proxy.domain,
     target_url: proxy.target_url,
-    ssl_enabled: proxy.ssl_enabled
-  }
-  showCreateDialog.value = true
-}
+    ssl_enabled: proxy.ssl_enabled,
+  };
+  showCreateDialog.value = true;
+};
 
 const deleteProxy = (proxy: Proxy) => {
-  deletingProxy.value = proxy
-  showDeleteDialog.value = true
-}
+  deletingProxy.value = proxy;
+  showDeleteDialog.value = true;
+};
 
 const cancelEdit = () => {
-  showCreateDialog.value = false
-  editingProxy.value = null
+  showCreateDialog.value = false;
+  editingProxy.value = null;
   form.value = {
     name: '',
     domain: '',
     target_url: '',
-    ssl_enabled: false
-  }
-  formRef.value?.reset()
-}
+    ssl_enabled: false,
+  };
+  formRef.value?.reset();
+};
 
 const saveProxy = async () => {
-  if (!formValid.value) return
+  if (!formValid.value) return;
 
   try {
-    saving.value = true
-    error.value = null
+    saving.value = true;
+    error.value = null;
 
     if (editingProxy.value) {
       // Update existing proxy
@@ -605,92 +622,102 @@ const saveProxy = async () => {
         name: form.value.name,
         domain: form.value.domain,
         target_url: form.value.target_url,
-        ssl_enabled: form.value.ssl_enabled
-      }
-      await apiService.updateProxy(editingProxy.value.id, updateData)
+        ssl_enabled: form.value.ssl_enabled,
+      };
+      await apiService.updateProxy(editingProxy.value.id, updateData);
     } else {
       // Create new proxy
       const createData: ProxyCreateRequest = {
         name: form.value.name,
         domain: form.value.domain,
         target_url: form.value.target_url,
-        ssl_enabled: form.value.ssl_enabled
-      }
-      await apiService.createProxy(createData)
+        ssl_enabled: form.value.ssl_enabled,
+      };
+      await apiService.createProxy(createData);
     }
 
-    await loadProxies()
-    cancelEdit()
+    await loadProxies();
+    cancelEdit();
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to save proxy'
+    error.value = err instanceof Error ? err.message : 'Failed to save proxy';
   } finally {
-    saving.value = false
+    saving.value = false;
   }
-}
+};
 
 const confirmDelete = async () => {
-  if (!deletingProxy.value) return
+  if (!deletingProxy.value) return;
 
   try {
-    deleting.value = true
-    error.value = null
+    deleting.value = true;
+    error.value = null;
 
-    await apiService.deleteProxy(deletingProxy.value.id)
-    await loadProxies()
-    showDeleteDialog.value = false
-    deletingProxy.value = null
+    await apiService.deleteProxy(deletingProxy.value.id);
+    await loadProxies();
+    showDeleteDialog.value = false;
+    deletingProxy.value = null;
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to delete proxy'
+    error.value = err instanceof Error ? err.message : 'Failed to delete proxy';
   } finally {
-    deleting.value = false
+    deleting.value = false;
   }
-}
+};
 
 // Container utility methods
 const getContainerStatusColor = (state: string) => {
   switch (state) {
-    case 'running': return 'green'
-    case 'exited': return 'red'
-    case 'created': return 'blue'
-    case 'paused': return 'orange'
-    default: return 'grey'
+    case 'running':
+      return 'green';
+    case 'exited':
+      return 'red';
+    case 'created':
+      return 'blue';
+    case 'paused':
+      return 'orange';
+    default:
+      return 'grey';
   }
-}
+};
 
 const getContainerStatusIcon = (state: string) => {
   switch (state) {
-    case 'running': return 'mdi-play-circle'
-    case 'exited': return 'mdi-stop-circle'
-    case 'created': return 'mdi-plus-circle'
-    case 'paused': return 'mdi-pause-circle'
-    default: return 'mdi-help-circle'
+    case 'running':
+      return 'mdi-play-circle';
+    case 'exited':
+      return 'mdi-stop-circle';
+    case 'created':
+      return 'mdi-plus-circle';
+    case 'paused':
+      return 'mdi-pause-circle';
+    default:
+      return 'mdi-help-circle';
   }
-}
+};
 
 const getContainerTargetUrl = (container: Container) => {
   // Try to find a port mapping for common web ports
-  const webPorts = [80, 3000, 5000, 8000, 8080, 9000]
-  
+  const webPorts = [80, 3000, 5000, 8000, 8080, 9000];
+
   for (const port of webPorts) {
-    const portMapping = container.ports?.find(p => p.private_port === port)
+    const portMapping = container.ports?.find(p => p.private_port === port);
     if (portMapping) {
-      return `http://localhost:${portMapping.public_port}`
+      return `http://localhost:${portMapping.public_port}`;
     }
   }
-  
+
   // If no web port found, use the first available port
   if (container.ports && container.ports.length > 0) {
-    const firstPort = container.ports[0]
-    return `http://localhost:${firstPort.public_port}`
+    const firstPort = container.ports[0];
+    return `http://localhost:${firstPort.public_port}`;
   }
-  
+
   // Fallback to localhost:3000
-  return 'http://localhost:3000'
-}
+  return 'http://localhost:3000';
+};
 
 const selectContainer = (container: Container) => {
-  selectedContainer.value = container
-}
+  selectedContainer.value = container;
+};
 
 const createProxyFromContainer = (container: Container) => {
   // Pre-fill the form with container information
@@ -698,39 +725,34 @@ const createProxyFromContainer = (container: Container) => {
     name: `${container.name || 'container'}-proxy`,
     domain: `${container.name || 'container'}.example.com`,
     target_url: getContainerTargetUrl(container),
-    ssl_enabled: false
-  }
-  
+    ssl_enabled: false,
+  };
+
   // Close container dialog and open create dialog
-  showContainerDialog.value = false
-  showCreateDialog.value = true
-  formValid.value = false
-}
+  showContainerDialog.value = false;
+  showCreateDialog.value = true;
+  formValid.value = false;
+};
 
 const reloadNginx = async () => {
   try {
-    reloadingNginx.value = true
-    error.value = null
-    
-    await apiService.reloadNginx()
-    
-    // Show success message (you could add a toast notification here)
-    console.log('Nginx reloaded successfully')
-    
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to reload nginx'
-  } finally {
-    reloadingNginx.value = false
-  }
-}
+    reloadingNginx.value = true;
+    error.value = null;
 
+    await apiService.reloadNginx();
+
+    // Show success message (you could add a toast notification here)
+    console.log('Nginx reloaded successfully');
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to reload nginx';
+  } finally {
+    reloadingNginx.value = false;
+  }
+};
 
 onMounted(async () => {
-  await Promise.all([
-    loadProxies(),
-    loadContainers()
-  ])
-})
+  await Promise.all([loadProxies(), loadContainers()]);
+});
 </script>
 
 <style scoped>

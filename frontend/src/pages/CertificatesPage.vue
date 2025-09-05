@@ -48,7 +48,9 @@
                 <StatsCards :stats="certificateStats" />
 
                 <!-- Certificate List -->
-                <div v-if="filteredCertificates && filteredCertificates.length > 0">
+                <div
+                  v-if="filteredCertificates && filteredCertificates.length > 0"
+                >
                   <CertificateCard
                     v-for="certificate in filteredCertificates"
                     :key="certificate.id"
@@ -83,7 +85,7 @@
           <v-icon left color="primary">mdi-certificate-plus</v-icon>
           Add New Certificate
         </v-card-title>
-        
+
         <v-card-text>
           <v-form @submit.prevent="createCertificate" ref="form">
             <v-row>
@@ -97,7 +99,7 @@
                   required
                 ></v-text-field>
               </v-col>
-              
+
               <v-col cols="12">
                 <v-text-field
                   v-model="newCertificate.cert_path"
@@ -108,7 +110,7 @@
                   required
                 ></v-text-field>
               </v-col>
-              
+
               <v-col cols="12">
                 <v-text-field
                   v-model="newCertificate.key_path"
@@ -119,7 +121,7 @@
                   required
                 ></v-text-field>
               </v-col>
-              
+
               <v-col cols="12">
                 <v-text-field
                   v-model="newCertificate.expires_at"
@@ -133,14 +135,10 @@
             </v-row>
           </v-form>
         </v-card-text>
-        
+
         <v-card-actions class="pa-4">
           <v-spacer></v-spacer>
-          <v-btn
-            color="grey"
-            variant="text"
-            @click="closeCreateDialog"
-          >
+          <v-btn color="grey" variant="text" @click="closeCreateDialog">
             Cancel
           </v-btn>
           <v-btn
@@ -157,69 +155,72 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import type { Certificate, CertificateCreateRequest } from '../types/api'
-import apiService from '../services/api'
-import AppLayout from '../components/AppLayout.vue'
-import ErrorAlert from '../components/ErrorAlert.vue'
-import LoadingSpinner from '../components/LoadingSpinner.vue'
-import CertificateCard from '../components/CertificateCard.vue'
-import PageHeader from '../components/PageHeader.vue'
-import StatsCards from '../components/StatsCards.vue'
-import FilterBar from '../components/FilterBar.vue'
+import { ref, computed, onMounted } from 'vue';
+import type { Certificate, CertificateCreateRequest } from '../types/api';
+import apiService from '../services/api';
+import AppLayout from '../components/AppLayout.vue';
+import ErrorAlert from '../components/ErrorAlert.vue';
+import LoadingSpinner from '../components/LoadingSpinner.vue';
+import CertificateCard from '../components/CertificateCard.vue';
+import PageHeader from '../components/PageHeader.vue';
+import StatsCards from '../components/StatsCards.vue';
+import FilterBar from '../components/FilterBar.vue';
 
-const certificates = ref<Certificate[]>([])
-const filteredCertificates = ref<Certificate[]>([])
-const isLoading = ref(false)
-const error = ref<string | null>(null)
-const showCreateDialog = ref(false)
-const isCreating = ref(false)
-const searchQuery = ref('')
-const statusFilter = ref('')
-const sortBy = ref('domain')
-const form = ref()
+const certificates = ref<Certificate[]>([]);
+const filteredCertificates = ref<Certificate[]>([]);
+const isLoading = ref(false);
+const error = ref<string | null>(null);
+const showCreateDialog = ref(false);
+const isCreating = ref(false);
+const searchQuery = ref('');
+const statusFilter = ref('');
+const sortBy = ref('domain');
+const form = ref();
 
 const newCertificate = ref<CertificateCreateRequest>({
   domain: '',
   cert_path: '',
   key_path: '',
-  expires_at: ''
-})
+  expires_at: '',
+});
 
 const statusFilterItems = [
   { title: 'All Status', value: '' },
   { title: 'Valid', value: 'valid' },
   { title: 'Invalid', value: 'invalid' },
-  { title: 'Expiring Soon', value: 'expiring' }
-]
+  { title: 'Expiring Soon', value: 'expiring' },
+];
 
 const sortOptions = [
   { title: 'Domain', value: 'domain' },
   { title: 'Status', value: 'status' },
   { title: 'Expires', value: 'expires_at' },
-  { title: 'Created', value: 'created_at' }
-]
+  { title: 'Created', value: 'created_at' },
+];
 
-const validCertificates = computed(() => 
-  certificates.value.filter(cert => cert.is_valid).length
-)
+const validCertificates = computed(
+  () => certificates.value.filter(cert => cert.is_valid).length
+);
 
-const invalidCertificates = computed(() => 
-  certificates.value.filter(cert => !cert.is_valid).length
-)
+const invalidCertificates = computed(
+  () => certificates.value.filter(cert => !cert.is_valid).length
+);
 
-const expiringSoon = computed(() => 
-  certificates.value.filter(cert => {
-    const now = new Date()
-    const expiry = new Date(cert.expires_at)
-    const daysUntilExpiry = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-    return daysUntilExpiry <= 30 && daysUntilExpiry > 0
-  }).length
-)
+const expiringSoon = computed(
+  () =>
+    certificates.value.filter(cert => {
+      const now = new Date();
+      const expiry = new Date(cert.expires_at);
+      const daysUntilExpiry = Math.ceil(
+        (expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+      );
+      return daysUntilExpiry <= 30 && daysUntilExpiry > 0;
+    }).length
+);
 
-const sslEnabledCount = computed(() => 
-  certificates.value.filter(cert => cert.is_valid).length
-)
+const sslEnabledCount = computed(
+  () => certificates.value.filter(cert => cert.is_valid).length
+);
 
 const certificateStats = computed(() => [
   {
@@ -228,7 +229,7 @@ const certificateStats = computed(() => [
     label: 'Valid',
     icon: 'mdi-check-circle',
     color: 'green-lighten-5',
-    iconColor: 'green'
+    iconColor: 'green',
   },
   {
     key: 'invalid',
@@ -236,7 +237,7 @@ const certificateStats = computed(() => [
     label: 'Invalid',
     icon: 'mdi-alert-circle',
     color: 'red-lighten-5',
-    iconColor: 'red'
+    iconColor: 'red',
   },
   {
     key: 'expiring',
@@ -244,7 +245,7 @@ const certificateStats = computed(() => [
     label: 'Expiring Soon',
     icon: 'mdi-clock-alert',
     color: 'orange-lighten-5',
-    iconColor: 'orange'
+    iconColor: 'orange',
   },
   {
     key: 'ssl',
@@ -252,128 +253,137 @@ const certificateStats = computed(() => [
     label: 'SSL Enabled',
     icon: 'mdi-lock',
     color: 'blue-lighten-5',
-    iconColor: 'blue'
-  }
-])
+    iconColor: 'blue',
+  },
+]);
 
 const loadCertificates = async () => {
   try {
-    isLoading.value = true
-    error.value = null
-    const response = await apiService.getCertificates()
-    certificates.value = response.data || []
-    filteredCertificates.value = [...certificates.value]
-    filterCertificates()
+    isLoading.value = true;
+    error.value = null;
+    const response = await apiService.getCertificates();
+    certificates.value = response.data || [];
+    filteredCertificates.value = [...certificates.value];
+    filterCertificates();
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to load certificates'
-    certificates.value = []
-    filteredCertificates.value = []
+    error.value =
+      err instanceof Error ? err.message : 'Failed to load certificates';
+    certificates.value = [];
+    filteredCertificates.value = [];
   } finally {
-    isLoading.value = false
+    isLoading.value = false;
   }
-}
+};
 
 const filterCertificates = () => {
-  let filtered = [...certificates.value]
+  let filtered = [...certificates.value];
 
   // Search filter
   if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(cert => 
-      cert.domain.toLowerCase().includes(query) ||
-      cert.cert_path.toLowerCase().includes(query) ||
-      cert.key_path.toLowerCase().includes(query)
-    )
+    const query = searchQuery.value.toLowerCase();
+    filtered = filtered.filter(
+      cert =>
+        cert.domain.toLowerCase().includes(query) ||
+        cert.cert_path.toLowerCase().includes(query) ||
+        cert.key_path.toLowerCase().includes(query)
+    );
   }
 
   // Status filter
   if (statusFilter.value) {
-    const now = new Date()
+    const now = new Date();
     filtered = filtered.filter(cert => {
-      const expiry = new Date(cert.expires_at)
-      const daysUntilExpiry = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+      const expiry = new Date(cert.expires_at);
+      const daysUntilExpiry = Math.ceil(
+        (expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+      );
 
       switch (statusFilter.value) {
         case 'valid':
-          return cert.is_valid && daysUntilExpiry > 0
+          return cert.is_valid && daysUntilExpiry > 0;
         case 'invalid':
-          return !cert.is_valid || daysUntilExpiry <= 0
+          return !cert.is_valid || daysUntilExpiry <= 0;
         case 'expiring':
-          return daysUntilExpiry <= 30 && daysUntilExpiry > 0
+          return daysUntilExpiry <= 30 && daysUntilExpiry > 0;
         default:
-          return true
+          return true;
       }
-    })
+    });
   }
 
   // Sort
   filtered.sort((a, b) => {
     switch (sortBy.value) {
       case 'domain':
-        return a.domain.localeCompare(b.domain)
+        return a.domain.localeCompare(b.domain);
       case 'status':
-        return a.is_valid === b.is_valid ? 0 : a.is_valid ? -1 : 1
+        return a.is_valid === b.is_valid ? 0 : a.is_valid ? -1 : 1;
       case 'expires_at':
-        return new Date(a.expires_at).getTime() - new Date(b.expires_at).getTime()
+        return (
+          new Date(a.expires_at).getTime() - new Date(b.expires_at).getTime()
+        );
       case 'created_at':
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        return (
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
       default:
-        return 0
+        return 0;
     }
-  })
+  });
 
-  filteredCertificates.value = filtered
-}
-
+  filteredCertificates.value = filtered;
+};
 
 const createCertificate = async () => {
-  if (isCreating.value) return
+  if (isCreating.value) return;
 
-  const { valid } = await form.value.validate()
-  if (!valid) return
+  const { valid } = await form.value.validate();
+  if (!valid) return;
 
   try {
-    isCreating.value = true
-    error.value = null
-    const response = await apiService.createCertificate(newCertificate.value)
-    certificates.value.unshift(response.data)
-    filterCertificates()
-    closeCreateDialog()
+    isCreating.value = true;
+    error.value = null;
+    const response = await apiService.createCertificate(newCertificate.value);
+    certificates.value.unshift(response.data);
+    filterCertificates();
+    closeCreateDialog();
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to create certificate'
+    error.value =
+      err instanceof Error ? err.message : 'Failed to create certificate';
   } finally {
-    isCreating.value = false
+    isCreating.value = false;
   }
-}
+};
 
 const closeCreateDialog = () => {
-  showCreateDialog.value = false
+  showCreateDialog.value = false;
   newCertificate.value = {
     domain: '',
     cert_path: '',
     key_path: '',
-    expires_at: ''
-  }
-  form.value?.reset()
-}
+    expires_at: '',
+  };
+  form.value?.reset();
+};
 
 const handleCertificateDeleted = (id: number) => {
-  certificates.value = certificates.value.filter(cert => cert.id !== id)
-  filterCertificates()
-}
+  certificates.value = certificates.value.filter(cert => cert.id !== id);
+  filterCertificates();
+};
 
 const handleCertificateRenewed = (certificate: Certificate) => {
-  const index = certificates.value.findIndex(cert => cert.id === certificate.id)
+  const index = certificates.value.findIndex(
+    cert => cert.id === certificate.id
+  );
   if (index !== -1) {
-    certificates.value[index] = certificate
-    filterCertificates()
+    certificates.value[index] = certificate;
+    filterCertificates();
   }
-}
-
+};
 
 onMounted(() => {
-  loadCertificates()
-})
+  loadCertificates();
+});
 </script>
 
 <style scoped>

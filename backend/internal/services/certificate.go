@@ -14,9 +14,9 @@ import (
 )
 
 type CertificateService struct {
-	CertPath      string
-	LetsEncrypt   *LetsEncryptService
-	config        *config.Config
+	CertPath    string
+	LetsEncrypt *LetsEncryptService
+	config      *config.Config
 }
 
 func NewCertificateService(certPath string) *CertificateService {
@@ -146,7 +146,7 @@ func (c *CertificateService) RenewCertificate(cert *models.Certificate) (*models
 func (c *CertificateService) CheckCertificateExpiry(cert *models.Certificate) (bool, int) {
 	now := time.Now()
 	daysUntilExpiry := int(cert.ExpiresAt.Sub(now).Hours() / 24)
-	
+
 	// Consider expiring if less than 30 days
 	return daysUntilExpiry <= 30, daysUntilExpiry
 }
@@ -170,12 +170,12 @@ func (c *CertificateService) GetCertificateInfo(certPath string) (*CertificateIn
 	}
 
 	return &CertificateInfo{
-		Subject:    cert.Subject.CommonName,
-		Issuer:     cert.Issuer.CommonName,
-		NotBefore:  cert.NotBefore,
-		NotAfter:   cert.NotAfter,
-		DNSNames:   cert.DNSNames,
-		IsValid:    time.Now().After(cert.NotBefore) && time.Now().Before(cert.NotAfter),
+		Subject:   cert.Subject.CommonName,
+		Issuer:    cert.Issuer.CommonName,
+		NotBefore: cert.NotBefore,
+		NotAfter:  cert.NotAfter,
+		DNSNames:  cert.DNSNames,
+		IsValid:   time.Now().After(cert.NotBefore) && time.Now().Before(cert.NotAfter),
 	}, nil
 }
 

@@ -77,55 +77,55 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { apiService } from '../services/api'
-import AppLayout from '../components/AppLayout.vue'
-import ErrorAlert from '../components/ErrorAlert.vue'
-import LoadingSpinner from '../components/LoadingSpinner.vue'
-import ContainerCard from '../components/ContainerCard.vue'
-import PageHeader from '../components/PageHeader.vue'
-import StatsCards from '../components/StatsCards.vue'
-import FilterBar from '../components/FilterBar.vue'
-import type { Container, Proxy } from '../types/api'
+import { ref, computed, onMounted } from 'vue';
+import { apiService } from '../services/api';
+import AppLayout from '../components/AppLayout.vue';
+import ErrorAlert from '../components/ErrorAlert.vue';
+import LoadingSpinner from '../components/LoadingSpinner.vue';
+import ContainerCard from '../components/ContainerCard.vue';
+import PageHeader from '../components/PageHeader.vue';
+import StatsCards from '../components/StatsCards.vue';
+import FilterBar from '../components/FilterBar.vue';
+import type { Container, Proxy } from '../types/api';
 
-const containers = ref<Container[]>([])
-const filteredContainers = ref<Container[]>([])
-const proxies = ref<Proxy[]>([])
-const loading = ref(true)
-const error = ref<string | null>(null)
-const searchQuery = ref('')
-const statusFilter = ref('')
-const sortBy = ref('name')
+const containers = ref<Container[]>([]);
+const filteredContainers = ref<Container[]>([]);
+const proxies = ref<Proxy[]>([]);
+const loading = ref(true);
+const error = ref<string | null>(null);
+const searchQuery = ref('');
+const statusFilter = ref('');
+const sortBy = ref('name');
 
 const statusOptions = [
   { title: 'Running', value: 'running' },
   { title: 'Stopped', value: 'exited' },
   { title: 'Created', value: 'created' },
-  { title: 'Paused', value: 'paused' }
-]
+  { title: 'Paused', value: 'paused' },
+];
 
 const sortOptions = [
   { title: 'Name', value: 'name' },
   { title: 'Status', value: 'state' },
   { title: 'Created', value: 'created' },
-  { title: 'Image', value: 'image' }
-]
+  { title: 'Image', value: 'image' },
+];
 
-const runningCount = computed(() => 
-  containers.value.filter(c => c.state === 'running').length
-)
+const runningCount = computed(
+  () => containers.value.filter(c => c.state === 'running').length
+);
 
-const stoppedCount = computed(() => 
-  containers.value.filter(c => c.state === 'exited').length
-)
+const stoppedCount = computed(
+  () => containers.value.filter(c => c.state === 'exited').length
+);
 
-const createdCount = computed(() => 
-  containers.value.filter(c => c.state === 'created').length
-)
+const createdCount = computed(
+  () => containers.value.filter(c => c.state === 'created').length
+);
 
-const pausedCount = computed(() => 
-  containers.value.filter(c => c.state === 'paused').length
-)
+const pausedCount = computed(
+  () => containers.value.filter(c => c.state === 'paused').length
+);
 
 const containerStats = computed(() => [
   {
@@ -134,7 +134,7 @@ const containerStats = computed(() => [
     label: 'Running',
     icon: 'mdi-play-circle',
     color: 'green-lighten-5',
-    iconColor: 'green'
+    iconColor: 'green',
   },
   {
     key: 'stopped',
@@ -142,7 +142,7 @@ const containerStats = computed(() => [
     label: 'Stopped',
     icon: 'mdi-stop-circle',
     color: 'red-lighten-5',
-    iconColor: 'red'
+    iconColor: 'red',
   },
   {
     key: 'created',
@@ -150,7 +150,7 @@ const containerStats = computed(() => [
     label: 'Created',
     icon: 'mdi-plus-circle',
     color: 'blue-lighten-5',
-    iconColor: 'blue'
+    iconColor: 'blue',
   },
   {
     key: 'paused',
@@ -158,140 +158,143 @@ const containerStats = computed(() => [
     label: 'Paused',
     icon: 'mdi-pause-circle',
     color: 'orange-lighten-5',
-    iconColor: 'orange'
-  }
-])
+    iconColor: 'orange',
+  },
+]);
 
 const loadContainers = async () => {
   try {
-    loading.value = true
-    error.value = null
-    const response = await apiService.getContainers()
-    containers.value = response.containers || []
-    filteredContainers.value = [...containers.value]
-    filterContainers()
-    updateContainerProxyRelationships()
+    loading.value = true;
+    error.value = null;
+    const response = await apiService.getContainers();
+    containers.value = response.containers || [];
+    filteredContainers.value = [...containers.value];
+    filterContainers();
+    updateContainerProxyRelationships();
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to load containers'
-    containers.value = []
-    filteredContainers.value = []
+    error.value =
+      err instanceof Error ? err.message : 'Failed to load containers';
+    containers.value = [];
+    filteredContainers.value = [];
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 const loadProxies = async () => {
   try {
-    const response = await apiService.getProxies()
-    proxies.value = response.data || []
-    updateContainerProxyRelationships()
+    const response = await apiService.getProxies();
+    proxies.value = response.data || [];
+    updateContainerProxyRelationships();
   } catch (err) {
-    console.error('Failed to load proxies:', err)
-    proxies.value = []
+    console.error('Failed to load proxies:', err);
+    proxies.value = [];
   }
-}
+};
 
 // Relationship matching logic
 const updateContainerProxyRelationships = () => {
   // Clear existing relationships
   containers.value.forEach(container => {
-    container.connected_proxies = []
-  })
+    container.connected_proxies = [];
+  });
   proxies.value.forEach(proxy => {
-    proxy.connected_containers = []
-  })
+    proxy.connected_containers = [];
+  });
 
   // Match containers to proxies based on target URL
   proxies.value.forEach(proxy => {
-    const targetUrl = new URL(proxy.target_url)
-    const targetPort = parseInt(targetUrl.port) || (targetUrl.protocol === 'https:' ? 443 : 80)
-    
+    const targetUrl = new URL(proxy.target_url);
+    const targetPort =
+      parseInt(targetUrl.port) || (targetUrl.protocol === 'https:' ? 443 : 80);
+
     containers.value.forEach(container => {
       if (container.state === 'running' && container.ports) {
         // Check if any container port matches the proxy target port
-        const matchingPort = container.ports.find(port => 
-          port.public_port === targetPort || 
-          (targetUrl.hostname === 'localhost' && port.public_port === targetPort)
-        )
-        
+        const matchingPort = container.ports.find(
+          port =>
+            port.public_port === targetPort ||
+            (targetUrl.hostname === 'localhost' &&
+              port.public_port === targetPort)
+        );
+
         if (matchingPort) {
           // Add container to proxy's connected containers
           if (!proxy.connected_containers) {
-            proxy.connected_containers = []
+            proxy.connected_containers = [];
           }
-          proxy.connected_containers.push(container)
-          
+          proxy.connected_containers.push(container);
+
           // Add proxy to container's connected proxies
           if (!container.connected_proxies) {
-            container.connected_proxies = []
+            container.connected_proxies = [];
           }
-          container.connected_proxies.push(proxy)
+          container.connected_proxies.push(proxy);
         }
       }
-    })
-  })
-}
+    });
+  });
+};
 
 const filterContainers = () => {
-  let filtered = [...containers.value]
+  let filtered = [...containers.value];
 
   // Search filter
   if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(container => 
-      container.name.toLowerCase().includes(query) ||
-      container.image.toLowerCase().includes(query) ||
-      container.status.toLowerCase().includes(query) ||
-      container.command.toLowerCase().includes(query)
-    )
+    const query = searchQuery.value.toLowerCase();
+    filtered = filtered.filter(
+      container =>
+        container.name.toLowerCase().includes(query) ||
+        container.image.toLowerCase().includes(query) ||
+        container.status.toLowerCase().includes(query) ||
+        container.command.toLowerCase().includes(query)
+    );
   }
 
   // Status filter
   if (statusFilter.value) {
-    filtered = filtered.filter(container => container.state === statusFilter.value)
+    filtered = filtered.filter(
+      container => container.state === statusFilter.value
+    );
   }
 
   // Sort
   filtered.sort((a, b) => {
     // Always prioritize containers with connected proxies first
-    const aHasProxies = a.connected_proxies && a.connected_proxies.length > 0
-    const bHasProxies = b.connected_proxies && b.connected_proxies.length > 0
-    
-    if (aHasProxies && !bHasProxies) return -1
-    if (bHasProxies && !aHasProxies) return 1
-    
+    const aHasProxies = a.connected_proxies && a.connected_proxies.length > 0;
+    const bHasProxies = b.connected_proxies && b.connected_proxies.length > 0;
+
+    if (aHasProxies && !bHasProxies) return -1;
+    if (bHasProxies && !aHasProxies) return 1;
+
     // Then prioritize running containers
-    if (a.state === 'running' && b.state !== 'running') return -1
-    if (b.state === 'running' && a.state !== 'running') return 1
-    
+    if (a.state === 'running' && b.state !== 'running') return -1;
+    if (b.state === 'running' && a.state !== 'running') return 1;
+
     switch (sortBy.value) {
       case 'name':
-        return a.name.localeCompare(b.name)
+        return a.name.localeCompare(b.name);
       case 'state':
-        return a.state.localeCompare(b.state)
+        return a.state.localeCompare(b.state);
       case 'created':
-        return new Date(b.created).getTime() - new Date(a.created).getTime()
+        return new Date(b.created).getTime() - new Date(a.created).getTime();
       case 'image':
-        return a.image.localeCompare(b.image)
+        return a.image.localeCompare(b.image);
       default:
-        return 0
+        return 0;
     }
-  })
+  });
 
-  filteredContainers.value = filtered
-}
+  filteredContainers.value = filtered;
+};
 
 const sortContainers = () => {
-  filterContainers()
-}
-
+  filterContainers();
+};
 
 onMounted(async () => {
-  await Promise.all([
-    loadContainers(),
-    loadProxies()
-  ])
-})
+  await Promise.all([loadContainers(), loadProxies()]);
+});
 </script>
 
 <style scoped>

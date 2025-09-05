@@ -6,146 +6,145 @@
 
 // Core theme variables - absolute minimum needed
 :root {
-    --bg: #{$white};
-    --fg: #{$grey-900};
-    --border: #{$grey-200};
-    --primary: #{$primary-700};
-    --elevated: #{$white};
-    --text-light: #{$white};
-    --nav-bg: #{$white};
+  --bg: #{$white};
+  --fg: #{$grey-900};
+  --border: #{$grey-200};
+  --primary: #{$primary-700};
+  --elevated: #{$white};
+  --text-light: #{$white};
+  --nav-bg: #{$white};
 }
 
-[data-theme="dark"] {
-    --bg: #{$grey-900};
-    --fg: #{$grey-100};
-    --border: #{$grey-700};
-    --primary: #{$primary-300};
-    --elevated: #{$grey-800};
-    --text-light: #{$grey-100};
-    --nav-bg: #{$grey-800};
+[data-theme='dark'] {
+  --bg: #{$grey-900};
+  --fg: #{$grey-100};
+  --border: #{$grey-700};
+  --primary: #{$primary-300};
+  --elevated: #{$grey-800};
+  --text-light: #{$grey-100};
+  --nav-bg: #{$grey-800};
 }
 
 // Base styles
 body {
-    background: var(--bg);
-    color: var(--fg);
-    margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  margin: 0;
 }
 
 // Minimal component styles
 .v-app-bar {
+  background: var(--nav-bg) !important;
+  color: var(--fg) !important;
+  height: 64px;
+  border-bottom: 1px solid var(--border);
+
+  .v-toolbar__content {
     background: var(--nav-bg) !important;
+  }
+
+  .v-toolbar-title {
     color: var(--fg) !important;
-    height: 64px;
-    border-bottom: 1px solid var(--border);
+  }
 
-    .v-toolbar__content {
-        background: var(--nav-bg) !important;
-    }
+  .v-icon {
+    color: var(--fg) !important;
+  }
 
-    .v-toolbar-title {
-        color: var(--fg) !important;
-    }
-
-    .v-icon {
-        color: var(--fg) !important;
-    }
-
-    .v-btn {
-        color: var(--fg) !important;
-    }
+  .v-btn {
+    color: var(--fg) !important;
+  }
 }
 
 .v-navigation-drawer {
-    background: var(--elevated);
-    border-right: 1px solid var(--border);
+  background: var(--elevated);
+  border-right: 1px solid var(--border);
 }
 
 .v-card {
-    background: var(--elevated);
-    color: var(--fg);
-    border: 1px solid var(--border);
-    box-shadow: none;
+  background: var(--elevated);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  box-shadow: none;
 
-    &.green-lighten-5,
-    &.orange-lighten-5,
-    &.red-lighten-5,
-    &.grey-lighten-5 {
-        background: var(--elevated);
-    }
+  &.green-lighten-5,
+  &.orange-lighten-5,
+  &.red-lighten-5,
+  &.grey-lighten-5 {
+    background: var(--elevated);
+  }
 }
 
 // Fix list backgrounds inside cards
 .v-card .v-list {
-    background: transparent !important;
+  background: transparent !important;
 
-    .v-list-item {
-        background: transparent;
+  .v-list-item {
+    background: transparent;
 
-        &:hover {
-            background: var(--bg);
-        }
+    &:hover {
+      background: var(--bg);
     }
+  }
 }
 
 // Fix text colors in dark mode
-[data-theme="dark"] {
-
-    .text-grey-darken-2,
-    .text-grey-darken-3 {
-        color: var(--text-light) !important;
-    }
+[data-theme='dark'] {
+  .text-grey-darken-2,
+  .text-grey-darken-3 {
+    color: var(--text-light) !important;
+  }
 }
 
 .v-list-item {
+  color: var(--fg);
+  border-radius: 6px;
+  margin: 2px 8px;
+  border: 1px solid transparent;
+
+  &--active {
+    background: transparent;
     color: var(--fg);
-    border-radius: 6px;
-    margin: 2px 8px;
-    border: 1px solid transparent;
+    border: 1px solid var(--border);
+  }
 
-    &--active {
-        background: transparent;
-        color: var(--fg);
-        border: 1px solid var(--border);
-    }
-
-    &:hover {
-        background: var(--bg);
-    }
+  &:hover {
+    background: var(--bg);
+  }
 }
 
 // Icon base style
 .v-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
 }
 
 // Status colors
 .green {
-    color: #{$success-500} !important;
+  color: #{$success-500} !important;
 }
 
 .orange {
-    color: #{$warning-500} !important;
+  color: #{$warning-500} !important;
 }
 
 .red {
-    color: #{$error-500} !important;
+  color: #{$error-500} !important;
 }
 
 .grey {
-    color: #{$grey-500} !important;
+  color: #{$grey-500} !important;
 }
 
 // Status dot
 .status-indicator::before {
-    content: '';
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    margin-right: 8px;
-    background: currentColor;
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+  background: currentColor;
 }

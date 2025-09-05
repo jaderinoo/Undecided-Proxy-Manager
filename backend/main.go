@@ -56,7 +56,7 @@ func main() {
 	// Initialize nginx service
 	nginxConfigPath := os.Getenv("NGINX_CONFIG_PATH")
 	nginxReloadCmd := os.Getenv("NGINX_RELOAD_CMD")
-	
+
 	var nginxService *services.NginxService
 	if nginxConfigPath != "" && nginxReloadCmd != "" {
 		nginxService = services.NewNginxService(nginxConfigPath, nginxReloadCmd)
@@ -91,12 +91,12 @@ func main() {
 		c.Header("Access-Control-Allow-Origin", "*")
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
-		
+
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
 			return
 		}
-		
+
 		c.Next()
 	})
 
