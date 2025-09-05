@@ -5,9 +5,23 @@ import (
 	"strconv"
 
 	"upm-backend/internal/models"
+	"upm-backend/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
+
+var nginxService *services.NginxService
+var dbService *services.DatabaseService
+
+// SetNginxService sets the nginx service instance
+func SetNginxService(service *services.NginxService) {
+	nginxService = service
+}
+
+// SetDatabaseService sets the database service instance
+func SetDatabaseService(service *services.DatabaseService) {
+	dbService = service
+}
 
 // GetProxies godoc
 // @Summary      Get all proxies
@@ -19,16 +33,15 @@ import (
 // @Failure      500  {object}  map[string]string
 // @Router       /proxies [get]
 func GetProxies(c *gin.Context) {
-	// TODO: Implement database query
-	proxies := []models.Proxy{
-		{
-			ID:         1,
-			Name:       "Example Proxy",
-			Domain:     "example.com",
-			TargetURL:  "http://localhost:3000",
-			SSLEnabled: false,
-			Status:     "active",
-		},
+	if dbService == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database service not initialized"})
+		return
+	}
+
+	proxies, err := dbService.GetProxies()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch proxies: " + err.Error()})
+		return
 	}
 	
 	c.JSON(http.StatusOK, gin.H{
@@ -56,14 +69,15 @@ func GetProxy(c *gin.Context) {
 		return
 	}
 
-	// TODO: Implement database query
-	proxy := models.Proxy{
-		ID:         id,
-		Name:       "Example Proxy",
-		Domain:     "example.com",
-		TargetURL:  "http://localhost:3000",
-		SSLEnabled: false,
-		Status:     "active",
+	if dbService == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database service not initialized"})
+		return
+	}
+
+	proxy, err := dbService.GetProxy(id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Proxy not found"})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": proxy})
@@ -87,14 +101,44 @@ func CreateProxy(c *gin.Context) {
 		return
 	}
 
-	// TODO: Implement database insert
-	proxy := models.Proxy{
-		ID:         1,
+	if dbService == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database service not initialized"})
+		return
+	}
+
+	// Create proxy object
+	proxy := &models.Proxy{
 		Name:       req.Name,
 		Domain:     req.Domain,
 		TargetURL:  req.TargetURL,
 		SSLEnabled: req.SSLEnabled,
 		Status:     "active",
+	}
+
+	// Save to database
+	if err := dbService.CreateProxy(proxy); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create proxy: " + err.Error()})
+		return
+	}
+
+	// Generate nginx configuration
+	if nginxService != nil {
+		if err := nginxService.GenerateProxyConfig(proxy); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate nginx config: " + err.Error()})
+			return
+		}
+
+		// Test nginx configuration
+		if err := nginxService.TestNginxConfig(); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid nginx configuration: " + err.Error()})
+			return
+		}
+
+		// Reload nginx
+		if err := nginxService.ReloadNginx(); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reload nginx: " + err.Error()})
+			return
+		}
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"data": proxy})
@@ -126,15 +170,56 @@ func UpdateProxy(c *gin.Context) {
 		return
 	}
 
-	// TODO: Implement database update
-	// For now, return a mock response with the provided ID
-	proxy := models.Proxy{
-		ID:         id,
-		Name:       "Updated Proxy",
-		Domain:     "updated.com",
-		TargetURL:  "http://localhost:3001",
-		SSLEnabled: true,
-		Status:     "active",
+	if dbService == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database service not initialized"})
+		return
+	}
+
+	// Get existing proxy
+	proxy, err := dbService.GetProxy(id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Proxy not found"})
+		return
+	}
+
+	// Update fields if provided
+	if req.Name != nil {
+		proxy.Name = *req.Name
+	}
+	if req.Domain != nil {
+		proxy.Domain = *req.Domain
+	}
+	if req.TargetURL != nil {
+		proxy.TargetURL = *req.TargetURL
+	}
+	if req.SSLEnabled != nil {
+		proxy.SSLEnabled = *req.SSLEnabled
+	}
+
+	// Save to database
+	if err := dbService.UpdateProxy(proxy); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update proxy: " + err.Error()})
+		return
+	}
+
+	// Update nginx configuration
+	if nginxService != nil {
+		if err := nginxService.UpdateProxyConfig(proxy); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update nginx config: " + err.Error()})
+			return
+		}
+
+		// Test nginx configuration
+		if err := nginxService.TestNginxConfig(); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid nginx configuration: " + err.Error()})
+			return
+		}
+
+		// Reload nginx
+		if err := nginxService.ReloadNginx(); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reload nginx: " + err.Error()})
+			return
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": proxy})
@@ -153,12 +238,42 @@ func UpdateProxy(c *gin.Context) {
 // @Failure      500  {object}  map[string]string
 // @Router       /proxies/{id} [delete]
 func DeleteProxy(c *gin.Context) {
-	_, err := strconv.Atoi(c.Param("id"))
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid proxy ID"})
 		return
 	}
 
-	// TODO: Implement database delete
+	if dbService == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database service not initialized"})
+		return
+	}
+
+	// Remove from database
+	if err := dbService.DeleteProxy(id); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Failed to delete proxy: " + err.Error()})
+		return
+	}
+
+	// Remove nginx configuration
+	if nginxService != nil {
+		if err := nginxService.RemoveProxyConfig(id); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to remove nginx config: " + err.Error()})
+			return
+		}
+
+		// Test nginx configuration
+		if err := nginxService.TestNginxConfig(); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid nginx configuration: " + err.Error()})
+			return
+		}
+
+		// Reload nginx
+		if err := nginxService.ReloadNginx(); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reload nginx: " + err.Error()})
+			return
+		}
+	}
+
 	c.JSON(http.StatusNoContent, gin.H{"message": "Proxy deleted successfully"})
 }

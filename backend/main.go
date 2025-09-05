@@ -3,11 +3,13 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 
 	"upm-backend/docs"
 	"upm-backend/internal/config"
 	"upm-backend/internal/handlers"
 	"upm-backend/internal/middleware"
+	"upm-backend/internal/services"
 
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -40,6 +42,28 @@ func main() {
 	// Set Gin mode based on environment
 	if cfg.Environment == "production" {
 		gin.SetMode(gin.ReleaseMode)
+	}
+
+	// Initialize database service
+	dbService, err := services.NewDatabaseService()
+	if err != nil {
+		log.Fatalf("Failed to initialize database: %v", err)
+	}
+	defer dbService.Close()
+	handlers.SetDatabaseService(dbService)
+	log.Printf("Database service initialized")
+
+	// Initialize nginx service
+	nginxConfigPath := os.Getenv("NGINX_CONFIG_PATH")
+	nginxReloadCmd := os.Getenv("NGINX_RELOAD_CMD")
+	
+	var nginxService *services.NginxService
+	if nginxConfigPath != "" && nginxReloadCmd != "" {
+		nginxService = services.NewNginxService(nginxConfigPath, nginxReloadCmd)
+		handlers.SetNginxService(nginxService)
+		log.Printf("Nginx service initialized with config path: %s", nginxConfigPath)
+	} else {
+		log.Printf("Nginx service not initialized - missing environment variables")
 	}
 
 	// Initialize Gin router
@@ -111,9 +135,5 @@ func main() {
 	docs.SwaggerInfo.BasePath = "/api/v1"
 
 	log.Printf("Starting UPM API server on port %s", cfg.BackendPort)
-	log.Printf("Swagger documentation available at: http://localhost:%s/swagger/index.html", cfg.BackendPort)
-	
-	if err := r.Run(":" + cfg.BackendPort); err != nil {
-		log.Fatal("Failed to start server:", err)
-	}
+	log.Fatal(http.ListenAndServe(":"+cfg.BackendPort, r))
 }

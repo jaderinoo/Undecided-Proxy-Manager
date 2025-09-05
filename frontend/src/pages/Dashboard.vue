@@ -15,7 +15,7 @@
 
               <div v-else>
                 <v-chip color="primary" class="mb-4">
-                  {{ proxies.length }} Proxies
+                  {{ proxies?.length || 0 }} Proxies
                 </v-chip>
 
                 <v-list>
@@ -27,7 +27,7 @@
                 </v-list>
 
                 <v-empty-state
-                  v-if="proxies.length === 0"
+                  v-if="proxies && proxies.length === 0"
                   title="No proxies found"
                   text="Create your first proxy to get started"
                 >
@@ -67,9 +67,10 @@ const loadProxies = async () => {
     loading.value = true
     error.value = null
     const response = await apiService.getProxies()
-    proxies.value = response.data
+    proxies.value = response.data || []
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load proxies'
+    proxies.value = [] // Ensure proxies is always an array
   } finally {
     loading.value = false
   }

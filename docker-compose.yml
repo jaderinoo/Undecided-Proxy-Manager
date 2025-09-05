@@ -1,6 +1,23 @@
 version: '3.8'
 
 services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/sites-available:/etc/nginx/sites-available
+      - ./nginx/sites-enabled:/etc/nginx/sites-enabled
+      - ./nginx/ssl:/etc/nginx/ssl
+      - ./nginx/logs:/var/log/nginx
+      - nginx_data:/var/lib/nginx
+    depends_on:
+      - backend
+      - frontend
+    restart: unless-stopped
+
   backend:
     env_file: .env
     build:
@@ -14,11 +31,15 @@ services:
       - DB_PATH=/data/upm.db
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - JWT_SECRET=${JWT_SECRET}
+      - NGINX_CONFIG_PATH=/etc/nginx/sites-available
+      - NGINX_RELOAD_CMD=nginx -s reload
     volumes:
       - sqlite_data:/data
+      - ./nginx/sites-available:/etc/nginx/sites-available
     restart: unless-stopped
     depends_on:
       - db
+
   frontend:
     build:
       context: ./frontend
@@ -40,3 +61,4 @@ services:
 
 volumes:
   sqlite_data:
+  nginx_data:
