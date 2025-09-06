@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -63,6 +64,18 @@ func CreateDNSConfig(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+
+	// Validate that username and password are provided for dynamic DNS providers
+	if req.Provider == "namecheap" {
+		if req.Username == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Username is required for dynamic DNS providers"})
+			return
+		}
+		if req.Password == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Password is required for dynamic DNS providers"})
+			return
+		}
 	}
 
 	config := &models.DNSConfig{
@@ -193,9 +206,10 @@ func CreateDNSRecord(c *gin.Context) {
 	}
 
 	record := &models.DNSRecord{
-		ConfigID: req.ConfigID,
-		Host:     req.Host,
-		IsActive: true,
+		ConfigID:        req.ConfigID,
+		Host:            req.Host,
+		AllowedIPRanges: req.AllowedIPRanges,
+		IsActive:        true,
 	}
 
 	if err := dnsHandler.dnsService.DbService.CreateDNSRecord(record); err != nil {
@@ -229,6 +243,9 @@ func UpdateDNSRecord(c *gin.Context) {
 	// Update fields if provided
 	if req.Host != nil {
 		record.Host = *req.Host
+	}
+	if req.AllowedIPRanges != nil {
+		record.AllowedIPRanges = *req.AllowedIPRanges
 	}
 	if req.IsActive != nil {
 		record.IsActive = *req.IsActive
@@ -270,6 +287,13 @@ func UpdateDNSRecordNow(c *gin.Context) {
 
 	response, err := dnsHandler.dnsService.UpdateDNSRecord(id)
 	if err != nil {
+		// If response is nil, create a default error response
+		if response == nil {
+			response = &models.DNSUpdateResponse{
+				Success: false,
+				Message: fmt.Sprintf("DNS update failed: %v", err),
+			}
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "response": response})
 		return
 	}

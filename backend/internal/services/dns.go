@@ -4,7 +4,10 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"upm-backend/internal/config"
@@ -39,6 +42,79 @@ func NewDNSService(dbService *DatabaseService) *DNSService {
 			Timeout: 30 * time.Second,
 		},
 	}
+}
+
+// ValidateIPRanges validates a comma-separated list of IP ranges
+func (d *DNSService) ValidateIPRanges(ipRanges string) error {
+	if ipRanges == "" {
+		return nil // Empty is valid
+	}
+
+	ranges := strings.Split(ipRanges, ",")
+	for _, r := range ranges {
+		r = strings.TrimSpace(r)
+		if r == "" {
+			continue
+		}
+
+		// Check if it's a CIDR notation
+		if strings.Contains(r, "/") {
+			_, _, err := net.ParseCIDR(r)
+			if err != nil {
+				return fmt.Errorf("invalid CIDR range '%s': %w", r, err)
+			}
+		} else {
+			// Check if it's a single IP
+			ip := net.ParseIP(r)
+			if ip == nil {
+				return fmt.Errorf("invalid IP address '%s'", r)
+			}
+		}
+	}
+
+	return nil
+}
+
+// IsIPAllowed checks if an IP is within the allowed ranges
+func (d *DNSService) IsIPAllowed(ip string, allowedRanges string) (bool, error) {
+	if allowedRanges == "" {
+		return true, nil // No restrictions
+	}
+
+	parsedIP := net.ParseIP(ip)
+	if parsedIP == nil {
+		return false, fmt.Errorf("invalid IP address '%s'", ip)
+	}
+
+	ranges := strings.Split(allowedRanges, ",")
+	for _, r := range ranges {
+		r = strings.TrimSpace(r)
+		if r == "" {
+			continue
+		}
+
+		// Check if it's a CIDR notation
+		if strings.Contains(r, "/") {
+			_, network, err := net.ParseCIDR(r)
+			if err != nil {
+				return false, fmt.Errorf("invalid CIDR range '%s': %w", r, err)
+			}
+			if network.Contains(parsedIP) {
+				return true, nil
+			}
+		} else {
+			// Check if it's a single IP
+			allowedIP := net.ParseIP(r)
+			if allowedIP == nil {
+				return false, fmt.Errorf("invalid IP address '%s'", r)
+			}
+			if parsedIP.Equal(allowedIP) {
+				return true, nil
+			}
+		}
+	}
+
+	return false, nil
 }
 
 // GetPublicIP retrieves the current public IP address using multiple fallback services
@@ -108,15 +184,43 @@ func (d *DNSService) tryGetIPFromService(service string) (string, error) {
 
 // UpdateNamecheapDNS updates a DNS record using Namecheap's dynamic DNS API
 func (d *DNSService) UpdateNamecheapDNS(config *models.DNSConfig, record *models.DNSRecord, newIP string) (*models.DNSUpdateResponse, error) {
-	// Namecheap dynamic DNS update URL
-	url := fmt.Sprintf("https://dynamicdns.park-your-domain.com/update?host=%s&domain=%s&password=%s&ip=%s",
-		record.Host,
-		config.Domain,
-		config.Password,
-		newIP,
-	)
+	// Validate required fields
+	if config.Domain == "" {
+		return &models.DNSUpdateResponse{
+			Success: false,
+			Message: "Domain is required for Namecheap DNS update",
+		}, fmt.Errorf("domain is required")
+	}
+	if record.Host == "" {
+		return &models.DNSUpdateResponse{
+			Success: false,
+			Message: "Host is required for Namecheap DNS update",
+		}, fmt.Errorf("host is required")
+	}
+	if config.Password == "" {
+		return &models.DNSUpdateResponse{
+			Success: false,
+			Message: "Password is required for Namecheap DNS update",
+		}, fmt.Errorf("password is required")
+	}
+	if newIP == "" {
+		return &models.DNSUpdateResponse{
+			Success: false,
+			Message: "IP address is required for Namecheap DNS update",
+		}, fmt.Errorf("IP address is required")
+	}
 
-	resp, err := d.client.Get(url)
+	// Namecheap dynamic DNS update URL with proper URL encoding
+	baseURL := "https://dynamicdns.park-your-domain.com/update"
+	params := url.Values{}
+	params.Add("host", record.Host)
+	params.Add("domain", config.Domain)
+	params.Add("password", config.Password)
+	params.Add("ip", newIP)
+
+	requestURL := fmt.Sprintf("%s?%s", baseURL, params.Encode())
+
+	resp, err := d.client.Get(requestURL)
 	if err != nil {
 		return &models.DNSUpdateResponse{
 			Success: false,
@@ -124,6 +228,18 @@ func (d *DNSService) UpdateNamecheapDNS(config *models.DNSConfig, record *models
 		}, err
 	}
 	defer resp.Body.Close()
+
+	// Log the request URL for debugging
+	fmt.Printf("Namecheap API request URL: %s\n", requestURL)
+
+	// Check HTTP status code
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return &models.DNSUpdateResponse{
+			Success: false,
+			Message: fmt.Sprintf("Namecheap API returned status %d: %s", resp.StatusCode, string(body)),
+		}, fmt.Errorf("Namecheap API returned status %d", resp.StatusCode)
+	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -133,12 +249,39 @@ func (d *DNSService) UpdateNamecheapDNS(config *models.DNSConfig, record *models
 		}, err
 	}
 
-	// Parse XML response
-	var namecheapResp NamecheapResponse
-	if err := xml.Unmarshal(body, &namecheapResp); err != nil {
+	// Log the response for debugging
+	fmt.Printf("Namecheap API response (status %d): %s\n", resp.StatusCode, string(body))
+
+	// Check if response body is empty
+	if len(body) == 0 {
 		return &models.DNSUpdateResponse{
 			Success: false,
-			Message: fmt.Sprintf("Failed to parse response: %v", err),
+			Message: "Empty response from Namecheap API",
+		}, fmt.Errorf("empty response from Namecheap API")
+	}
+
+	// Parse XML response with proper charset handling
+	var namecheapResp NamecheapResponse
+
+	// Parse XML response - Namecheap API declares UTF-16 but sends UTF-8
+	responseBody := string(body)
+
+	// Remove the XML declaration to avoid charset confusion
+	// The API declares UTF-16 but actually sends UTF-8
+	if strings.HasPrefix(responseBody, "<?xml") {
+		// Find the end of the XML declaration
+		endDecl := strings.Index(responseBody, "?>")
+		if endDecl != -1 {
+			responseBody = responseBody[endDecl+2:]
+		}
+	}
+
+	// Parse as UTF-8 since that's what the content actually is
+	decoder := xml.NewDecoder(strings.NewReader(responseBody))
+	if err := decoder.Decode(&namecheapResp); err != nil {
+		return &models.DNSUpdateResponse{
+			Success: false,
+			Message: fmt.Sprintf("Failed to parse XML response: %v. Response body: %s", err, responseBody),
 		}, err
 	}
 
@@ -225,6 +368,23 @@ func (d *DNSService) UpdateDNSRecord(recordID int) (*models.DNSUpdateResponse, e
 			Success: false,
 			Message: fmt.Sprintf("Failed to get public IP: %v", err),
 		}, err
+	}
+
+	// Check if IP is allowed based on allowed ranges
+	if record.AllowedIPRanges != "" {
+		allowed, err := d.IsIPAllowed(currentIP, record.AllowedIPRanges)
+		if err != nil {
+			return &models.DNSUpdateResponse{
+				Success: false,
+				Message: fmt.Sprintf("Failed to validate IP against allowed ranges: %v", err),
+			}, err
+		}
+		if !allowed {
+			return &models.DNSUpdateResponse{
+				Success: false,
+				Message: fmt.Sprintf("Current IP %s is not in the allowed ranges: %s", currentIP, record.AllowedIPRanges),
+			}, fmt.Errorf("IP %s not allowed", currentIP)
+		}
 	}
 
 	// Check if IP has changed

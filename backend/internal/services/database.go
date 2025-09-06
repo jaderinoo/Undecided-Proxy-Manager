@@ -129,6 +129,7 @@ func (d *DatabaseService) initTables() error {
 		config_id INTEGER NOT NULL,
 		host TEXT NOT NULL,
 		current_ip TEXT,
+		allowed_ip_ranges TEXT,
 		last_update DATETIME,
 		is_active BOOLEAN DEFAULT TRUE,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -138,6 +139,13 @@ func (d *DatabaseService) initTables() error {
 
 	if _, err := d.db.Exec(dnsRecordsTable); err != nil {
 		return fmt.Errorf("failed to create dns_records table: %w", err)
+	}
+
+	// Add allowed_ip_ranges column to existing dns_records table if it doesn't exist
+	alterTableQuery := `ALTER TABLE dns_records ADD COLUMN allowed_ip_ranges TEXT;`
+	if _, err := d.db.Exec(alterTableQuery); err != nil {
+		// Ignore error if column already exists
+		fmt.Printf("Note: allowed_ip_ranges column may already exist: %v\n", err)
 	}
 
 	// Create ui_settings table
@@ -475,7 +483,7 @@ func (d *DatabaseService) DeleteDNSConfig(id int) error {
 // DNS Record methods
 func (d *DatabaseService) GetDNSRecords(configID int) ([]models.DNSRecord, error) {
 	query := `
-		SELECT id, config_id, host, current_ip, last_update, is_active, created_at, updated_at
+		SELECT id, config_id, host, current_ip, allowed_ip_ranges, last_update, is_active, created_at, updated_at
 		FROM dns_records
 		WHERE config_id = ?
 		ORDER BY created_at DESC`
@@ -490,6 +498,7 @@ func (d *DatabaseService) GetDNSRecords(configID int) ([]models.DNSRecord, error
 	for rows.Next() {
 		var record models.DNSRecord
 		var currentIP sql.NullString
+		var allowedIPRanges sql.NullString
 		var lastUpdate sql.NullTime
 
 		err := rows.Scan(
@@ -497,6 +506,7 @@ func (d *DatabaseService) GetDNSRecords(configID int) ([]models.DNSRecord, error
 			&record.ConfigID,
 			&record.Host,
 			&currentIP,
+			&allowedIPRanges,
 			&lastUpdate,
 			&record.IsActive,
 			&record.CreatedAt,
@@ -510,6 +520,9 @@ func (d *DatabaseService) GetDNSRecords(configID int) ([]models.DNSRecord, error
 		if currentIP.Valid {
 			record.CurrentIP = currentIP.String
 		}
+		if allowedIPRanges.Valid {
+			record.AllowedIPRanges = allowedIPRanges.String
+		}
 		if lastUpdate.Valid {
 			record.LastUpdate = &lastUpdate.Time
 		}
@@ -522,12 +535,13 @@ func (d *DatabaseService) GetDNSRecords(configID int) ([]models.DNSRecord, error
 
 func (d *DatabaseService) GetDNSRecord(id int) (*models.DNSRecord, error) {
 	query := `
-		SELECT id, config_id, host, current_ip, last_update, is_active, created_at, updated_at
+		SELECT id, config_id, host, current_ip, allowed_ip_ranges, last_update, is_active, created_at, updated_at
 		FROM dns_records
 		WHERE id = ?`
 
 	var record models.DNSRecord
 	var currentIP sql.NullString
+	var allowedIPRanges sql.NullString
 	var lastUpdate sql.NullTime
 
 	err := d.db.QueryRow(query, id).Scan(
@@ -535,6 +549,7 @@ func (d *DatabaseService) GetDNSRecord(id int) (*models.DNSRecord, error) {
 		&record.ConfigID,
 		&record.Host,
 		&currentIP,
+		&allowedIPRanges,
 		&lastUpdate,
 		&record.IsActive,
 		&record.CreatedAt,
@@ -552,6 +567,9 @@ func (d *DatabaseService) GetDNSRecord(id int) (*models.DNSRecord, error) {
 	if currentIP.Valid {
 		record.CurrentIP = currentIP.String
 	}
+	if allowedIPRanges.Valid {
+		record.AllowedIPRanges = allowedIPRanges.String
+	}
 	if lastUpdate.Valid {
 		record.LastUpdate = &lastUpdate.Time
 	}
@@ -561,10 +579,10 @@ func (d *DatabaseService) GetDNSRecord(id int) (*models.DNSRecord, error) {
 
 func (d *DatabaseService) CreateDNSRecord(record *models.DNSRecord) error {
 	query := `
-		INSERT INTO dns_records (config_id, host, current_ip, is_active)
-		VALUES (?, ?, ?, ?)`
+		INSERT INTO dns_records (config_id, host, current_ip, allowed_ip_ranges, is_active)
+		VALUES (?, ?, ?, ?, ?)`
 
-	result, err := d.db.Exec(query, record.ConfigID, record.Host, record.CurrentIP, record.IsActive)
+	result, err := d.db.Exec(query, record.ConfigID, record.Host, record.CurrentIP, record.AllowedIPRanges, record.IsActive)
 	if err != nil {
 		return fmt.Errorf("failed to insert dns record: %w", err)
 	}
@@ -584,10 +602,10 @@ func (d *DatabaseService) CreateDNSRecord(record *models.DNSRecord) error {
 func (d *DatabaseService) UpdateDNSRecord(record *models.DNSRecord) error {
 	query := `
 		UPDATE dns_records
-		SET host = ?, current_ip = ?, last_update = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP
+		SET host = ?, current_ip = ?, allowed_ip_ranges = ?, last_update = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?`
 
-	result, err := d.db.Exec(query, record.Host, record.CurrentIP, record.LastUpdate, record.IsActive, record.ID)
+	result, err := d.db.Exec(query, record.Host, record.CurrentIP, record.AllowedIPRanges, record.LastUpdate, record.IsActive, record.ID)
 	if err != nil {
 		return fmt.Errorf("failed to update dns record: %w", err)
 	}
@@ -857,7 +875,7 @@ func (d *DatabaseService) AdminUserExists() (bool, error) {
 func (d *DatabaseService) CreateAdminUser(hashedPassword string) error {
 	query := `INSERT INTO users (username, email, password, is_active, created_at, updated_at)
 			  VALUES (?, ?, ?, ?, ?, ?)`
-	
+
 	now := time.Now()
 	_, err := d.db.Exec(query,
 		"admin",
@@ -867,11 +885,11 @@ func (d *DatabaseService) CreateAdminUser(hashedPassword string) error {
 		now,
 		now,
 	)
-	
+
 	if err != nil {
 		return fmt.Errorf("failed to create admin user: %w", err)
 	}
-	
+
 	log.Println("Admin user created successfully")
 	return nil
 }
@@ -879,7 +897,7 @@ func (d *DatabaseService) CreateAdminUser(hashedPassword string) error {
 func (d *DatabaseService) GetAdminUser() (*models.User, error) {
 	query := `SELECT id, username, email, password, is_active, created_at, updated_at
 			  FROM users WHERE username = 'admin'`
-	
+
 	var user models.User
 	err := d.db.QueryRow(query).Scan(
 		&user.ID,
@@ -890,34 +908,34 @@ func (d *DatabaseService) GetAdminUser() (*models.User, error) {
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to get admin user: %w", err)
 	}
-	
+
 	return &user, nil
 }
 
 func (d *DatabaseService) UpdateAdminUserPassword(hashedPassword string) error {
 	query := `UPDATE users SET password = ?, updated_at = ? WHERE username = 'admin'`
-	
+
 	_, err := d.db.Exec(query, hashedPassword, time.Now())
 	if err != nil {
 		return fmt.Errorf("failed to update admin user password: %w", err)
 	}
-	
+
 	log.Println("Admin user password updated successfully")
 	return nil
 }
 
 func (d *DatabaseService) DeleteAdminUser() error {
 	query := `DELETE FROM users WHERE username = 'admin'`
-	
+
 	_, err := d.db.Exec(query)
 	if err != nil {
 		return fmt.Errorf("failed to delete admin user: %w", err)
 	}
-	
+
 	log.Println("Admin user deleted successfully")
 	return nil
 }

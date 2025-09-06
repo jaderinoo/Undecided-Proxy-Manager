@@ -231,6 +231,13 @@
                                 {{ record.current_ip || 'Not set' }}
                               </v-list-item-subtitle>
 
+                              <v-list-item-subtitle
+                                v-if="record.allowed_ip_ranges"
+                                class="text-caption text-grey-darken-1 mt-1"
+                              >
+                                Allowed: {{ record.allowed_ip_ranges }}
+                              </v-list-item-subtitle>
+
                               <template v-slot:append>
                                 <div class="d-flex" style="gap: 4px">
                                   <v-btn
@@ -433,6 +440,52 @@
               </v-col>
 
               <v-col cols="12">
+                <v-textarea
+                  v-model="recordForm.allowed_ip_ranges"
+                  label="Allowed IP Ranges"
+                  placeholder="192.168.1.0/24, 10.0.0.1, 203.0.113.0/24"
+                  hint="Comma-separated list of IP addresses or CIDR ranges. Leave empty to allow all IPs."
+                  persistent-hint
+                  rows="3"
+                  :error-messages="validateIPRanges(recordForm.allowed_ip_ranges || '') ? [validateIPRanges(recordForm.allowed_ip_ranges || '')!] : []"
+                  :error="!!validateIPRanges(recordForm.allowed_ip_ranges || '')"
+                ></v-textarea>
+
+                <!-- Quick Fill Buttons -->
+                <div class="mt-2">
+                  <v-chip-group>
+                    <v-chip
+                      size="small"
+                      color="primary"
+                      variant="outlined"
+                      @click="quickFillIPRanges('192.168.50.2/24')"
+                    >
+                      <v-icon start size="small">mdi-plus</v-icon>
+                      192.168.50.2/24
+                    </v-chip>
+                    <v-chip
+                      size="small"
+                      color="primary"
+                      variant="outlined"
+                      @click="quickFillIPRanges('10.6.0.1/32')"
+                    >
+                      <v-icon start size="small">mdi-plus</v-icon>
+                      10.6.0.1/32
+                    </v-chip>
+                    <v-chip
+                      size="small"
+                      color="grey"
+                      variant="outlined"
+                      @click="clearIPRanges"
+                    >
+                      <v-icon start size="small">mdi-close</v-icon>
+                      Clear
+                    </v-chip>
+                  </v-chip-group>
+                </div>
+              </v-col>
+
+              <v-col cols="12">
                 <v-checkbox
                   v-model="recordForm.is_active"
                   label="Active"
@@ -534,6 +587,7 @@ const changePassword = ref(false);
 const recordForm = ref<DNSRecordCreateRequest & { is_active: boolean }>({
   config_id: 0,
   host: '',
+  allowed_ip_ranges: '',
   is_active: true,
 });
 
@@ -674,7 +728,7 @@ const saveConfig = async () => {
 
     if (showCreateConfigModal.value) {
       // Prepare data based on provider type
-      const createData: DNSConfigCreateRequest = {
+      const createData: any = {
         provider: configForm.value.provider,
         domain: configForm.value.domain,
         is_active: configForm.value.is_active,
@@ -730,6 +784,7 @@ const editRecord = (record: DNSRecord) => {
   recordForm.value = {
     config_id: record.config_id,
     host: record.host,
+    allowed_ip_ranges: record.allowed_ip_ranges || '',
     is_active: record.is_active,
   };
   showEditRecordModal.value = true;
@@ -757,11 +812,19 @@ const saveRecord = async () => {
   try {
     savingRecord.value = true;
 
+    // Validate IP ranges
+    const ipValidationError = validateIPRanges(recordForm.value.allowed_ip_ranges || '');
+    if (ipValidationError) {
+      error.value = `IP range validation error: ${ipValidationError}`;
+      return;
+    }
+
     if (showCreateRecordModal.value) {
       await apiService.createDNSRecord(recordForm.value);
     } else if (editingRecord.value) {
       const updateData: DNSRecordUpdateRequest = {
         host: recordForm.value.host,
+        allowed_ip_ranges: recordForm.value.allowed_ip_ranges,
         is_active: recordForm.value.is_active,
       };
       await apiService.updateDNSRecord(editingRecord.value.id, updateData);
@@ -814,6 +877,7 @@ const closeRecordModal = () => {
   recordForm.value = {
     config_id: 0,
     host: '',
+    allowed_ip_ranges: '',
     is_active: true,
   };
 };
@@ -821,6 +885,66 @@ const closeRecordModal = () => {
 const formatDate = (dateString?: string) => {
   if (!dateString) return null;
   return new Date(dateString).toLocaleString();
+};
+
+// IP range validation
+const validateIPRanges = (ipRanges: string): string | null => {
+  if (!ipRanges.trim()) {
+    return null; // Empty is valid
+  }
+
+  const ranges = ipRanges.split(',').map(r => r.trim()).filter(r => r);
+
+  for (const range of ranges) {
+    // Check if it's a CIDR notation
+    if (range.includes('/')) {
+      const parts = range.split('/');
+      if (parts.length !== 2) {
+        return `Invalid CIDR format: ${range}`;
+      }
+
+      const ip = parts[0];
+      const cidr = parseInt(parts[1]);
+
+      if (isNaN(cidr) || cidr < 0 || cidr > 32) {
+        return `Invalid CIDR prefix: ${range}`;
+      }
+
+      if (!isValidIP(ip)) {
+        return `Invalid IP address in CIDR: ${range}`;
+      }
+    } else {
+      // Single IP address
+      if (!isValidIP(range)) {
+        return `Invalid IP address: ${range}`;
+      }
+    }
+  }
+
+  return null;
+};
+
+const isValidIP = (ip: string): boolean => {
+  const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+  const ipv6Regex = /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/;
+  return ipv4Regex.test(ip) || ipv6Regex.test(ip);
+};
+
+// Quick fill functions
+const quickFillIPRanges = (range: string) => {
+  const currentRanges = recordForm.value.allowed_ip_ranges || '';
+
+  if (currentRanges.trim()) {
+    // If there are existing ranges, add the new one with a comma
+    recordForm.value.allowed_ip_ranges = `${currentRanges}, ${range}`;
+  } else {
+    // If empty, just set the range
+    recordForm.value.allowed_ip_ranges = range;
+  }
+};
+
+const clearIPRanges = () => {
+  recordForm.value.allowed_ip_ranges = '';
 };
 
 // Lifecycle

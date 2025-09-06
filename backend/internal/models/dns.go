@@ -28,22 +28,23 @@ type DNSConfig struct {
 
 // DNSRecord represents a DNS record that can be updated dynamically
 type DNSRecord struct {
-	ID         int        `json:"id" db:"id"`
-	ConfigID   int        `json:"config_id" db:"config_id"`
-	Host       string     `json:"host" db:"host"` // "@" for root domain, "www" for subdomain
-	CurrentIP  string     `json:"current_ip" db:"current_ip"`
-	LastUpdate *time.Time `json:"last_update,omitempty" db:"last_update"`
-	IsActive   bool       `json:"is_active" db:"is_active"`
-	CreatedAt  time.Time  `json:"created_at" db:"created_at"`
-	UpdatedAt  time.Time  `json:"updated_at" db:"updated_at"`
+	ID               int        `json:"id" db:"id"`
+	ConfigID         int        `json:"config_id" db:"config_id"`
+	Host             string     `json:"host" db:"host"` // "@" for root domain, "www" for subdomain
+	CurrentIP        string     `json:"current_ip" db:"current_ip"`
+	AllowedIPRanges  string     `json:"allowed_ip_ranges" db:"allowed_ip_ranges"` // Comma-separated list of IP ranges
+	LastUpdate       *time.Time `json:"last_update,omitempty" db:"last_update"`
+	IsActive         bool       `json:"is_active" db:"is_active"`
+	CreatedAt        time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at" db:"updated_at"`
 }
 
 // DNSConfigCreateRequest represents the request to create a DNS configuration
 type DNSConfigCreateRequest struct {
 	Provider string `json:"provider" binding:"required"`
 	Domain   string `json:"domain" binding:"required"`
-	Username string `json:"username" binding:"required"`
-	Password string `json:"password" binding:"required"`
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
 }
 
 // DNSConfigUpdateRequest represents the request to update a DNS configuration
@@ -57,14 +58,16 @@ type DNSConfigUpdateRequest struct {
 
 // DNSRecordCreateRequest represents the request to create a DNS record
 type DNSRecordCreateRequest struct {
-	ConfigID int    `json:"config_id" binding:"required"`
-	Host     string `json:"host" binding:"required"`
+	ConfigID        int    `json:"config_id" binding:"required"`
+	Host            string `json:"host" binding:"required"`
+	AllowedIPRanges string `json:"allowed_ip_ranges,omitempty"`
 }
 
 // DNSRecordUpdateRequest represents the request to update a DNS record
 type DNSRecordUpdateRequest struct {
-	Host     *string `json:"host,omitempty"`
-	IsActive *bool   `json:"is_active,omitempty"`
+	Host            *string `json:"host,omitempty"`
+	AllowedIPRanges *string `json:"allowed_ip_ranges,omitempty"`
+	IsActive        *bool   `json:"is_active,omitempty"`
 }
 
 // DNSUpdateResponse represents the response from a DNS update operation

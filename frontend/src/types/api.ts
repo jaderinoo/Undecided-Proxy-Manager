@@ -172,6 +172,7 @@ export interface DNSRecord {
   config_id: number;
   host: string;
   current_ip?: string;
+  allowed_ip_ranges?: string;
   last_update?: string;
   is_active: boolean;
   created_at: string;
@@ -181,10 +182,12 @@ export interface DNSRecord {
 export interface DNSRecordCreateRequest {
   config_id: number;
   host: string;
+  allowed_ip_ranges?: string;
 }
 
 export interface DNSRecordUpdateRequest {
   host?: string;
+  allowed_ip_ranges?: string;
   is_active?: boolean;
 }
 
