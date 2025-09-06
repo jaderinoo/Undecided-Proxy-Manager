@@ -92,7 +92,7 @@
                   title="No proxies found"
                   text="Create your first proxy to get started"
                 >
-                  <template v-slot:image>
+                  <template v-slot:default>
                     <v-icon size="100" color="grey-lighten-1"
                       >mdi-server-network</v-icon
                     >
@@ -218,7 +218,7 @@
                   title="No containers found"
                   text="No Docker containers are currently available"
                 >
-                  <template v-slot:image>
+                  <template v-slot:default>
                     <v-icon size="100" color="grey-lighten-1"
                       >mdi-docker</v-icon
                     >
