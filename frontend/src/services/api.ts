@@ -25,7 +25,24 @@ import type {
     UserLoginRequest,
 } from '../types/api';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:6081';
+// Determine API base URL based on environment
+const getApiBaseUrl = () => {
+  // If VITE_API_URL is explicitly set, use it (for custom configurations)
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  
+  // Development mode: Frontend on localhost:6070, Backend on localhost:6081
+  if (window.location.hostname === 'localhost' && window.location.port === '6070') {
+    return 'http://localhost:6081';
+  }
+  
+  // Production mode: Use relative URLs so API calls go through nginx proxy
+  // This works for both direct access (192.168.50.100:6070) and nginx proxy (192.168.50.100:8444)
+  return '';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 class ApiService {
   private baseUrl: string;
