@@ -281,10 +281,10 @@ import ProxyCard from '../components/ProxyCard.vue';
 import ProxyFormDialog from '../components/ProxyFormDialog.vue';
 import { apiService } from '../services/api';
 import type {
-    Container,
-    Proxy,
-    ProxyCreateRequest,
-    ProxyUpdateRequest,
+  Container,
+  Proxy,
+  ProxyCreateRequest,
+  ProxyUpdateRequest,
 } from '../types/api';
 
 const proxies = ref<Proxy[]>([]);
@@ -301,7 +301,7 @@ const editProxyDialog = ref(false);
 const creatingProxy = ref(false);
 const updatingProxy = ref(false);
 const editingProxy = ref<Proxy | null>(null);
-const containerFormData = ref<Partial<ProxyCreateRequest> | null>(null);
+const containerFormData = ref<Partial<ProxyCreateRequest> | undefined>(undefined);
 
 // Delete proxy dialog state
 const deleteProxyDialog = ref(false);
@@ -423,13 +423,13 @@ const toggleContainerDisplay = () => {
 
 // Create proxy dialog methods
 const openCreateProxyDialog = () => {
-  containerFormData.value = null;
+  containerFormData.value = undefined;
   createProxyDialog.value = true;
 };
 
 const closeCreateProxyDialog = () => {
   createProxyDialog.value = false;
-  containerFormData.value = null;
+  containerFormData.value = undefined;
   error.value = null;
 };
 
@@ -444,7 +444,7 @@ const openCreateProxyForContainer = (container: Container) => {
   createProxyDialog.value = true;
 };
 
-const handleCreateProxy = async (data: ProxyCreateRequest | ProxyUpdateRequest, isEdit: boolean) => {
+const handleCreateProxy = async (data: ProxyCreateRequest | ProxyUpdateRequest, _isEdit: boolean) => {
   try {
     creatingProxy.value = true;
     error.value = null;
@@ -477,7 +477,7 @@ const closeEditProxyDialog = () => {
   error.value = null;
 };
 
-const handleEditProxy = async (data: ProxyCreateRequest | ProxyUpdateRequest, isEdit: boolean) => {
+const handleEditProxy = async (data: ProxyCreateRequest | ProxyUpdateRequest, _isEdit: boolean) => {
   if (!editingProxy.value) return;
 
   try {

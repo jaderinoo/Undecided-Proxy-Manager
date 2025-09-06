@@ -74,6 +74,7 @@ export interface Certificate {
   key_path: string;
   expires_at: string;
   is_valid: boolean;
+  issuer?: string;
   created_at: string;
   updated_at: string;
 }
@@ -155,6 +156,7 @@ export interface DNSConfigCreateRequest {
   domain: string;
   username?: string;
   password?: string;
+  is_active?: boolean;
 }
 
 export interface DNSConfigUpdateRequest {

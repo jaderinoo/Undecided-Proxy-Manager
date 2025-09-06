@@ -77,15 +77,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { apiService } from '../services/api';
+import { computed, onMounted, ref } from 'vue';
 import AppLayout from '../components/AppLayout.vue';
-import ErrorAlert from '../components/ErrorAlert.vue';
-import LoadingSpinner from '../components/LoadingSpinner.vue';
 import ContainerCard from '../components/ContainerCard.vue';
+import ErrorAlert from '../components/ErrorAlert.vue';
+import FilterBar from '../components/FilterBar.vue';
+import LoadingSpinner from '../components/LoadingSpinner.vue';
 import PageHeader from '../components/PageHeader.vue';
 import StatsCards from '../components/StatsCards.vue';
-import FilterBar from '../components/FilterBar.vue';
+import { apiService } from '../services/api';
 import type { Container, Proxy } from '../types/api';
 
 const containers = ref<Container[]>([]);
@@ -288,9 +288,9 @@ const filterContainers = () => {
   filteredContainers.value = filtered;
 };
 
-const sortContainers = () => {
-  filterContainers();
-};
+// const sortContainers = () => {
+//   filterContainers();
+// };
 
 onMounted(async () => {
   await Promise.all([loadContainers(), loadProxies()]);

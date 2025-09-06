@@ -260,11 +260,11 @@ import ProxyFormDialog from '../components/ProxyFormDialog.vue';
 import StatsCards from '../components/StatsCards.vue';
 import { apiService } from '../services/api';
 import type {
-  Container,
-  Proxy,
-  ProxyCreateRequest,
-  ProxyResponse,
-  ProxyUpdateRequest,
+    Container,
+    Proxy,
+    ProxyCreateRequest,
+    ProxyResponse,
+    ProxyUpdateRequest,
 } from '../types/api';
 
 const proxies = ref<Proxy[]>([]);
@@ -293,7 +293,7 @@ const deleting = ref(false);
 const reloadingNginx = ref(false);
 
 // Container form data for pre-filling
-const containerFormData = ref<Partial<ProxyCreateRequest> | null>(null);
+const containerFormData = ref<Partial<ProxyCreateRequest> | undefined>(undefined);
 
 const statusOptions = [
   { title: 'Active', value: 'active' },
@@ -472,9 +472,9 @@ const filterProxies = () => {
   filteredProxies.value = filtered;
 };
 
-const sortProxies = () => {
-  filterProxies();
-};
+// const sortProxies = () => {
+//   filterProxies();
+// };
 
 // Relationship matching logic
 const updateProxyContainerRelationships = () => {
@@ -533,7 +533,7 @@ const deleteProxy = (proxy: Proxy) => {
 const cancelEdit = () => {
   showCreateDialog.value = false;
   editingProxy.value = null;
-  containerFormData.value = null;
+  containerFormData.value = undefined;
 };
 
 const handleProxySave = async (data: ProxyCreateRequest | ProxyUpdateRequest, isEdit: boolean) => {
@@ -677,7 +677,7 @@ const reloadNginx = async () => {
 // Clear container form data when dialog closes
 watch(showCreateDialog, (newValue) => {
   if (!newValue) {
-    containerFormData.value = null;
+    containerFormData.value = undefined;
   }
 });
 

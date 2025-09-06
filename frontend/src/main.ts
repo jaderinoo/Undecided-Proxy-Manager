@@ -1,22 +1,22 @@
-import { createApp } from 'vue';
+import '@mdi/font/css/materialdesignicons.css';
 import { createPinia } from 'pinia';
+import { createApp } from 'vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import { createVuetify } from 'vuetify';
 import * as components from 'vuetify/components';
 import * as directives from 'vuetify/directives';
 import { aliases, mdi } from 'vuetify/iconsets/mdi';
-import '@mdi/font/css/materialdesignicons.css';
 import 'vuetify/styles';
-import './styles/main.scss';
 import App from './App.vue';
-import LoginPage from './pages/LoginPage.vue';
+import CertificatesPage from './pages/CertificatesPage.vue';
+import ContainersPage from './pages/ContainersPage.vue';
 import Dashboard from './pages/Dashboard.vue';
 import DNSPage from './pages/DNSPage.vue';
-import ContainersPage from './pages/ContainersPage.vue';
+import LoginPage from './pages/LoginPage.vue';
 import ProxiesPage from './pages/ProxiesPage.vue';
-import CertificatesPage from './pages/CertificatesPage.vue';
 import SettingsPage from './pages/SettingsPage.vue';
 import { useAuthStore } from './stores/auth';
+import './styles/main.scss';
 
 // Vuetify configuration
 const vuetify = createVuetify({
@@ -124,7 +124,7 @@ const router = createRouter({
 });
 
 // Navigation guards
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, _from, next) => {
   const authStore = useAuthStore();
 
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
