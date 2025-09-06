@@ -41,26 +41,66 @@ func NewDNSService(dbService *DatabaseService) *DNSService {
 	}
 }
 
-// GetPublicIP retrieves the current public IP address
+// GetPublicIP retrieves the current public IP address using multiple fallback services
 func (d *DNSService) GetPublicIP() (string, error) {
-	resp, err := d.client.Get(d.config.PublicIPService)
+	// List of public IP services to try in order
+	services := []string{
+		d.config.PublicIPService, // Use configured service first
+		"https://api.ipify.org",
+		"https://ipv4.icanhazip.com",
+		"https://api.ip.sb/ip",
+		"https://checkip.amazonaws.com",
+		"https://ifconfig.me/ip",
+		"https://ipecho.net/plain",
+	}
+
+	var lastErr error
+	for i, service := range services {
+		if service == "" {
+			continue // Skip empty services
+		}
+
+		ip, err := d.tryGetIPFromService(service)
+		if err != nil {
+			lastErr = err
+			fmt.Printf("Failed to get IP from service %d (%s): %v\n", i+1, service, err)
+			continue
+		}
+
+		if ip != "" {
+			fmt.Printf("Successfully got public IP from service %d (%s): %s\n", i+1, service, ip)
+			return ip, nil
+		}
+	}
+
+	return "", fmt.Errorf("failed to get public IP from any service. Last error: %w", lastErr)
+}
+
+// tryGetIPFromService attempts to get IP from a specific service
+func (d *DNSService) tryGetIPFromService(service string) (string, error) {
+	resp, err := d.client.Get(service)
 	if err != nil {
-		return "", fmt.Errorf("failed to get public IP: %w", err)
+		return "", fmt.Errorf("failed to get public IP from %s: %w", service, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("failed to get public IP: status %d", resp.StatusCode)
+		return "", fmt.Errorf("failed to get public IP from %s: status %d", service, resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("failed to read response body: %w", err)
+		return "", fmt.Errorf("failed to read response body from %s: %w", service, err)
 	}
 
 	ip := string(body)
 	if ip == "" {
-		return "", fmt.Errorf("empty IP address received")
+		return "", fmt.Errorf("empty IP address received from %s", service)
+	}
+
+	// Basic validation - check if it looks like an IP address
+	if len(ip) < 7 || len(ip) > 15 {
+		return "", fmt.Errorf("invalid IP address format from %s: %s", service, ip)
 	}
 
 	return ip, nil
