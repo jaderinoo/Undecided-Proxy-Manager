@@ -69,6 +69,37 @@ LETSENCRYPT_EMAIL=your_email@example.com
 
 **Important:** The application will exit immediately if these required variables are not set in production mode.
 
+### Password Hashing
+
+The application uses bcrypt for secure password hashing. To generate a hashed password for the `ADMIN_PASSWORD` variable:
+
+```bash
+# From the project root directory
+cd backend
+go run cmd/hash-password/main.go "your_secure_password_here"
+```
+
+This will output:
+- The original password (for verification)
+- The bcrypt hashed password
+- A ready-to-use `.env` line with the hashed password
+
+**Example:**
+```bash
+$ go run cmd/hash-password/main.go "mySecurePassword123"
+Original password: mySecurePassword123
+Hashed password: $2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy
+
+Add this to your .env file:
+ADMIN_PASSWORD=$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy
+```
+
+**Security Notes:**
+- Never use plain text passwords in production
+- The bcrypt cost factor is set to the default (10) for good security/performance balance
+- Each password generates a unique hash due to random salt generation
+- Store the hashed password in your `.env` file, not the plain text version
+
 ## Development Notes
 
 - Database is automatically created

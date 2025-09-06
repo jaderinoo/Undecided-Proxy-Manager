@@ -4,6 +4,11 @@ services:
     ports:
       - "${PROD_NGINX_HTTP_PORT:-80}:80"
       - "${PROD_NGINX_HTTPS_PORT:-443}:443"
+    environment:
+      - PROD_FRONTEND_PORT=${PROD_FRONTEND_PORT:-6070}
+      - PROD_BACKEND_PORT=${PROD_BACKEND_PORT:-6080}
+      - PROD_NGINX_HTTP_PORT=${PROD_NGINX_HTTP_PORT:-80}
+      - PROD_NGINX_HTTPS_PORT=${PROD_NGINX_HTTPS_PORT:-443}
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
       - ./nginx/sites-available:/etc/nginx/sites-available
@@ -11,6 +16,11 @@ services:
       - ./nginx/ssl:/etc/nginx/ssl
       - ./nginx/logs:/var/log/nginx
       - nginx_data:/var/lib/nginx
+    command: >
+      sh -c "
+        envsubst '$$PROD_FRONTEND_PORT $$PROD_BACKEND_PORT' < /etc/nginx/sites-available/upm-admin.conf.template > /etc/nginx/sites-enabled/upm-admin.conf &&
+        nginx -g 'daemon off;'
+      "
     depends_on:
       - backend
       - frontend
@@ -53,6 +63,7 @@ services:
       - "${PROD_FRONTEND_PORT:-6070}:6070"
     environment:
       - VITE_API_URL=http://localhost:${PROD_BACKEND_PORT:-6080}
+      - PROD_FRONTEND_PORT=${PROD_FRONTEND_PORT:-6070}
     depends_on:
       - backend
     restart: unless-stopped

@@ -19,6 +19,19 @@ RUN yarn build
 
 FROM nginx:alpine
 COPY --from=builder /app/dist /usr/share/nginx/html
-RUN echo 'server { listen ${PROD_FRONTEND_PORT:-6070}; location / { root /usr/share/nginx/html; index index.html; try_files $uri $uri/ /index.html; } }' > /etc/nginx/conf.d/default.conf
-EXPOSE ${PROD_FRONTEND_PORT:-6070}
-CMD ["nginx", "-g", "daemon off;"]
+
+# Create nginx configuration template
+RUN echo 'server { listen ${PROD_FRONTEND_PORT}; location / { root /usr/share/nginx/html; index index.html; } }' > /etc/nginx/conf.d/default.conf.template
+
+# Remove the default nginx configuration to prevent conflicts
+RUN rm -f /etc/nginx/conf.d/default.conf
+
+# Create custom startup script that processes the template
+RUN echo '#!/bin/sh' > /start-nginx.sh && \
+    echo 'set -e' >> /start-nginx.sh && \
+    echo 'envsubst < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf' >> /start-nginx.sh && \
+    echo 'exec nginx -g "daemon off;"' >> /start-nginx.sh && \
+    chmod +x /start-nginx.sh
+
+EXPOSE 6070
+CMD ["/start-nginx.sh"]

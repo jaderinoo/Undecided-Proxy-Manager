@@ -21,6 +21,7 @@ vendor/
 dist/
 build/
 bin/
+.yarn/
 
 # Go binaries
 upm-backend
