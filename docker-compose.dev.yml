@@ -10,6 +10,12 @@ services:
       - ./nginx/sites-enabled:/etc/nginx/sites-enabled
       - ./nginx/ssl:/etc/nginx/ssl
       - ./nginx/logs:/var/log/nginx
+    command: >
+      sh -c "
+        # Use the development config
+        cp /etc/nginx/sites-available/upm-admin-dev.conf /etc/nginx/sites-enabled/upm-admin.conf &&
+        nginx -g 'daemon off;'
+      "
     depends_on:
       - backend
       - frontend
@@ -56,6 +62,8 @@ services:
       - /app/node_modules
     environment:
       - VITE_API_URL=http://localhost:6081
+    networks:
+      - upm-dev-network
 
 networks:
   upm-dev-network:
