@@ -1,11 +1,21 @@
 FROM node:20-slim AS builder
 
 WORKDIR /app
-RUN corepack enable
-COPY package.json ./
-RUN yarn install
 
+# Enable corepack and set up Yarn
+RUN corepack enable
+RUN corepack prepare yarn@4.9.4 --activate
+
+# Copy package files
+COPY package.json yarn.lock ./
+
+# Install dependencies
+RUN yarn install --frozen-lockfile
+
+# Copy source code
 COPY . .
+
+# Build the application
 RUN yarn build
 
 FROM nginx:alpine
