@@ -11,18 +11,9 @@
             <v-card-text>
               <ErrorAlert v-if="error" :error="error" @clear="error = null" />
 
-              <PageHeader
-                :count="dnsConfigs?.length || 0"
-                item-name="DNS Configurations"
-                :show-refresh="false"
-              >
+              <PageHeader :count="dnsConfigs?.length || 0" item-name="DNS Configurations" :show-refresh="false">
                 <template #actions>
-                  <v-btn
-                    color="success"
-                    variant="outlined"
-                    size="small"
-                    @click="showCreateConfigModal = true"
-                  >
+                  <v-btn color="success" variant="outlined" size="small" @click="showCreateConfigModal = true">
                     <v-icon left>mdi-plus</v-icon>
                     Add Configuration
                   </v-btn>
@@ -35,13 +26,8 @@
                   <v-icon left>mdi-earth</v-icon>
                   Current Public IP
                   <v-spacer></v-spacer>
-                  <v-btn
-                    color="primary"
-                    variant="outlined"
-                    size="small"
-                    @click="refreshPublicIP"
-                    :loading="loadingPublicIP"
-                  >
+                  <v-btn color="primary" variant="outlined" size="small" @click="refreshPublicIP"
+                    :loading="loadingPublicIP">
                     <v-icon left>mdi-refresh</v-icon>
                     Refresh
                   </v-btn>
@@ -49,13 +35,36 @@
                 <v-card-text>
                   <div class="d-flex align-center">
                     <span class="text-body-1 mr-2">Public IP:</span>
-                    <v-chip
-                      color="primary"
-                      variant="outlined"
-                      class="font-mono"
-                    >
+                    <v-chip color="primary" variant="outlined" class="font-mono">
                       {{ publicIP || 'Loading...' }}
                     </v-chip>
+                  </div>
+                </v-card-text>
+              </v-card>
+
+              <!-- Nginx IP Restrictions -->
+              <v-card class="mb-4" variant="outlined">
+                <v-card-title>
+                  <v-icon left>mdi-shield-account</v-icon>
+                  Nginx Access Control
+                  <v-spacer></v-spacer>
+                  <v-btn color="primary" variant="outlined" size="small" @click="showNginxIPModal = true">
+                    <v-icon left>mdi-cog</v-icon>
+                    Configure
+                  </v-btn>
+                </v-card-title>
+                <v-card-text>
+                  <div class="d-flex align-center">
+                    <span class="text-body-1 mr-2">Allowed IP Ranges:</span>
+                    <div v-if="nginxAllowedRanges.length === 0" class="text-grey">
+                      No restrictions (all IPs allowed)
+                    </div>
+                    <div v-else>
+                      <v-chip v-for="range in nginxAllowedRanges" :key="range" size="small" color="primary"
+                        variant="outlined" class="mr-1">
+                        {{ range }}
+                      </v-chip>
+                    </div>
                   </div>
                 </v-card-text>
               </v-card>
@@ -65,24 +74,14 @@
 
               <!-- DNS Configurations -->
               <div v-if="loadingConfigs" class="text-center py-8">
-                <v-progress-circular
-                  indeterminate
-                  color="primary"
-                  size="64"
-                  class="mb-4"
-                ></v-progress-circular>
+                <v-progress-circular indeterminate color="primary" size="64" class="mb-4"></v-progress-circular>
                 <p class="text-body-1 text-grey-darken-2">
                   Loading DNS configurations...
                 </p>
               </div>
 
-              <div
-                v-else-if="!dnsConfigs || dnsConfigs.length === 0"
-                class="text-center py-8"
-              >
-                <v-icon size="64" color="grey-lighten-1" class="mb-4"
-                  >mdi-dns</v-icon
-                >
+              <div v-else-if="!dnsConfigs || dnsConfigs.length === 0" class="text-center py-8">
+                <v-icon size="64" color="grey-lighten-1" class="mb-4">mdi-dns</v-icon>
                 <h3 class="text-h5 font-weight-medium text-grey-darken-2 mb-2">
                   No DNS Configurations
                 </h3>
@@ -90,116 +89,64 @@
                   Create your first DNS configuration to start managing dynamic
                   DNS records.
                 </p>
-                <v-btn
-                  color="primary"
-                  prepend-icon="mdi-plus"
-                  @click="showCreateConfigModal = true"
-                >
+                <v-btn color="primary" prepend-icon="mdi-plus" @click="showCreateConfigModal = true">
                   Add Configuration
                 </v-btn>
               </div>
 
               <div v-else class="dns-configs-grid">
                 <v-row>
-                  <v-col
-                    v-for="config in dnsConfigs || []"
-                    :key="config.id"
-                    cols="12"
-                    md="6"
-                    lg="4"
-                  >
+                  <v-col v-for="config in dnsConfigs || []" :key="config.id" cols="12" md="6" lg="4">
                     <v-card variant="outlined" class="mb-4">
                       <v-card-title>
-                        <div
-                          class="d-flex align-center justify-space-between w-100"
-                        >
+                        <div class="d-flex align-center justify-space-between w-100">
                           <div>
                             <div class="text-h6">{{ config.domain }}</div>
-                            <v-chip
-                              size="small"
-                              color="primary"
-                              variant="outlined"
-                            >
+                            <v-chip size="small" color="primary" variant="outlined">
                               {{ config.provider }}
                             </v-chip>
                           </div>
                           <div class="d-flex" style="gap: 4px">
-                            <v-btn
-                              icon="mdi-pencil"
-                              size="small"
-                              variant="text"
-                              @click="editConfig(config)"
-                            />
-                            <v-btn
-                              icon="mdi-delete"
-                              size="small"
-                              variant="text"
-                              color="error"
-                              @click="deleteConfig(config.id)"
-                            />
+                            <v-btn icon="mdi-pencil" size="small" variant="text" @click="editConfig(config)" />
+                            <v-btn icon="mdi-delete" size="small" variant="text" color="error"
+                              @click="deleteConfig(config.id)" />
                           </div>
                         </div>
                       </v-card-title>
 
                       <v-card-text>
                         <div class="mb-3">
-                          <div
-                            class="d-flex justify-space-between align-center mb-1"
-                          >
-                            <span class="text-caption text-grey-darken-2"
-                              >Status:</span
-                            >
-                            <v-chip
-                              :color="config.is_active ? 'green' : 'orange'"
-                              size="small"
-                              variant="outlined"
-                            >
+                          <div class="d-flex justify-space-between align-center mb-1">
+                            <span class="text-caption text-grey-darken-2">Status:</span>
+                            <v-chip :color="config.is_active ? 'green' : 'orange'" size="small" variant="outlined">
                               {{ config.is_active ? 'Active' : 'Inactive' }}
                             </v-chip>
                           </div>
-                          <div
-                            class="d-flex justify-space-between align-center mb-1"
-                          >
-                            <span class="text-caption text-grey-darken-2"
-                              >Last Update:</span
-                            >
+                          <div class="d-flex justify-space-between align-center mb-1">
+                            <span class="text-caption text-grey-darken-2">Last Update:</span>
                             <span class="text-body-2">{{
                               formatDate(config.last_update) || 'Never'
-                            }}</span>
+                              }}</span>
                           </div>
-                          <div
-                            class="d-flex justify-space-between align-center"
-                          >
-                            <span class="text-caption text-grey-darken-2"
-                              >Last IP:</span
-                            >
+                          <div class="d-flex justify-space-between align-center">
+                            <span class="text-caption text-grey-darken-2">Last IP:</span>
                             <span class="text-body-2 font-mono">{{
                               config.last_ip || 'Unknown'
-                            }}</span>
+                              }}</span>
                           </div>
                         </div>
 
                         <v-divider class="my-3"></v-divider>
 
-                        <div
-                          class="d-flex justify-space-between align-center mb-2"
-                        >
+                        <div class="d-flex justify-space-between align-center mb-2">
                           <span class="text-subtitle-2">DNS Records</span>
-                          <v-btn
-                            size="small"
-                            color="primary"
-                            variant="outlined"
-                            prepend-icon="mdi-plus"
-                            @click="openCreateRecordModal(config.id)"
-                          >
+                          <v-btn size="small" color="primary" variant="outlined" prepend-icon="mdi-plus"
+                            @click="openCreateRecordModal(config.id)">
                             Add Record
                           </v-btn>
                         </div>
 
-                        <div
-                          v-if="configRecords[config.id]?.length === 0"
-                          class="text-center py-4"
-                        >
+                        <div v-if="configRecords[config.id]?.length === 0" class="text-center py-4">
                           <v-icon color="grey-lighten-1">mdi-dns</v-icon>
                           <p class="text-caption text-grey-darken-1 mt-2">
                             No DNS records configured
@@ -208,11 +155,7 @@
 
                         <div v-else>
                           <v-list density="compact">
-                            <v-list-item
-                              v-for="record in configRecords[config.id] || []"
-                              :key="record.id"
-                              class="px-0"
-                            >
+                            <v-list-item v-for="record in configRecords[config.id] || []" :key="record.id" class="px-0">
                               <template v-slot:prepend>
                                 <v-icon size="small">mdi-dns</v-icon>
                               </template>
@@ -225,42 +168,22 @@
                                 }}
                               </v-list-item-title>
 
-                              <v-list-item-subtitle
-                                class="font-mono text-caption"
-                              >
+                              <v-list-item-subtitle class="font-mono text-caption">
                                 {{ record.current_ip || 'Not set' }}
                               </v-list-item-subtitle>
 
-                              <v-list-item-subtitle
-                                v-if="record.allowed_ip_ranges"
-                                class="text-caption text-grey-darken-1 mt-1"
-                              >
+                              <v-list-item-subtitle v-if="record.allowed_ip_ranges"
+                                class="text-caption text-grey-darken-1 mt-1">
                                 Allowed: {{ record.allowed_ip_ranges }}
                               </v-list-item-subtitle>
 
                               <template v-slot:append>
                                 <div class="d-flex" style="gap: 4px">
-                                  <v-btn
-                                    icon="mdi-refresh"
-                                    size="x-small"
-                                    variant="text"
-                                    color="success"
-                                    :loading="loadingUpdates[record.id]"
-                                    @click="updateRecordNow(record.id)"
-                                  />
-                                  <v-btn
-                                    icon="mdi-pencil"
-                                    size="x-small"
-                                    variant="text"
-                                    @click="editRecord(record)"
-                                  />
-                                  <v-btn
-                                    icon="mdi-delete"
-                                    size="x-small"
-                                    variant="text"
-                                    color="error"
-                                    @click="deleteRecord(record.id)"
-                                  />
+                                  <v-btn icon="mdi-refresh" size="x-small" variant="text" color="success"
+                                    :loading="loadingUpdates[record.id]" @click="updateRecordNow(record.id)" />
+                                  <v-btn icon="mdi-pencil" size="x-small" variant="text" @click="editRecord(record)" />
+                                  <v-btn icon="mdi-delete" size="x-small" variant="text" color="error"
+                                    @click="deleteRecord(record.id)" />
                                 </div>
                               </template>
                             </v-list-item>
@@ -297,35 +220,22 @@
           <v-form @submit.prevent="saveConfig">
             <v-row>
               <v-col cols="12">
-                <v-select
-                  v-model="configForm.provider"
-                  label="DNS Provider"
-                  :items="[
-                    { title: 'Namecheap Dynamic DNS', value: 'namecheap' },
-                    { title: 'No Dynamic DNS (Static)', value: 'static' }
-                  ]"
-                  required
-                ></v-select>
+                <v-select v-model="configForm.provider" label="DNS Provider" :items="[
+                  { title: 'Namecheap Dynamic DNS', value: 'namecheap' },
+                  { title: 'No Dynamic DNS (Static)', value: 'static' }
+                ]" required></v-select>
               </v-col>
 
               <v-col cols="12">
-                <v-text-field
-                  v-model="configForm.domain"
-                  label="Domain"
-                  placeholder="example.com"
-                  required
-                ></v-text-field>
+                <v-text-field v-model="configForm.domain" label="Domain" placeholder="example.com"
+                  required></v-text-field>
               </v-col>
 
               <!-- Dynamic DNS credentials (only for namecheap) -->
               <template v-if="configForm.provider === 'namecheap'">
                 <v-col cols="12">
-                  <v-text-field
-                    v-model="configForm.username"
-                    label="Username"
-                    placeholder="yourdomain.com"
-                    required
-                  ></v-text-field>
+                  <v-text-field v-model="configForm.username" label="Username" placeholder="yourdomain.com"
+                    required></v-text-field>
                 </v-col>
 
                 <v-col cols="12">
@@ -335,42 +245,23 @@
                       <v-icon color="primary" class="mr-2">mdi-key-change</v-icon>
                       <span class="text-body-2 text-primary">Changing Password</span>
                       <v-spacer></v-spacer>
-                      <v-btn
-                        variant="text"
-                        size="small"
-                        color="grey"
-                        @click="changePassword = false; configForm.password = ''"
-                      >
+                      <v-btn variant="text" size="small" color="grey"
+                        @click="changePassword = false; configForm.password = ''">
                         Cancel
                       </v-btn>
                     </div>
-                    <v-text-field
-                      v-model="configForm.password"
-                      label="Dynamic DNS Password"
-                      type="password"
-                      placeholder="Dynamic DNS password"
-                      :required="showCreateConfigModal"
-                    ></v-text-field>
+                    <v-text-field v-model="configForm.password" label="Dynamic DNS Password" type="password"
+                      placeholder="Dynamic DNS password" :required="showCreateConfigModal"></v-text-field>
                   </div>
 
                   <!-- Show password change option for edit -->
                   <div v-else-if="showEditConfigModal">
-                    <v-alert
-                      type="info"
-                      variant="outlined"
-                      class="mb-3"
-                      density="compact"
-                    >
+                    <v-alert type="info" variant="outlined" class="mb-3" density="compact">
                       <template #prepend>
                         <v-icon>mdi-information</v-icon>
                       </template>
                       Password is encrypted and hidden for security.
-                      <v-btn
-                        variant="text"
-                        size="small"
-                        color="primary"
-                        @click="changePassword = true"
-                      >
+                      <v-btn variant="text" size="small" color="primary" @click="changePassword = true">
                         Change Password
                       </v-btn>
                     </v-alert>
@@ -380,11 +271,7 @@
 
               <!-- Static DNS notice -->
               <v-col v-else-if="configForm.provider === 'static'" cols="12">
-                <v-alert
-                  type="info"
-                  variant="outlined"
-                  density="compact"
-                >
+                <v-alert type="info" variant="outlined" density="compact">
                   <template #prepend>
                     <v-icon>mdi-information</v-icon>
                   </template>
@@ -393,11 +280,7 @@
               </v-col>
 
               <v-col cols="12">
-                <v-checkbox
-                  v-model="configForm.is_active"
-                  label="Active"
-                  color="primary"
-                ></v-checkbox>
+                <v-checkbox v-model="configForm.is_active" label="Active" color="primary"></v-checkbox>
               </v-col>
             </v-row>
           </v-form>
@@ -429,55 +312,31 @@
           <v-form @submit.prevent="saveRecord">
             <v-row>
               <v-col cols="12">
-                <v-text-field
-                  v-model="recordForm.host"
-                  label="Host"
-                  placeholder="@ for root domain, www for subdomain"
-                  hint="Use '@' for root domain or enter subdomain name"
-                  persistent-hint
-                  required
-                ></v-text-field>
+                <v-text-field v-model="recordForm.host" label="Host" placeholder="@ for root domain, www for subdomain"
+                  hint="Use '@' for root domain or enter subdomain name" persistent-hint required></v-text-field>
               </v-col>
 
               <v-col cols="12">
-                <v-textarea
-                  v-model="recordForm.allowed_ip_ranges"
-                  label="Allowed IP Ranges"
+                <v-textarea v-model="recordForm.allowed_ip_ranges" label="Allowed IP Ranges"
                   placeholder="192.168.1.0/24, 10.0.0.1, 203.0.113.0/24"
                   hint="Comma-separated list of IP addresses or CIDR ranges. Leave empty to allow all IPs."
-                  persistent-hint
-                  rows="3"
+                  persistent-hint rows="3"
                   :error-messages="validateIPRanges(recordForm.allowed_ip_ranges || '') ? [validateIPRanges(recordForm.allowed_ip_ranges || '')!] : []"
-                  :error="!!validateIPRanges(recordForm.allowed_ip_ranges || '')"
-                ></v-textarea>
+                  :error="!!validateIPRanges(recordForm.allowed_ip_ranges || '')"></v-textarea>
 
                 <!-- Quick Fill Buttons -->
                 <div class="mt-2">
                   <v-chip-group>
-                    <v-chip
-                      size="small"
-                      color="primary"
-                      variant="outlined"
-                      @click="quickFillIPRanges('192.168.50.2/24')"
-                    >
+                    <v-chip size="small" color="primary" variant="outlined"
+                      @click="quickFillIPRanges('192.168.50.2/24')">
                       <v-icon start size="small">mdi-plus</v-icon>
                       192.168.50.2/24
                     </v-chip>
-                    <v-chip
-                      size="small"
-                      color="primary"
-                      variant="outlined"
-                      @click="quickFillIPRanges('10.6.0.1/32')"
-                    >
+                    <v-chip size="small" color="primary" variant="outlined" @click="quickFillIPRanges('10.6.0.1/32')">
                       <v-icon start size="small">mdi-plus</v-icon>
                       10.6.0.1/32
                     </v-chip>
-                    <v-chip
-                      size="small"
-                      color="grey"
-                      variant="outlined"
-                      @click="clearIPRanges"
-                    >
+                    <v-chip size="small" color="grey" variant="outlined" @click="clearIPRanges">
                       <v-icon start size="small">mdi-close</v-icon>
                       Clear
                     </v-chip>
@@ -486,11 +345,7 @@
               </v-col>
 
               <v-col cols="12">
-                <v-checkbox
-                  v-model="recordForm.is_active"
-                  label="Active"
-                  color="primary"
-                ></v-checkbox>
+                <v-checkbox v-model="recordForm.is_active" label="Active" color="primary"></v-checkbox>
               </v-col>
             </v-row>
           </v-form>
@@ -509,28 +364,72 @@
     <!-- Error Alert -->
     <ErrorAlert v-if="error" :error="error" @clear="error = null" />
 
-    <!-- Delete Confirmation Dialogs -->
-    <ConfirmationDialog
-      v-model:show="showDeleteConfigDialog"
-      title="Delete DNS Configuration"
-      message="Are you sure you want to delete this DNS configuration? This will also delete all associated records."
-      icon="mdi-delete-alert"
-      icon-color="error"
-      confirm-text="Delete"
-      confirm-color="error"
-      @confirm="confirmDeleteConfig"
-    />
+    <!-- Nginx IP Restrictions Modal -->
+    <v-dialog v-model="showNginxIPModal" max-width="600px" persistent>
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon left>mdi-shield-account</v-icon>
+          Configure Nginx IP Restrictions
+          <v-spacer></v-spacer>
+          <v-btn icon @click="closeNginxIPModal">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-card-title>
 
-    <ConfirmationDialog
-      v-model:show="showDeleteRecordDialog"
-      title="Delete DNS Record"
-      message="Are you sure you want to delete this DNS record?"
-      icon="mdi-delete-alert"
-      icon-color="error"
-      confirm-text="Delete"
-      confirm-color="error"
-      @confirm="confirmDeleteRecord"
-    />
+        <v-card-text>
+          <v-form @submit.prevent="saveNginxIPRestrictions">
+            <v-row>
+              <v-col cols="12">
+                <v-textarea v-model="nginxIPForm.allowedRanges" label="Allowed IP Ranges"
+                  placeholder="192.168.50.0/24, 10.6.0.1/32"
+                  hint="Comma-separated list of IP addresses or CIDR ranges. Leave empty to allow all IPs."
+                  persistent-hint rows="4"
+                  :error-messages="validateIPRanges(nginxIPForm.allowedRanges || '') ? [validateIPRanges(nginxIPForm.allowedRanges || '')!] : []"
+                  :error="!!validateIPRanges(nginxIPForm.allowedRanges || '')"></v-textarea>
+
+                <!-- Quick Fill Buttons -->
+                <div class="mt-2">
+                  <v-chip-group>
+                    <v-chip size="small" color="primary" variant="outlined"
+                      @click="quickFillNginxIPRanges('192.168.50.0/24')">
+                      <v-icon start size="small">mdi-plus</v-icon>
+                      192.168.50.0/24
+                    </v-chip>
+                    <v-chip size="small" color="primary" variant="outlined"
+                      @click="quickFillNginxIPRanges('10.6.0.1/32')">
+                      <v-icon start size="small">mdi-plus</v-icon>
+                      10.6.0.1/32
+                    </v-chip>
+                    <v-chip size="small" color="grey" variant="outlined" @click="clearNginxIPRanges">
+                      <v-icon start size="small">mdi-close</v-icon>
+                      Clear All
+                    </v-chip>
+                  </v-chip-group>
+                </div>
+              </v-col>
+            </v-row>
+          </v-form>
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn @click="closeNginxIPModal" color="grey"> Cancel </v-btn>
+          <v-btn @click="saveNginxIPRestrictions" :loading="savingNginxIP" color="primary">
+            Save & Apply
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Delete Confirmation Dialogs -->
+    <ConfirmationDialog v-model:show="showDeleteConfigDialog" title="Delete DNS Configuration"
+      message="Are you sure you want to delete this DNS configuration? This will also delete all associated records."
+      icon="mdi-delete-alert" icon-color="error" confirm-text="Delete" confirm-color="error"
+      @confirm="confirmDeleteConfig" />
+
+    <ConfirmationDialog v-model:show="showDeleteRecordDialog" title="Delete DNS Record"
+      message="Are you sure you want to delete this DNS record?" icon="mdi-delete-alert" icon-color="error"
+      confirm-text="Delete" confirm-color="error" @confirm="confirmDeleteRecord" />
   </AppLayout>
 </template>
 
@@ -560,6 +459,8 @@ const loadingPublicIP = ref(false);
 const loadingUpdates = ref<Record<number, boolean>>({});
 const savingConfig = ref(false);
 const savingRecord = ref(false);
+const savingNginxIP = ref(false);
+const nginxAllowedRanges = ref<string[]>([]);
 const error = ref<string | null>(null);
 
 // Modal states
@@ -569,6 +470,7 @@ const showCreateRecordModal = ref(false);
 const showEditRecordModal = ref(false);
 const showDeleteConfigDialog = ref(false);
 const showDeleteRecordDialog = ref(false);
+const showNginxIPModal = ref(false);
 const deletingConfigId = ref<number | null>(null);
 const deletingRecordId = ref<number | null>(null);
 
@@ -589,6 +491,10 @@ const recordForm = ref<DNSRecordCreateRequest & { is_active: boolean }>({
   host: '',
   allowed_ip_ranges: '',
   is_active: true,
+});
+
+const nginxIPForm = ref({
+  allowedRanges: '',
 });
 
 const editingConfig = ref<DNSConfig | null>(null);
@@ -947,11 +853,78 @@ const clearIPRanges = () => {
   recordForm.value.allowed_ip_ranges = '';
 };
 
+// Nginx IP management methods
+const saveNginxIPRestrictions = async () => {
+  try {
+    savingNginxIP.value = true;
+
+    // Validate IP ranges
+    const ipValidationError = validateIPRanges(nginxIPForm.value.allowedRanges || '');
+    if (ipValidationError) {
+      error.value = `IP range validation error: ${ipValidationError}`;
+      return;
+    }
+
+    // Parse ranges
+    const ranges = nginxIPForm.value.allowedRanges
+      .split(',')
+      .map(r => r.trim())
+      .filter(r => r);
+
+    // Update nginx configuration
+    await apiService.updateAdminIPRestrictions(ranges);
+
+    // Update local state
+    nginxAllowedRanges.value = ranges;
+
+    closeNginxIPModal();
+  } catch (err) {
+    error.value = `Failed to update nginx IP restrictions: ${err}`;
+  } finally {
+    savingNginxIP.value = false;
+  }
+};
+
+const closeNginxIPModal = () => {
+  showNginxIPModal.value = false;
+  nginxIPForm.value = {
+    allowedRanges: nginxAllowedRanges.value.join(', '),
+  };
+};
+
+const quickFillNginxIPRanges = (range: string) => {
+  const currentRanges = nginxIPForm.value.allowedRanges || '';
+
+  if (currentRanges.trim()) {
+    nginxIPForm.value.allowedRanges = `${currentRanges}, ${range}`;
+  } else {
+    nginxIPForm.value.allowedRanges = range;
+  }
+};
+
+const clearNginxIPRanges = () => {
+  nginxIPForm.value.allowedRanges = '';
+};
+
 // Lifecycle
 onMounted(() => {
   loadDNSConfigs();
   refreshPublicIP();
+  loadNginxIPRestrictions();
 });
+
+const loadNginxIPRestrictions = async () => {
+  try {
+    const response = await apiService.getAdminIPRestrictions();
+    nginxAllowedRanges.value = response.allowed_ranges || [];
+    nginxIPForm.value.allowedRanges = nginxAllowedRanges.value.join(', ');
+  } catch (err) {
+    console.error('Failed to load nginx IP restrictions:', err);
+    // Fallback to default ranges
+    nginxAllowedRanges.value = ['192.168.50.0/24', '10.6.0.1/32'];
+    nginxIPForm.value.allowedRanges = nginxAllowedRanges.value.join(', ');
+  }
+};
 </script>
 
 <style scoped>

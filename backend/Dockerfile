@@ -7,8 +7,11 @@ RUN go mod download
 COPY . .
 RUN go build -o main .
 
-FROM alpine:latest
-RUN apk --no-cache add ca-certificates
+FROM golang:1.24-alpine
+RUN apk --no-cache add ca-certificates gettext curl && \
+    apk --no-cache update && \
+    apk --no-cache upgrade ca-certificates && \
+    update-ca-certificates
 WORKDIR /root/
 
 COPY --from=builder /app/main .

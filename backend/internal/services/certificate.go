@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
@@ -100,6 +101,11 @@ func (c *CertificateService) GenerateLetsEncryptCertificate(domain string) (*mod
 	cert, err := c.LetsEncrypt.GenerateCertificate(domain)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate Let's Encrypt certificate: %w", err)
+	}
+
+	// Copy certificate to nginx ssl directory
+	if err := c.copyCertificateToNginx(domain, cert); err != nil {
+		return nil, fmt.Errorf("failed to copy certificate to nginx: %w", err)
 	}
 
 	return cert, nil
@@ -225,4 +231,55 @@ type CertificateInfo struct {
 	NotAfter  time.Time
 	DNSNames  []string
 	IsValid   bool
+}
+
+// copyCertificateToNginx copies the certificate files to the nginx ssl directory
+func (c *CertificateService) copyCertificateToNginx(domain string, cert *models.Certificate) error {
+	// Create nginx ssl directory (this is mounted to the host nginx/ssl directory)
+	nginxCertDir := c.CertPath
+	if err := os.MkdirAll(nginxCertDir, 0755); err != nil {
+		return fmt.Errorf("failed to create nginx cert directory: %w", err)
+	}
+
+	// Copy certificate file
+	certDest := filepath.Join(nginxCertDir, domain+".crt")
+	if err := copyFile(cert.CertPath, certDest); err != nil {
+		return fmt.Errorf("failed to copy certificate file: %w", err)
+	}
+
+	// Copy private key file
+	keyDest := filepath.Join(nginxCertDir, domain+".key")
+	if err := copyFile(cert.KeyPath, keyDest); err != nil {
+		return fmt.Errorf("failed to copy private key file: %w", err)
+	}
+
+	return nil
+}
+
+// copyFile copies a file from src to dst
+func copyFile(src, dst string) error {
+	sourceFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer sourceFile.Close()
+
+	destFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	_, err = io.Copy(destFile, sourceFile)
+	if err != nil {
+		return err
+	}
+
+	// Copy file permissions
+	sourceInfo, err := sourceFile.Stat()
+	if err != nil {
+		return err
+	}
+
+	return os.Chmod(dst, sourceInfo.Mode())
 }

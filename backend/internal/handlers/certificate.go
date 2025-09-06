@@ -285,7 +285,7 @@ func RenewCertificate(c *gin.Context) {
 	}
 
 	// Create certificate service
-	certService := services.NewCertificateService("/etc/ssl/certs")
+	certService := services.NewCertificateService("/etc/nginx/ssl")
 
 	// Renew certificate using Let's Encrypt
 	renewedCert, err := certService.RenewCertificate(certificate)
@@ -334,7 +334,7 @@ func GenerateLetsEncryptCertificate(c *gin.Context) {
 	}
 
 	// Create certificate service
-	certService := services.NewCertificateService("/etc/ssl/certs")
+	certService := services.NewCertificateService("/etc/nginx/ssl")
 
 	// Generate Let's Encrypt certificate
 	certificate, err := certService.GenerateLetsEncryptCertificate(req.Domain)

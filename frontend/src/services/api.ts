@@ -37,9 +37,9 @@ const getApiBaseUrl = () => {
     return 'http://localhost:6081';
   }
   
-  // Production mode: Use relative URLs so API calls go through nginx proxy
-  // This works for both direct access (192.168.50.100:6070) and nginx proxy (192.168.50.100:8444)
-  return '';
+  // Production mode: Use the same hostname but backend port (6080)
+  // This ensures API calls go to the correct backend port
+  return `http://${window.location.hostname}:6080`;
 };
 
 const API_BASE_URL = getApiBaseUrl();
@@ -208,6 +208,17 @@ class ApiService {
   async testNginxConfig(): Promise<{ message: string }> {
     return this.request('/api/v1/nginx/test', {
       method: 'POST',
+    });
+  }
+
+  async getAdminIPRestrictions(): Promise<{ allowed_ranges: string[] }> {
+    return this.request('/api/v1/nginx/admin-ip-restrictions');
+  }
+
+  async updateAdminIPRestrictions(allowedRanges: string[]): Promise<{ message: string }> {
+    return this.request('/api/v1/nginx/admin-ip-restrictions', {
+      method: 'PUT',
+      body: JSON.stringify({ allowed_ranges: allowedRanges }),
     });
   }
 

@@ -225,6 +225,8 @@ func main() {
 			{
 				nginx.POST("/reload", handlers.ReloadNginx)
 				nginx.POST("/test", handlers.TestNginxConfig)
+				nginx.GET("/admin-ip-restrictions", handlers.GetAdminIPRestrictions)
+				nginx.PUT("/admin-ip-restrictions", handlers.UpdateAdminIPRestrictions)
 			}
 
 			// DNS management endpoints

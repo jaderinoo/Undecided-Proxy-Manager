@@ -4,12 +4,25 @@ server {
     listen [::]:80 default_server;
     server_name _;
 
+    # IP-based access restrictions
+    {{range .AllowedRanges}}
+    allow {{.}};
+    {{end}}
+    # Deny all other IPs
+    deny all;
+
     # Rate limiting for admin interface
     limit_req zone=api burst=20 nodelay;
 
+1    # ACME challenge location for Let's Encrypt
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+        try_files $uri =404;
+    }
+
     # Frontend (Vue.js app)
     location / {
-        proxy_pass http://frontend:${PROD_FRONTEND_PORT};
+        proxy_pass http://frontend:$PROD_FRONTEND_PORT;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -23,7 +36,7 @@ server {
 
     # Backend API
     location /api/ {
-        proxy_pass http://backend:${PROD_BACKEND_PORT};
+        proxy_pass http://backend:$PROD_BACKEND_PORT;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -48,7 +61,7 @@ server {
 
     # Health check endpoint
     location /health {
-        proxy_pass http://backend:${PROD_BACKEND_PORT}/health;
+        proxy_pass http://backend:$PROD_BACKEND_PORT/health;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

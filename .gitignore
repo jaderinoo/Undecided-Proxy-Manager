@@ -48,13 +48,65 @@ Thumbs.db
 # Docker
 .dockerignore
 
-# SSL certificates
+# SSL certificates and keys
 *.pem
 *.crt
 *.key
+*.p12
+*.pfx
 ssl/
+nginx/ssl/
+letsencrypt/
+certs/
+
+# Let's Encrypt certificates and accounts
+/etc/letsencrypt/
+/var/lib/letsencrypt/
+/var/log/letsencrypt/
 
 # Nginx configs (generated)
 nginx/conf.d/
+nginx/sites-enabled/
+
+# Generated proxy configs (keep templates, ignore generated)
 nginx/sites-available/proxy-*.conf
-nginx/sites-enabled/proxy-*.conf
+!nginx/sites-available/proxy-template.conf
+
+# Generated admin configs (keep templates, ignore generated)
+nginx/sites-available/upm-admin-simple.conf
+nginx/sites-available/upm-admin-https.conf
+!nginx/sites-available/upm-admin.conf.template
+
+# Docker volumes and data
+data/
+volumes/
+docker-data/
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Runtime files
+*.pid
+*.sock
+
+# Configuration files with sensitive data
+config.local.*
+secrets/
+
+# ACME challenge files
+.well-known/
+acme-challenge/
+
+# Test files
+test-config.conf
+test-*.conf
+
+# Generated nginx sites-enabled (symlinks and generated configs)
+nginx/sites-enabled/

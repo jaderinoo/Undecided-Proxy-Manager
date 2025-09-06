@@ -48,3 +48,8 @@ func (cs *CoreSettings) MaskSensitiveData() {
 		cs.JWTSecret = "***masked***"
 	}
 }
+
+// AdminIPRestrictionsRequest represents a request to update nginx admin IP restrictions
+type AdminIPRestrictionsRequest struct {
+	AllowedRanges []string `json:"allowed_ranges" binding:"required"`
+}
