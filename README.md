@@ -39,7 +39,7 @@ A simple proxy management system with Go backend, Vue 3 frontend, and Swagger AP
 | Environment | Frontend | Backend | Swagger |
 |-------------|----------|---------|---------|
 | **Development** | 6071 | 6081 | http://localhost:6081/swagger |
-| **Production** | 6070 | 6080 | http://localhost:6080/swagger |
+| **Production** | ${PROD_FRONTEND_PORT:-6070} | ${PROD_BACKEND_PORT:-6080} | http://localhost:${PROD_BACKEND_PORT:-6080}/swagger |
 
 ## Manual Development
 

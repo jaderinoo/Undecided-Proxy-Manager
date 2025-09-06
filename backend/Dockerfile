@@ -13,5 +13,5 @@ WORKDIR /root/
 
 COPY --from=builder /app/main .
 
-EXPOSE 6080
+EXPOSE ${PROD_BACKEND_PORT:-6080}
 CMD ["./main"]

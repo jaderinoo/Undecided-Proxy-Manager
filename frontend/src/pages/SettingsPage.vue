@@ -80,6 +80,7 @@
                   variant="outlined"
                   density="compact"
                   class="mb-2"
+                  hint="Password is masked for security"
                 />
 
                 <v-text-field
@@ -89,6 +90,7 @@
                   variant="outlined"
                   density="compact"
                   class="mb-2"
+                  hint="Secret is masked for security"
                 />
 
                 <v-text-field
@@ -258,6 +260,12 @@
                       <div>GO_ENV=development</div>
                       <div>BACKEND_PORT=6081</div>
                       <div></div>
+                      <div data-comment="true"># Production Port Configuration</div>
+                      <div>PROD_NGINX_HTTP_PORT=80</div>
+                      <div>PROD_NGINX_HTTPS_PORT=443</div>
+                      <div>PROD_BACKEND_PORT=6080</div>
+                      <div>PROD_FRONTEND_PORT=6070</div>
+                      <div></div>
                       <div data-comment="true">
                         # Authentication Configuration (Pi-hole style)
                       </div>
@@ -268,7 +276,7 @@
                         # The password will be hashed automatically
                       </div>
                       <div>
-                        ADMIN_PASSWORD="$$2a$$10$$nw5fYAjn9BX9OMNPSpcSVuPlunvsjP10sDUq7RuzPDLANlwY2x2nu"
+                        ADMIN_PASSWORD="Replace-Me"
                       </div>
                       <div></div>
                       <div data-comment="true">
@@ -277,7 +285,7 @@
                       <div data-comment="true">
                         # Generate a strong random secret for production
                       </div>
-                      <div>JWT_SECRET=b4b87a00458e5c8e772b460e</div>
+                      <div>JWT_SECRET="Replace-Me"</div>
                       <div></div>
                       <div data-comment="true"># Frontend Configuration</div>
                       <div>VITE_API_URL=http://localhost:6081</div>
@@ -317,9 +325,9 @@ import AppLayout from '../components/AppLayout.vue';
 import PageHeader from '../components/PageHeader.vue';
 import apiService from '../services/api';
 import type {
-    CoreSettings,
-    SettingsUpdateRequest,
-    UISettings,
+  CoreSettings,
+  SettingsUpdateRequest,
+  UISettings,
 } from '../types/api';
 
 // Reactive data
@@ -454,14 +462,20 @@ DB_PATH=/data/upm-dev.db
 GO_ENV=development
 BACKEND_PORT=6081
 
+# Production Port Configuration
+PROD_NGINX_HTTP_PORT=80
+PROD_NGINX_HTTPS_PORT=443
+PROD_BACKEND_PORT=6080
+PROD_FRONTEND_PORT=6070
+
 # Authentication Configuration (Pi-hole style)
 # Set a strong password for admin access
 # The password will be hashed automatically
-ADMIN_PASSWORD="$$2a$$10$$nw5fYAjn9BX9OMNPSpcSVuPlunvsjP10sDUq7RuzPDLANlwY2x2nu"
+ADMIN_PASSWORD="Replace-Me"
 
 # JWT Secret for token signing
 # Generate a strong random secret for production
-JWT_SECRET=b4b87a00458e5c8e772b460e
+JWT_SECRET="Replace-Me"
 
 # Frontend Configuration
 VITE_API_URL=http://localhost:6081

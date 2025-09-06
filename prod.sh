@@ -11,8 +11,8 @@ case "${1:-up}" in
     docker-compose up --build -d
     echo "UPM production environment started in detached mode"
     echo "View logs: ./prod.sh logs"
-    echo "Frontend: http://localhost:6070"
-    echo "Backend: http://localhost:6080"
+    echo "Frontend: http://localhost:${PROD_FRONTEND_PORT:-6070}"
+    echo "Backend: http://localhost:${PROD_BACKEND_PORT:-6080}"
     ;;
   down)
     echo "Stopping UPM production environment..."
@@ -28,8 +28,8 @@ case "${1:-up}" in
     docker-compose up --build -d
     echo "UPM production environment restarted in detached mode"
     echo "View logs: ./prod.sh logs"
-    echo "Frontend: http://localhost:6070"
-    echo "Backend: http://localhost:6080"
+    echo "Frontend: http://localhost:${PROD_FRONTEND_PORT:-6070}"
+    echo "Backend: http://localhost:${PROD_BACKEND_PORT:-6080}"
     ;;
   *)
     echo "Usage: $0 [up|down|logs|restart]"
