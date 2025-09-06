@@ -57,17 +57,32 @@ For production deployment, create a `.env` file with the following required vari
 
 ```bash
 # Required for Production
-ADMIN_PASSWORD=your_secure_admin_password_here
 JWT_SECRET=your_jwt_secret_here_minimum_32_characters
 ENCRYPTION_KEY=your_encryption_key_here_exactly_32_bytes
 
 # Optional
+ADMIN_PASSWORD=your_secure_admin_password_here  # If not set, will use default password
 BACKEND_PORT=6080
 DB_PATH=/data/upm.db
 LETSENCRYPT_EMAIL=your_email@example.com
 ```
 
-**Important:** The application will exit immediately if these required variables are not set in production mode.
+**Important:** The application will exit immediately if the required variables are not set in production mode.
+
+### Admin User Management
+
+The application maintains a 1:1 relationship between the `ADMIN_PASSWORD` environment variable and the admin user:
+
+- **If `ADMIN_PASSWORD` is set:** Creates/updates admin user with the provided password
+- **If `ADMIN_PASSWORD` is not set:** Removes admin user (disables admin access)
+- **Password changes:** Automatically updates admin user password when `ADMIN_PASSWORD` changes
+- **Admin credentials:** Username: `admin`, Email: `admin@upm.local`
+
+**Behavior:**
+- Setting `ADMIN_PASSWORD` for the first time → Creates admin user
+- Changing `ADMIN_PASSWORD` → Updates admin user password
+- Removing `ADMIN_PASSWORD` → Deletes admin user (disables admin access)
+- Restarting with no `ADMIN_PASSWORD` → Admin access remains disabled
 
 ### Password Hashing
 

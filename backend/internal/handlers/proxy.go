@@ -18,6 +18,11 @@ func SetDatabaseService(service *services.DatabaseService) {
 	dbService = service
 }
 
+// GetDatabaseService gets the database service instance
+func GetDatabaseService() *services.DatabaseService {
+	return dbService
+}
+
 // getNginxService gets the nginx service instance from the nginx handler
 func getNginxService() *services.NginxService {
 	// This is a simple way to access the nginx service

@@ -843,6 +843,85 @@ func (d *DatabaseService) SaveUISettings(settings models.UISettings) error {
 	return err
 }
 
+// Admin user management methods
+func (d *DatabaseService) AdminUserExists() (bool, error) {
+	query := `SELECT COUNT(*) FROM users WHERE username = 'admin'`
+	var count int
+	err := d.db.QueryRow(query).Scan(&count)
+	if err != nil {
+		return false, fmt.Errorf("failed to check admin user existence: %w", err)
+	}
+	return count > 0, nil
+}
+
+func (d *DatabaseService) CreateAdminUser(hashedPassword string) error {
+	query := `INSERT INTO users (username, email, password, is_active, created_at, updated_at)
+			  VALUES (?, ?, ?, ?, ?, ?)`
+	
+	now := time.Now()
+	_, err := d.db.Exec(query,
+		"admin",
+		"admin@upm.local",
+		hashedPassword,
+		true,
+		now,
+		now,
+	)
+	
+	if err != nil {
+		return fmt.Errorf("failed to create admin user: %w", err)
+	}
+	
+	log.Println("Admin user created successfully")
+	return nil
+}
+
+func (d *DatabaseService) GetAdminUser() (*models.User, error) {
+	query := `SELECT id, username, email, password, is_active, created_at, updated_at
+			  FROM users WHERE username = 'admin'`
+	
+	var user models.User
+	err := d.db.QueryRow(query).Scan(
+		&user.ID,
+		&user.Username,
+		&user.Email,
+		&user.Password,
+		&user.IsActive,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+	)
+	
+	if err != nil {
+		return nil, fmt.Errorf("failed to get admin user: %w", err)
+	}
+	
+	return &user, nil
+}
+
+func (d *DatabaseService) UpdateAdminUserPassword(hashedPassword string) error {
+	query := `UPDATE users SET password = ?, updated_at = ? WHERE username = 'admin'`
+	
+	_, err := d.db.Exec(query, hashedPassword, time.Now())
+	if err != nil {
+		return fmt.Errorf("failed to update admin user password: %w", err)
+	}
+	
+	log.Println("Admin user password updated successfully")
+	return nil
+}
+
+func (d *DatabaseService) DeleteAdminUser() error {
+	query := `DELETE FROM users WHERE username = 'admin'`
+	
+	_, err := d.db.Exec(query)
+	if err != nil {
+		return fmt.Errorf("failed to delete admin user: %w", err)
+	}
+	
+	log.Println("Admin user deleted successfully")
+	return nil
+}
+
 func (d *DatabaseService) Close() error {
 	return d.db.Close()
 }

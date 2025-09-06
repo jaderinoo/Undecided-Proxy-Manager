@@ -32,19 +32,54 @@ func Login(c *gin.Context) {
 	// Get config
 	cfg := config.Load()
 
-	// Check if admin password is set (unless in dev mode with dev test password)
-	if cfg.AdminPassword == "" && !(cfg.DevMode && req.Password == cfg.DevTestPassword) {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Admin password not configured"})
+	// Get database service
+	dbService := GetDatabaseService()
+	if dbService == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database service not available"})
 		return
 	}
 
-	// Authenticate admin (single password) with dev bypass
-	if !auth.AuthenticateAdmin(req.Password, cfg.AdminPassword, cfg.DevMode, cfg.DevTestPassword) {
+	// Get admin user from database
+	adminUser, err := dbService.GetAdminUser()
+	if err != nil {
+		// If admin user doesn't exist, check for dev mode bypass
+		if cfg.DevMode && req.Password == cfg.DevTestPassword {
+			// Generate JWT token for dev mode
+			token, err := auth.GenerateToken(cfg.JWTSecret)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+				return
+			}
+
+			c.JSON(http.StatusOK, gin.H{"data": models.AuthResponse{
+				Token: token,
+				User: models.User{
+					ID:       1,
+					Username: "admin",
+					Email:    "admin@upm.local",
+					IsActive: true,
+				},
+			}})
+			return
+		}
+		
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Admin access is disabled. Set ADMIN_PASSWORD environment variable to enable admin access."})
+		return
+	}
+
+	// Check if admin user is active
+	if !adminUser.IsActive {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Admin account is disabled"})
+		return
+	}
+
+	// Authenticate using database password
+	if !auth.CheckPasswordHash(req.Password, adminUser.Password) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
 	}
 
-	// Generate JWT token (single admin token)
+	// Generate JWT token
 	token, err := auth.GenerateToken(cfg.JWTSecret)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
@@ -53,13 +88,7 @@ func Login(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"data": models.AuthResponse{
 		Token: token,
-		// Minimal user info for single admin auth
-		User: models.User{
-			ID:       1,
-			Username: "admin",
-			Email:    "admin@upm.local",
-			IsActive: true,
-		},
+		User:  *adminUser,
 	}})
 }
 

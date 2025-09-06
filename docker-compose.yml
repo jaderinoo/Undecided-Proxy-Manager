@@ -62,7 +62,7 @@ services:
     ports:
       - "${PROD_FRONTEND_PORT:-6070}:6070"
     environment:
-      - VITE_API_URL=http://localhost:${PROD_BACKEND_PORT:-6080}
+      - VITE_API_URL=/api
       - PROD_FRONTEND_PORT=${PROD_FRONTEND_PORT:-6070}
     depends_on:
       - backend

@@ -31,7 +31,7 @@ func Load() *Config {
 
 	// In production, require critical secrets to be set
 	if !devMode {
-		requireEnvVar("ADMIN_PASSWORD", "Admin password is required in production")
+		// ADMIN_PASSWORD is now optional - admin user will be created automatically if not set
 		requireEnvVar("JWT_SECRET", "JWT secret is required in production")
 		requireEnvVar("ENCRYPTION_KEY", "Encryption key is required in production")
 	}

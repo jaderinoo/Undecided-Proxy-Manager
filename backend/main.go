@@ -1,11 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 
 	"upm-backend/docs"
+	"upm-backend/internal/auth"
 	"upm-backend/internal/config"
 	"upm-backend/internal/handlers"
 	"upm-backend/internal/middleware"
@@ -35,6 +37,67 @@ import (
 
 // @externalDocs.description  OpenAPI
 // @externalDocs.url          https://swagger.io/resources/open-api/
+
+// ensureAdminUserExists manages admin user based on ADMIN_PASSWORD environment variable
+func ensureAdminUserExists(dbService *services.DatabaseService, cfg *config.Config) error {
+	// Check if admin user exists in database
+	exists, err := dbService.AdminUserExists()
+	if err != nil {
+		return fmt.Errorf("failed to check admin user existence: %w", err)
+	}
+
+	// If ADMIN_PASSWORD is not set, ensure no admin user exists
+	if cfg.AdminPassword == "" {
+		if exists {
+			log.Println("ADMIN_PASSWORD not set, removing admin user...")
+			if err := dbService.DeleteAdminUser(); err != nil {
+				return fmt.Errorf("failed to delete admin user: %w", err)
+			}
+		} else {
+			log.Println("No admin user exists and ADMIN_PASSWORD not set - admin access disabled")
+		}
+		return nil
+	}
+
+	// ADMIN_PASSWORD is set, ensure admin user exists and password is correct
+	if !exists {
+		// Create admin user
+		log.Println("ADMIN_PASSWORD set but no admin user exists, creating one...")
+		hashedPassword, err := auth.HashPassword(cfg.AdminPassword)
+		if err != nil {
+			return fmt.Errorf("failed to hash admin password: %w", err)
+		}
+		
+		if err := dbService.CreateAdminUser(hashedPassword); err != nil {
+			return fmt.Errorf("failed to create admin user: %w", err)
+		}
+		log.Println("Admin user created successfully")
+	} else {
+		// Admin user exists, check if password needs updating
+		adminUser, err := dbService.GetAdminUser()
+		if err != nil {
+			return fmt.Errorf("failed to get admin user: %w", err)
+		}
+
+		// Check if the stored password matches the current ADMIN_PASSWORD
+		if !auth.CheckPasswordHash(cfg.AdminPassword, adminUser.Password) {
+			log.Println("ADMIN_PASSWORD changed, updating admin user password...")
+			hashedPassword, err := auth.HashPassword(cfg.AdminPassword)
+			if err != nil {
+				return fmt.Errorf("failed to hash admin password: %w", err)
+			}
+			
+			if err := dbService.UpdateAdminUserPassword(hashedPassword); err != nil {
+				return fmt.Errorf("failed to update admin user password: %w", err)
+			}
+		} else {
+			log.Println("Admin user exists with correct password")
+		}
+	}
+
+	return nil
+}
+
 func main() {
 	// Load configuration
 	cfg := config.Load()
@@ -52,6 +115,11 @@ func main() {
 	defer dbService.Close()
 	handlers.SetDatabaseService(dbService)
 	log.Printf("Database service initialized")
+
+	// Ensure admin user exists
+	if err := ensureAdminUserExists(dbService, cfg); err != nil {
+		log.Fatalf("Failed to ensure admin user exists: %v", err)
+	}
 
 	// Initialize nginx service
 	nginxConfigPath := os.Getenv("NGINX_CONFIG_PATH")

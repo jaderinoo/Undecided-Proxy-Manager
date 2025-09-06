@@ -16,6 +16,7 @@ logs/
 # Dependencies
 node_modules/
 vendor/
+*.gz
 
 # Build outputs
 dist/

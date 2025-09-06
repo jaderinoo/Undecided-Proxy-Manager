@@ -1,8 +1,8 @@
 # UPM Management Interface
 server {
-    listen 80;
-    listen [::]:80;
-    server_name localhost upm.local;
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _;
 
     # Rate limiting for admin interface
     limit_req zone=api burst=20 nodelay;
