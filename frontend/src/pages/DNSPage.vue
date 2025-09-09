@@ -552,7 +552,7 @@ const error = ref<string | null>(null);
 const scheduledJobs = ref<Record<number, JobInfo>>({});
 const loadingJobs = ref(false);
 const stoppingJobs = ref<Record<number, boolean>>({});
-const countdownTimer = ref<NodeJS.Timeout | null>(null);
+const countdownTimer = ref<number | null>(null);
 
 // Computed property for scheduled jobs with display names and countdown
 const scheduledJobsWithNames = computed(() => {
@@ -1003,7 +1003,7 @@ const startCountdownTimer = () => {
   countdownTimer.value = setInterval(() => {
     // Check if any jobs are due and refresh if needed
     let needsRefresh = false;
-    for (const [recordId, jobInfo] of Object.entries(scheduledJobs.value)) {
+    for (const [, jobInfo] of Object.entries(scheduledJobs.value)) {
       const now = new Date().getTime();
       const next = new Date(jobInfo.next_update).getTime();
       if (next <= now) {
@@ -1057,26 +1057,6 @@ const resumeScheduledJob = async (recordId: number) => {
   } finally {
     stoppingJobs.value[recordId] = false;
   }
-};
-
-const formatInterval = (intervalNs: number): string => {
-  // Convert from nanoseconds to minutes
-  const minutes = Math.floor(intervalNs / (1000 * 1000 * 1000 * 60));
-  if (minutes < 60) {
-    return `${minutes} min`;
-  } else if (minutes < 1440) {
-    const hours = Math.floor(minutes / 60);
-    return `${hours}h ${minutes % 60}m`;
-  } else {
-    const days = Math.floor(minutes / 1440);
-    const hours = Math.floor((minutes % 1440) / 60);
-    return `${days}d ${hours}h`;
-  }
-};
-
-const getNextUpdateTime = (recordId: number): string => {
-  // This is a placeholder - in a real implementation, you'd track last update times
-  return 'Calculating...';
 };
 
 const getRecordDisplayName = (recordId: number): string => {
