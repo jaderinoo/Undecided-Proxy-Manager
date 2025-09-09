@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
+	"unicode/utf16"
+	"unicode/utf8"
 
 	"upm-backend/internal/config"
 	"upm-backend/internal/models"
@@ -29,6 +32,68 @@ type NamecheapResponse struct {
 type Error struct {
 	Number string `xml:"Number,attr"`
 	Text   string `xml:",chardata"`
+}
+
+// utf16CharsetReader is a charset reader for UTF-16 encoded XML
+func utf16CharsetReader(charset string, input io.Reader) (io.Reader, error) {
+	if strings.ToLower(charset) == "utf-16" {
+		// Read the entire input
+		data, err := io.ReadAll(input)
+		if err != nil {
+			return nil, err
+		}
+
+		// Convert UTF-16 to UTF-8
+		utf8Data := convertUTF16ToUTF8(data)
+		return strings.NewReader(string(utf8Data)), nil
+	}
+	return input, nil
+}
+
+// convertUTF16ToUTF8 converts UTF-16 encoded bytes to UTF-8
+func convertUTF16ToUTF8(data []byte) []byte {
+	if len(data) < 2 {
+		return data
+	}
+
+	// Check for BOM (Byte Order Mark)
+	var isLittleEndian bool
+	if data[0] == 0xFF && data[1] == 0xFE {
+		// Little endian BOM
+		isLittleEndian = true
+		data = data[2:]
+	} else if data[0] == 0xFE && data[1] == 0xFF {
+		// Big endian BOM
+		isLittleEndian = false
+		data = data[2:]
+	} else {
+		// No BOM, assume little endian (common for Windows)
+		isLittleEndian = true
+	}
+
+	// Convert to UTF-16 code units
+	var utf16CodeUnits []uint16
+	if isLittleEndian {
+		for i := 0; i < len(data); i += 2 {
+			if i+1 < len(data) {
+				utf16CodeUnits = append(utf16CodeUnits, uint16(data[i])|uint16(data[i+1])<<8)
+			}
+		}
+	} else {
+		for i := 0; i < len(data); i += 2 {
+			if i+1 < len(data) {
+				utf16CodeUnits = append(utf16CodeUnits, uint16(data[i])<<8|uint16(data[i+1]))
+			}
+		}
+	}
+
+	// Convert UTF-16 to UTF-8
+	utf8Data := make([]byte, 0, len(utf16CodeUnits)*3)
+	for _, r := range utf16.Decode(utf16CodeUnits) {
+		utf8Data = utf8.AppendRune(utf8Data, r)
+	}
+
+	return utf8Data
 }
 
 func NewDNSService(dbService *DatabaseService) *DNSService {
@@ -93,9 +158,12 @@ func (d *DNSService) UpdateNamecheapDNS(config *models.DNSConfig, record *models
 		}, err
 	}
 
-	// Parse XML response
+	// Parse XML response with custom charset reader for UTF-16 support
 	var namecheapResp NamecheapResponse
-	if err := xml.Unmarshal(body, &namecheapResp); err != nil {
+	decoder := xml.NewDecoder(strings.NewReader(string(body)))
+	decoder.CharsetReader = utf16CharsetReader
+
+	if err := decoder.Decode(&namecheapResp); err != nil {
 		return &models.DNSUpdateResponse{
 			Success: false,
 			Message: fmt.Sprintf("Failed to parse response: %v", err),
