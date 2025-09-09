@@ -318,6 +318,11 @@ func UpdateDNSRecordNow(c *gin.Context) {
 		return
 	}
 
+	if dnsHandler == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "DNS handler not initialized"})
+		return
+	}
+
 	response, err := dnsHandler.dnsService.UpdateDNSRecord(id)
 	if err != nil {
 		// If response is nil, create a default error response

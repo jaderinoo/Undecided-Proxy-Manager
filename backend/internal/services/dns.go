@@ -27,6 +27,8 @@ type NamecheapResponse struct {
 	IP       string   `xml:"IP"`
 	ErrCount int      `xml:"ErrCount"`
 	Errors   []Error  `xml:"errors>Error"`
+	Language string   `xml:"Language"`
+	Done     bool     `xml:"Done"`
 }
 
 type Error struct {
@@ -43,11 +45,31 @@ func utf16CharsetReader(charset string, input io.Reader) (io.Reader, error) {
 			return nil, err
 		}
 
+		// Check if the content is actually UTF-8 despite the UTF-16 declaration
+		// This is a common issue with some APIs that declare UTF-16 but send UTF-8
+		if isUTF8Content(data) {
+			// Content is actually UTF-8, return as-is
+			return strings.NewReader(string(data)), nil
+		}
+
 		// Convert UTF-16 to UTF-8
 		utf8Data := convertUTF16ToUTF8(data)
 		return strings.NewReader(string(utf8Data)), nil
 	}
+	
 	return input, nil
+}
+
+// isUTF8Content checks if the data is actually UTF-8 encoded
+func isUTF8Content(data []byte) bool {
+	// Check for UTF-8 BOM
+	if len(data) >= 3 && data[0] == 0xEF && data[1] == 0xBB && data[2] == 0xBF {
+		return true
+	}
+	
+	// Check if the content is valid UTF-8 by trying to decode it
+	// If it's valid UTF-8, it should decode without errors
+	return utf8.Valid(data)
 }
 
 // convertUTF16ToUTF8 converts UTF-16 encoded bytes to UTF-8
@@ -360,7 +382,6 @@ func (d *DNSService) GetDNSStatus() ([]models.DNSStatus, error) {
 		records, err := d.DbService.GetDNSRecords(config.ID)
 		if err != nil {
 			// Log error but continue with other configs
-			fmt.Printf("Warning: Failed to get records for config %d: %v\n", config.ID, err)
 			records = []models.DNSRecord{}
 		}
 
@@ -385,7 +406,6 @@ func (d *DNSService) GetDNSStatus() ([]models.DNSStatus, error) {
 func (d *DNSService) StartPeriodicUpdates() {
 	interval, err := time.ParseDuration(d.config.DNSCheckInterval)
 	if err != nil {
-		fmt.Printf("Warning: Invalid DNS check interval '%s', using default 5m: %v\n", d.config.DNSCheckInterval, err)
 		interval = 5 * time.Minute
 	}
 
@@ -396,10 +416,8 @@ func (d *DNSService) StartPeriodicUpdates() {
 		for {
 			select {
 			case <-ticker.C:
-				fmt.Printf("Starting periodic DNS update check...\n")
 				responses, err := d.UpdateAllDNSRecords()
 				if err != nil {
-					fmt.Printf("Error during periodic DNS update: %v\n", err)
 					continue
 				}
 
@@ -414,6 +432,4 @@ func (d *DNSService) StartPeriodicUpdates() {
 			}
 		}
 	}()
-
-	fmt.Printf("Started periodic DNS updates every %v\n", interval)
 }
