@@ -19,8 +19,6 @@ services:
       - nginx_data:/var/lib/nginx
     command: >
       sh -c "
-        # Use the simple config for now
-        cp /etc/nginx/sites-available/upm-admin-simple.conf /etc/nginx/sites-enabled/upm-admin.conf &&
         nginx -g 'daemon off;'
       "
     depends_on:
