@@ -14,7 +14,7 @@ server {
     # Rate limiting for admin interface
     limit_req zone=api burst=20 nodelay;
 
-1    # ACME challenge location for Let's Encrypt
+    # ACME challenge location for Let's Encrypt
     location /.well-known/acme-challenge/ {
         root /var/www/html;
         try_files $uri =404;

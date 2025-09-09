@@ -75,6 +75,7 @@ nginx/sites-available/proxy-*.conf
 # Generated admin configs (keep templates, ignore generated)
 nginx/sites-available/upm-admin-simple.conf
 nginx/sites-available/upm-admin-https.conf
+nginx/sites-available/upm-admin.conf
 !nginx/sites-available/upm-admin.conf.template
 
 # Docker volumes and data
