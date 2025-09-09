@@ -12,7 +12,8 @@ import (
 )
 
 type DNSHandler struct {
-	dnsService *services.DNSService
+	dnsService        *services.DNSService
+	schedulerService  *services.SchedulerService
 }
 
 var dnsHandler *DNSHandler
@@ -26,6 +27,13 @@ func NewDNSHandler(dnsService *services.DNSService) *DNSHandler {
 // SetDNSService sets the DNS service instance
 func SetDNSService(service *services.DNSService) {
 	dnsHandler = NewDNSHandler(service)
+}
+
+// SetSchedulerService sets the scheduler service instance
+func SetSchedulerService(service *services.SchedulerService) {
+	if dnsHandler != nil {
+		dnsHandler.schedulerService = service
+	}
 }
 
 // DNS Config handlers
@@ -206,15 +214,24 @@ func CreateDNSRecord(c *gin.Context) {
 	}
 
 	record := &models.DNSRecord{
-		ConfigID:        req.ConfigID,
-		Host:            req.Host,
-		AllowedIPRanges: req.AllowedIPRanges,
-		IsActive:        true,
+		ConfigID:              req.ConfigID,
+		Host:                  req.Host,
+		AllowedIPRanges:       req.AllowedIPRanges,
+		DynamicDNSRefreshRate: req.DynamicDNSRefreshRate,
+		IsActive:              true,
 	}
 
 	if err := dnsHandler.dnsService.DbService.CreateDNSRecord(record); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+
+	// Start scheduled job if refresh rate is set
+	if dnsHandler.schedulerService != nil && record.DynamicDNSRefreshRate != nil && *record.DynamicDNSRefreshRate > 0 {
+		if err := dnsHandler.schedulerService.StartScheduledJob(record.ID, *record.DynamicDNSRefreshRate); err != nil {
+			// Log error but don't fail the request
+			fmt.Printf("Warning: Failed to start scheduled job for record %d: %v\n", record.ID, err)
+		}
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"record": record})
@@ -247,6 +264,9 @@ func UpdateDNSRecord(c *gin.Context) {
 	if req.AllowedIPRanges != nil {
 		record.AllowedIPRanges = *req.AllowedIPRanges
 	}
+	if req.DynamicDNSRefreshRate != nil {
+		record.DynamicDNSRefreshRate = req.DynamicDNSRefreshRate
+	}
 	if req.IsActive != nil {
 		record.IsActive = *req.IsActive
 	}
@@ -254,6 +274,14 @@ func UpdateDNSRecord(c *gin.Context) {
 	if err := dnsHandler.dnsService.DbService.UpdateDNSRecord(record); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+
+	// Update scheduled job if refresh rate changed
+	if dnsHandler.schedulerService != nil {
+		if err := dnsHandler.schedulerService.UpdateScheduledJob(record.ID, record.DynamicDNSRefreshRate); err != nil {
+			// Log error but don't fail the request
+			fmt.Printf("Warning: Failed to update scheduled job for record %d: %v\n", record.ID, err)
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"record": record})
@@ -270,6 +298,11 @@ func DeleteDNSRecord(c *gin.Context) {
 	if err := dnsHandler.dnsService.DbService.DeleteDNSRecord(id); err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
+	}
+
+	// Stop scheduled job if it exists
+	if dnsHandler.schedulerService != nil {
+		dnsHandler.schedulerService.StopScheduledJob(id)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "DNS record deleted successfully"})
@@ -332,4 +365,61 @@ func GetPublicIP(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"ip": ip})
+}
+
+// GetScheduledJobs returns information about active scheduled jobs
+func GetScheduledJobs(c *gin.Context) {
+	if dnsHandler.schedulerService == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Scheduler service not available"})
+		return
+	}
+
+	activeJobs := dnsHandler.schedulerService.GetActiveJobs()
+	c.JSON(http.StatusOK, gin.H{"active_jobs": activeJobs})
+}
+
+// PauseScheduledJob pauses a scheduled job
+func PauseScheduledJob(c *gin.Context) {
+	if dnsHandler.schedulerService == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Scheduler service not available"})
+		return
+	}
+
+	recordIDStr := c.Param("recordId")
+	recordID, err := strconv.Atoi(recordIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid record ID"})
+		return
+	}
+
+	err = dnsHandler.schedulerService.PauseScheduledJob(recordID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Job paused successfully"})
+}
+
+// ResumeScheduledJob resumes a paused scheduled job
+func ResumeScheduledJob(c *gin.Context) {
+	if dnsHandler.schedulerService == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Scheduler service not available"})
+		return
+	}
+
+	recordIDStr := c.Param("recordId")
+	recordID, err := strconv.Atoi(recordIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid record ID"})
+		return
+	}
+
+	err = dnsHandler.schedulerService.ResumeScheduledJob(recordID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Job resumed successfully"})
 }

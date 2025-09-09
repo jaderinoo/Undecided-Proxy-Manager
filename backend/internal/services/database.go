@@ -148,6 +148,13 @@ func (d *DatabaseService) initTables() error {
 		fmt.Printf("Note: allowed_ip_ranges column may already exist: %v\n", err)
 	}
 
+	// Add dynamic_dns_refresh_rate column to existing dns_records table if it doesn't exist
+	alterTableQuery2 := `ALTER TABLE dns_records ADD COLUMN dynamic_dns_refresh_rate INTEGER;`
+	if _, err := d.db.Exec(alterTableQuery2); err != nil {
+		// Ignore error if column already exists
+		fmt.Printf("Note: dynamic_dns_refresh_rate column may already exist: %v\n", err)
+	}
+
 	// Create ui_settings table
 	uiSettingsTable := `
 	CREATE TABLE IF NOT EXISTS ui_settings (
@@ -483,7 +490,7 @@ func (d *DatabaseService) DeleteDNSConfig(id int) error {
 // DNS Record methods
 func (d *DatabaseService) GetDNSRecords(configID int) ([]models.DNSRecord, error) {
 	query := `
-		SELECT id, config_id, host, current_ip, allowed_ip_ranges, last_update, is_active, created_at, updated_at
+		SELECT id, config_id, host, current_ip, allowed_ip_ranges, dynamic_dns_refresh_rate, last_update, is_active, created_at, updated_at
 		FROM dns_records
 		WHERE config_id = ?
 		ORDER BY created_at DESC`
@@ -499,6 +506,7 @@ func (d *DatabaseService) GetDNSRecords(configID int) ([]models.DNSRecord, error
 		var record models.DNSRecord
 		var currentIP sql.NullString
 		var allowedIPRanges sql.NullString
+		var dynamicDNSRefreshRate sql.NullInt32
 		var lastUpdate sql.NullTime
 
 		err := rows.Scan(
@@ -507,6 +515,7 @@ func (d *DatabaseService) GetDNSRecords(configID int) ([]models.DNSRecord, error
 			&record.Host,
 			&currentIP,
 			&allowedIPRanges,
+			&dynamicDNSRefreshRate,
 			&lastUpdate,
 			&record.IsActive,
 			&record.CreatedAt,
@@ -523,6 +532,10 @@ func (d *DatabaseService) GetDNSRecords(configID int) ([]models.DNSRecord, error
 		if allowedIPRanges.Valid {
 			record.AllowedIPRanges = allowedIPRanges.String
 		}
+		if dynamicDNSRefreshRate.Valid {
+			refreshRate := int(dynamicDNSRefreshRate.Int32)
+			record.DynamicDNSRefreshRate = &refreshRate
+		}
 		if lastUpdate.Valid {
 			record.LastUpdate = &lastUpdate.Time
 		}
@@ -535,13 +548,14 @@ func (d *DatabaseService) GetDNSRecords(configID int) ([]models.DNSRecord, error
 
 func (d *DatabaseService) GetDNSRecord(id int) (*models.DNSRecord, error) {
 	query := `
-		SELECT id, config_id, host, current_ip, allowed_ip_ranges, last_update, is_active, created_at, updated_at
+		SELECT id, config_id, host, current_ip, allowed_ip_ranges, dynamic_dns_refresh_rate, last_update, is_active, created_at, updated_at
 		FROM dns_records
 		WHERE id = ?`
 
 	var record models.DNSRecord
 	var currentIP sql.NullString
 	var allowedIPRanges sql.NullString
+	var dynamicDNSRefreshRate sql.NullInt32
 	var lastUpdate sql.NullTime
 
 	err := d.db.QueryRow(query, id).Scan(
@@ -550,6 +564,7 @@ func (d *DatabaseService) GetDNSRecord(id int) (*models.DNSRecord, error) {
 		&record.Host,
 		&currentIP,
 		&allowedIPRanges,
+		&dynamicDNSRefreshRate,
 		&lastUpdate,
 		&record.IsActive,
 		&record.CreatedAt,
@@ -570,6 +585,10 @@ func (d *DatabaseService) GetDNSRecord(id int) (*models.DNSRecord, error) {
 	if allowedIPRanges.Valid {
 		record.AllowedIPRanges = allowedIPRanges.String
 	}
+	if dynamicDNSRefreshRate.Valid {
+		refreshRate := int(dynamicDNSRefreshRate.Int32)
+		record.DynamicDNSRefreshRate = &refreshRate
+	}
 	if lastUpdate.Valid {
 		record.LastUpdate = &lastUpdate.Time
 	}
@@ -579,10 +598,10 @@ func (d *DatabaseService) GetDNSRecord(id int) (*models.DNSRecord, error) {
 
 func (d *DatabaseService) CreateDNSRecord(record *models.DNSRecord) error {
 	query := `
-		INSERT INTO dns_records (config_id, host, current_ip, allowed_ip_ranges, is_active)
-		VALUES (?, ?, ?, ?, ?)`
+		INSERT INTO dns_records (config_id, host, current_ip, allowed_ip_ranges, dynamic_dns_refresh_rate, is_active)
+		VALUES (?, ?, ?, ?, ?, ?)`
 
-	result, err := d.db.Exec(query, record.ConfigID, record.Host, record.CurrentIP, record.AllowedIPRanges, record.IsActive)
+	result, err := d.db.Exec(query, record.ConfigID, record.Host, record.CurrentIP, record.AllowedIPRanges, record.DynamicDNSRefreshRate, record.IsActive)
 	if err != nil {
 		return fmt.Errorf("failed to insert dns record: %w", err)
 	}
@@ -602,10 +621,10 @@ func (d *DatabaseService) CreateDNSRecord(record *models.DNSRecord) error {
 func (d *DatabaseService) UpdateDNSRecord(record *models.DNSRecord) error {
 	query := `
 		UPDATE dns_records
-		SET host = ?, current_ip = ?, allowed_ip_ranges = ?, last_update = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP
+		SET host = ?, current_ip = ?, allowed_ip_ranges = ?, dynamic_dns_refresh_rate = ?, last_update = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?`
 
-	result, err := d.db.Exec(query, record.Host, record.CurrentIP, record.AllowedIPRanges, record.LastUpdate, record.IsActive, record.ID)
+	result, err := d.db.Exec(query, record.Host, record.CurrentIP, record.AllowedIPRanges, record.DynamicDNSRefreshRate, record.LastUpdate, record.IsActive, record.ID)
 	if err != nil {
 		return fmt.Errorf("failed to update dns record: %w", err)
 	}

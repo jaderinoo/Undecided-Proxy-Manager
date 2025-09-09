@@ -67,7 +67,7 @@ func ensureAdminUserExists(dbService *services.DatabaseService, cfg *config.Conf
 		if err != nil {
 			return fmt.Errorf("failed to hash admin password: %w", err)
 		}
-		
+
 		if err := dbService.CreateAdminUser(hashedPassword); err != nil {
 			return fmt.Errorf("failed to create admin user: %w", err)
 		}
@@ -86,7 +86,7 @@ func ensureAdminUserExists(dbService *services.DatabaseService, cfg *config.Conf
 			if err != nil {
 				return fmt.Errorf("failed to hash admin password: %w", err)
 			}
-			
+
 			if err := dbService.UpdateAdminUserPassword(hashedPassword); err != nil {
 				return fmt.Errorf("failed to update admin user password: %w", err)
 			}
@@ -148,6 +148,16 @@ func main() {
 	dnsService := services.NewDNSService(dbService)
 	handlers.SetDNSService(dnsService)
 	log.Printf("DNS service initialized")
+
+	// Initialize scheduler service
+	schedulerService := services.NewSchedulerService(dnsService)
+	handlers.SetSchedulerService(schedulerService)
+	log.Printf("Scheduler service initialized")
+
+	// Load and start scheduled DNS update jobs
+	if err := schedulerService.LoadAndStartJobs(); err != nil {
+		log.Printf("Warning: Failed to load scheduled jobs: %v", err)
+	}
 
 	// Start periodic DNS updates
 	dnsService.StartPeriodicUpdates()
@@ -251,6 +261,9 @@ func main() {
 				dns.POST("/update-all", handlers.UpdateAllDNSRecords)
 				dns.GET("/status", handlers.GetDNSStatus)
 				dns.GET("/public-ip", handlers.GetPublicIP)
+				dns.GET("/scheduled-jobs", handlers.GetScheduledJobs)
+				dns.POST("/scheduled-jobs/:recordId/pause", handlers.PauseScheduledJob)
+				dns.POST("/scheduled-jobs/:recordId/resume", handlers.ResumeScheduledJob)
 			}
 
 			// Certificate management endpoints

@@ -1,28 +1,29 @@
 import type {
-    ApiResponse,
-    AuthResponse,
-    Certificate,
-    CertificateCreateRequest,
-    CertificateUpdateRequest,
-    Container,
-    ContainerListResponse,
-    DNSConfig,
-    DNSConfigCreateRequest,
-    DNSConfigUpdateRequest,
-    DNSRecord,
-    DNSRecordCreateRequest,
-    DNSRecordUpdateRequest,
-    DNSStatus,
-    DNSUpdateResponse,
-    Proxy,
-    ProxyCreateRequest,
-    ProxyResponse,
-    ProxyUpdateRequest,
-    Settings,
-    SettingsUpdateRequest,
-    User,
-    UserCreateRequest,
-    UserLoginRequest,
+  ApiResponse,
+  AuthResponse,
+  Certificate,
+  CertificateCreateRequest,
+  CertificateUpdateRequest,
+  Container,
+  ContainerListResponse,
+  DNSConfig,
+  DNSConfigCreateRequest,
+  DNSConfigUpdateRequest,
+  DNSRecord,
+  DNSRecordCreateRequest,
+  DNSRecordUpdateRequest,
+  DNSStatus,
+  DNSUpdateResponse,
+  JobInfo,
+  Proxy,
+  ProxyCreateRequest,
+  ProxyResponse,
+  ProxyUpdateRequest,
+  Settings,
+  SettingsUpdateRequest,
+  User,
+  UserCreateRequest,
+  UserLoginRequest,
 } from '../types/api';
 
 // Determine API base URL based on environment
@@ -31,12 +32,12 @@ const getApiBaseUrl = () => {
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
   }
-  
+
   // Development mode: Frontend on localhost:6070, Backend on localhost:6081
   if (window.location.hostname === 'localhost' && window.location.port === '6070') {
     return 'http://localhost:6081';
   }
-  
+
   // Production mode: Use the same hostname but backend port (6080)
   // This ensures API calls go to the correct backend port
   return `http://${window.location.hostname}:6080`;
@@ -305,6 +306,22 @@ class ApiService {
 
   async getDNSStatus(): Promise<{ statuses: DNSStatus[] }> {
     return this.request('/api/v1/dns/status');
+  }
+
+  async getScheduledJobs(): Promise<{ active_jobs: Record<number, JobInfo> }> {
+    return this.request('/api/v1/dns/scheduled-jobs');
+  }
+
+  async pauseScheduledJob(recordId: number): Promise<{ message: string }> {
+    return this.request(`/api/v1/dns/scheduled-jobs/${recordId}/pause`, {
+      method: 'POST'
+    });
+  }
+
+  async resumeScheduledJob(recordId: number): Promise<{ message: string }> {
+    return this.request(`/api/v1/dns/scheduled-jobs/${recordId}/resume`, {
+      method: 'POST'
+    });
   }
 
   async getPublicIP(): Promise<{ ip: string }> {

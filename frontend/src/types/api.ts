@@ -173,6 +173,7 @@ export interface DNSRecord {
   host: string;
   current_ip?: string;
   allowed_ip_ranges?: string;
+  dynamic_dns_refresh_rate?: number;
   last_update?: string;
   is_active: boolean;
   created_at: string;
@@ -183,11 +184,13 @@ export interface DNSRecordCreateRequest {
   config_id: number;
   host: string;
   allowed_ip_ranges?: string;
+  dynamic_dns_refresh_rate?: number;
 }
 
 export interface DNSRecordUpdateRequest {
   host?: string;
   allowed_ip_ranges?: string;
+  dynamic_dns_refresh_rate?: number;
   is_active?: boolean;
 }
 
@@ -207,6 +210,14 @@ export interface DNSStatus {
   last_ip?: string;
   record_count: number;
   records?: DNSRecord[];
+}
+
+export interface JobInfo {
+  interval: number; // Duration in nanoseconds
+  last_started: string; // ISO timestamp
+  next_update: string; // ISO timestamp
+  is_paused: boolean;
+  paused_at?: string; // ISO timestamp
 }
 
 // Settings Types

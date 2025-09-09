@@ -72,6 +72,69 @@
               <!-- DNS Stats -->
               <StatsCards :stats="dnsStats" />
 
+              <!-- Active Dynamic DNS Jobs -->
+              <v-card class="mb-4" variant="outlined">
+                <v-card-title>
+                  <v-icon left>mdi-timer</v-icon>
+                  Active Dynamic DNS Jobs
+                  <v-spacer></v-spacer>
+                  <v-btn color="primary" variant="outlined" size="small" @click="refreshAllData" :loading="loadingJobs">
+                    <v-icon left>mdi-refresh</v-icon>
+                    Refresh
+                  </v-btn>
+                </v-card-title>
+                <v-card-text>
+                  <div v-if="loadingJobs" class="text-center py-4">
+                    <v-progress-circular indeterminate color="primary" size="32" class="mb-2"></v-progress-circular>
+                    <p class="text-body-2 text-grey-darken-2">Loading scheduled jobs...</p>
+                  </div>
+
+                  <div v-else-if="!scheduledJobs || Object.keys(scheduledJobs).length === 0" class="text-center py-4">
+                    <v-icon size="48" color="grey-lighten-1" class="mb-2">mdi-timer-off</v-icon>
+                    <p class="text-body-1 text-grey-darken-2 mb-2">No Active Jobs</p>
+                    <p class="text-body-2 text-grey-darken-1">Create DNS records with refresh rates to see scheduled jobs here.</p>
+                  </div>
+
+                  <div v-else>
+                    <v-list density="compact">
+                      <v-list-item
+                        v-for="(job, recordId) in scheduledJobsWithNames"
+                        :key="recordId"
+                        class="mb-2"
+                      >
+                        <template v-slot:prepend>
+                          <v-icon color="green" size="small">mdi-timer</v-icon>
+                        </template>
+
+                        <v-list-item-title class="text-body-2">
+                          {{ job.displayName }}
+                        </v-list-item-title>
+
+                        <v-list-item-subtitle class="text-caption">
+                          <v-chip size="x-small" :color="job.isPaused ? 'orange' : 'blue'" variant="outlined" class="mr-2">
+                            {{ job.isPaused ? 'Paused' : job.countdown }}
+                          </v-chip>
+                          <span class="text-grey-darken-1">
+                            {{ job.isPaused ? 'Paused' : 'Next update' }}
+                          </span>
+                        </v-list-item-subtitle>
+
+                        <template v-slot:append>
+                          <v-btn
+                            :icon="job.isPaused ? 'mdi-play' : 'mdi-pause'"
+                            size="x-small"
+                            variant="text"
+                            :color="job.isPaused ? 'success' : 'warning'"
+                            @click="job.isPaused ? resumeScheduledJob(recordId) : pauseScheduledJob(recordId)"
+                            :loading="stoppingJobs[recordId]"
+                          />
+                        </template>
+                      </v-list-item>
+                    </v-list>
+                  </div>
+                </v-card-text>
+              </v-card>
+
               <!-- DNS Configurations -->
               <div v-if="loadingConfigs" class="text-center py-8">
                 <v-progress-circular indeterminate color="primary" size="64" class="mb-4"></v-progress-circular>
@@ -175,6 +238,12 @@
                               <v-list-item-subtitle v-if="record.allowed_ip_ranges"
                                 class="text-caption text-grey-darken-1 mt-1">
                                 Allowed: {{ record.allowed_ip_ranges }}
+                              </v-list-item-subtitle>
+
+                              <v-list-item-subtitle v-if="record.dynamic_dns_refresh_rate"
+                                class="text-caption text-blue-darken-1 mt-1">
+                                <v-icon size="x-small" class="mr-1">mdi-timer</v-icon>
+                                Auto-refresh: {{ record.dynamic_dns_refresh_rate }} min
                               </v-list-item-subtitle>
 
                               <template v-slot:append>
@@ -345,6 +414,21 @@
               </v-col>
 
               <v-col cols="12">
+                <v-text-field
+                  v-model.number="recordForm.dynamic_dns_refresh_rate"
+                  label="Dynamic DNS Refresh Rate (minutes)"
+                  type="number"
+                  placeholder="e.g., 5, 10, 30, 60"
+                  hint="Set refresh rate in minutes for automatic DNS updates. Leave empty to disable auto-refresh."
+                  persistent-hint
+                  min="1"
+                  max="1440"
+                  :error-messages="validateRefreshRate(recordForm.dynamic_dns_refresh_rate) ? [validateRefreshRate(recordForm.dynamic_dns_refresh_rate)!] : []"
+                  :error="!!validateRefreshRate(recordForm.dynamic_dns_refresh_rate)">
+                </v-text-field>
+              </v-col>
+
+              <v-col cols="12">
                 <v-checkbox v-model="recordForm.is_active" label="Active" color="primary"></v-checkbox>
               </v-col>
             </v-row>
@@ -434,7 +518,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import AppLayout from '../components/AppLayout.vue';
 import ConfirmationDialog from '../components/ConfirmationDialog.vue';
 import ErrorAlert from '../components/ErrorAlert.vue';
@@ -447,7 +531,8 @@ import type {
   DNSConfigUpdateRequest,
   DNSRecord,
   DNSRecordCreateRequest,
-  DNSRecordUpdateRequest
+  DNSRecordUpdateRequest,
+  JobInfo
 } from '../types/api';
 
 // Reactive data
@@ -462,6 +547,29 @@ const savingRecord = ref(false);
 const savingNginxIP = ref(false);
 const nginxAllowedRanges = ref<string[]>([]);
 const error = ref<string | null>(null);
+
+// Scheduled jobs state
+const scheduledJobs = ref<Record<number, JobInfo>>({});
+const loadingJobs = ref(false);
+const stoppingJobs = ref<Record<number, boolean>>({});
+const countdownTimer = ref<NodeJS.Timeout | null>(null);
+
+// Computed property for scheduled jobs with display names and countdown
+const scheduledJobsWithNames = computed(() => {
+  const jobs: Record<number, { interval: number; displayName: string; nextUpdate: string; countdown: string; isPaused: boolean }> = {};
+  for (const [recordId, jobInfo] of Object.entries(scheduledJobs.value)) {
+    const id = parseInt(recordId);
+    const nextUpdate = jobInfo.next_update;
+    jobs[id] = {
+      interval: jobInfo.interval,
+      displayName: getRecordDisplayName(id),
+      nextUpdate: nextUpdate,
+      countdown: getCountdown(nextUpdate),
+      isPaused: jobInfo.is_paused
+    };
+  }
+  return jobs;
+});
 
 // Modal states
 const showCreateConfigModal = ref(false);
@@ -490,6 +598,7 @@ const recordForm = ref<DNSRecordCreateRequest & { is_active: boolean }>({
   config_id: 0,
   host: '',
   allowed_ip_ranges: '',
+  dynamic_dns_refresh_rate: undefined,
   is_active: true,
 });
 
@@ -567,6 +676,9 @@ const loadDNSConfigs = async () => {
     for (const config of dnsConfigs.value) {
       await loadDNSRecords(config.id);
     }
+
+    // Load scheduled jobs after records are loaded
+    await loadScheduledJobs();
   } catch (err) {
     error.value = `Failed to load DNS configurations: ${err}`;
     dnsConfigs.value = [];
@@ -680,6 +792,8 @@ const openCreateRecordModal = (configId: number) => {
   recordForm.value = {
     config_id: configId,
     host: '',
+    allowed_ip_ranges: '',
+    dynamic_dns_refresh_rate: undefined,
     is_active: true,
   };
   showCreateRecordModal.value = true;
@@ -691,6 +805,7 @@ const editRecord = (record: DNSRecord) => {
     config_id: record.config_id,
     host: record.host,
     allowed_ip_ranges: record.allowed_ip_ranges || '',
+    dynamic_dns_refresh_rate: record.dynamic_dns_refresh_rate,
     is_active: record.is_active,
   };
   showEditRecordModal.value = true;
@@ -707,6 +822,7 @@ const confirmDeleteRecord = async () => {
   try {
     await apiService.deleteDNSRecord(deletingRecordId.value);
     await loadDNSConfigs();
+    await loadScheduledJobs();
     showDeleteRecordDialog.value = false;
     deletingRecordId.value = null;
   } catch (err) {
@@ -725,18 +841,27 @@ const saveRecord = async () => {
       return;
     }
 
+    // Validate refresh rate
+    const refreshRateValidationError = validateRefreshRate(recordForm.value.dynamic_dns_refresh_rate);
+    if (refreshRateValidationError) {
+      error.value = `Refresh rate validation error: ${refreshRateValidationError}`;
+      return;
+    }
+
     if (showCreateRecordModal.value) {
       await apiService.createDNSRecord(recordForm.value);
     } else if (editingRecord.value) {
       const updateData: DNSRecordUpdateRequest = {
         host: recordForm.value.host,
         allowed_ip_ranges: recordForm.value.allowed_ip_ranges,
+        dynamic_dns_refresh_rate: recordForm.value.dynamic_dns_refresh_rate,
         is_active: recordForm.value.is_active,
       };
       await apiService.updateDNSRecord(editingRecord.value.id, updateData);
     }
 
     await loadDNSConfigs();
+    await loadScheduledJobs();
     closeRecordModal();
   } catch (err) {
     error.value = `Failed to save DNS record: ${err}`;
@@ -784,6 +909,7 @@ const closeRecordModal = () => {
     config_id: 0,
     host: '',
     allowed_ip_ranges: '',
+    dynamic_dns_refresh_rate: undefined,
     is_active: true,
   };
 };
@@ -834,6 +960,174 @@ const isValidIP = (ip: string): boolean => {
   const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
   const ipv6Regex = /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/;
   return ipv4Regex.test(ip) || ipv6Regex.test(ip);
+};
+
+// Refresh rate validation
+const validateRefreshRate = (refreshRate: number | null | undefined): string | null => {
+  if (refreshRate === null || refreshRate === undefined) {
+    return null; // Empty is valid (no auto-refresh)
+  }
+
+  if (isNaN(refreshRate) || refreshRate < 1) {
+    return 'Refresh rate must be at least 1 minute';
+  }
+
+  if (refreshRate > 1440) {
+    return 'Refresh rate cannot exceed 1440 minutes (24 hours)';
+  }
+
+  return null;
+};
+
+// Scheduled jobs methods
+const loadScheduledJobs = async () => {
+  try {
+    loadingJobs.value = true;
+    const response = await apiService.getScheduledJobs();
+    scheduledJobs.value = response.active_jobs || {};
+    startCountdownTimer();
+  } catch (err: any) {
+    error.value = err.response?.data?.error || 'Failed to load scheduled jobs';
+  } finally {
+    loadingJobs.value = false;
+  }
+};
+
+const startCountdownTimer = () => {
+  // Clear existing timer
+  if (countdownTimer.value) {
+    clearInterval(countdownTimer.value);
+  }
+
+  // Start new timer that updates every second
+  countdownTimer.value = setInterval(() => {
+    // Check if any jobs are due and refresh if needed
+    let needsRefresh = false;
+    for (const [recordId, jobInfo] of Object.entries(scheduledJobs.value)) {
+      const now = new Date().getTime();
+      const next = new Date(jobInfo.next_update).getTime();
+      if (next <= now) {
+        needsRefresh = true;
+        break;
+      }
+    }
+
+    if (needsRefresh) {
+      // Refresh scheduled jobs to get updated times
+      loadScheduledJobs();
+    } else {
+      // Force reactivity update by creating a new object
+      scheduledJobs.value = { ...scheduledJobs.value };
+    }
+  }, 1000);
+};
+
+const stopCountdownTimer = () => {
+  if (countdownTimer.value) {
+    clearInterval(countdownTimer.value);
+    countdownTimer.value = null;
+  }
+};
+
+const refreshAllData = async () => {
+  await loadDNSConfigs();
+};
+
+const pauseScheduledJob = async (recordId: number) => {
+  try {
+    stoppingJobs.value[recordId] = true;
+    await apiService.pauseScheduledJob(recordId);
+    // Refresh the scheduled jobs to get updated state
+    await loadScheduledJobs();
+  } catch (err: any) {
+    error.value = err.response?.data?.error || 'Failed to pause scheduled job';
+  } finally {
+    stoppingJobs.value[recordId] = false;
+  }
+};
+
+const resumeScheduledJob = async (recordId: number) => {
+  try {
+    stoppingJobs.value[recordId] = true;
+    await apiService.resumeScheduledJob(recordId);
+    // Refresh the scheduled jobs to get updated state
+    await loadScheduledJobs();
+  } catch (err: any) {
+    error.value = err.response?.data?.error || 'Failed to resume scheduled job';
+  } finally {
+    stoppingJobs.value[recordId] = false;
+  }
+};
+
+const formatInterval = (intervalNs: number): string => {
+  // Convert from nanoseconds to minutes
+  const minutes = Math.floor(intervalNs / (1000 * 1000 * 1000 * 60));
+  if (minutes < 60) {
+    return `${minutes} min`;
+  } else if (minutes < 1440) {
+    const hours = Math.floor(minutes / 60);
+    return `${hours}h ${minutes % 60}m`;
+  } else {
+    const days = Math.floor(minutes / 1440);
+    const hours = Math.floor((minutes % 1440) / 60);
+    return `${days}d ${hours}h`;
+  }
+};
+
+const getNextUpdateTime = (recordId: number): string => {
+  // This is a placeholder - in a real implementation, you'd track last update times
+  return 'Calculating...';
+};
+
+const getRecordDisplayName = (recordId: number): string => {
+  // Find the record in all configs
+  for (const config of dnsConfigs.value) {
+    const records = configRecords.value[config.id] || [];
+    const record = records.find(r => r.id === recordId);
+    if (record) {
+      const hostname = record.host === '@' ? config.domain : `${record.host}.${config.domain}`;
+      const status = record.is_active ? '' : ' (inactive)';
+      return `${hostname}${status}`;
+    }
+  }
+  // If record not found, try to refresh and return fallback
+  console.log(`Record ${recordId} not found in loaded records. Available records:`, Object.keys(configRecords.value));
+  return `Record ID: ${recordId}`;
+};
+
+const getCountdown = (nextUpdate: string): string => {
+  if (!nextUpdate) {
+    return 'Unknown';
+  }
+
+  const now = new Date().getTime();
+  const next = new Date(nextUpdate).getTime();
+
+  // Check if the date is valid
+  if (isNaN(next)) {
+    console.error('Invalid nextUpdate date:', nextUpdate);
+    return 'Invalid date';
+  }
+
+  const diff = next - now;
+
+  // If due or overdue, show a very short countdown or refresh
+  if (diff <= 0) {
+    return 'Due now';
+  }
+
+  const minutes = Math.floor(diff / (1000 * 60));
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+  if (minutes < 1) {
+    return `${seconds}s`;
+  } else if (minutes < 60) {
+    return `${minutes}m ${seconds}s`;
+  } else {
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    return `${hours}h ${remainingMinutes}m`;
+  }
 };
 
 // Quick fill functions
@@ -911,6 +1205,10 @@ onMounted(() => {
   loadDNSConfigs();
   refreshPublicIP();
   loadNginxIPRestrictions();
+});
+
+onUnmounted(() => {
+  stopCountdownTimer();
 });
 
 const loadNginxIPRestrictions = async () => {
