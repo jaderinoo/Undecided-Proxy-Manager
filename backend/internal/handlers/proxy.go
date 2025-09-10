@@ -239,24 +239,34 @@ func UpdateProxy(c *gin.Context) {
 		proxy.TargetURL = *req.TargetURL
 	}
 	if req.SSLEnabled != nil {
-		// If SSL is being enabled, generate Let's Encrypt certificate
+		// If SSL is being enabled, check if certificate already exists
 		if *req.SSLEnabled && !proxy.SSLEnabled {
-			certService := services.NewCertificateService("/etc/ssl/certs")
-
-			// Generate Let's Encrypt certificate
-			certificate, err := certService.GenerateLetsEncryptCertificate(proxy.Domain)
-			if err != nil {
-				// If certificate generation fails, keep SSL disabled
-				fmt.Printf("Warning: Failed to generate Let's Encrypt certificate for %s: %v. Keeping SSL disabled.\n", proxy.Domain, err)
-				proxy.SSLEnabled = false
+			// First check if a certificate already exists for this domain
+			existingCert, err := dbService.GetCertificateByDomain(proxy.Domain)
+			if err == nil && existingCert != nil {
+				// Certificate already exists, enable SSL
+				proxy.SSLEnabled = true
+				proxy.SSLPath = fmt.Sprintf("/etc/ssl/certs/certs/%s", proxy.Domain)
+				fmt.Printf("Found existing certificate for %s, enabling SSL\n", proxy.Domain)
 			} else {
-				// Certificate generated successfully, save it to database
-				if err := dbService.CreateCertificate(certificate); err != nil {
-					fmt.Printf("Warning: Failed to save certificate to database: %v\n", err)
+				// No existing certificate, generate Let's Encrypt certificate
+				certService := services.NewCertificateService("/etc/ssl/certs")
+
+				// Generate Let's Encrypt certificate
+				certificate, err := certService.GenerateLetsEncryptCertificate(proxy.Domain)
+				if err != nil {
+					// If certificate generation fails, keep SSL disabled
+					fmt.Printf("Warning: Failed to generate Let's Encrypt certificate for %s: %v. Keeping SSL disabled.\n", proxy.Domain, err)
 					proxy.SSLEnabled = false
 				} else {
-					proxy.SSLEnabled = true
-					proxy.SSLPath = fmt.Sprintf("/etc/ssl/certs/certs/%s", proxy.Domain)
+					// Certificate generated successfully, save it to database
+					if err := dbService.CreateCertificate(certificate); err != nil {
+						fmt.Printf("Warning: Failed to save certificate to database: %v\n", err)
+						proxy.SSLEnabled = false
+					} else {
+						proxy.SSLEnabled = true
+						proxy.SSLPath = fmt.Sprintf("/etc/ssl/certs/certs/%s", proxy.Domain)
+					}
 				}
 			}
 		} else {
