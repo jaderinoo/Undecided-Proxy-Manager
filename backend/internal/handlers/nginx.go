@@ -94,7 +94,7 @@ func UpdateAdminIPRestrictions(c *gin.Context) {
 	}
 
 	// Get nginx service
-	nginxService := getNginxService()
+	nginxService := GetNginxService()
 	if nginxService == nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Nginx service not available"})
 		return
@@ -131,7 +131,7 @@ func UpdateAdminIPRestrictions(c *gin.Context) {
 // @Router       /api/v1/nginx/admin-ip-restrictions [GET]
 func GetAdminIPRestrictions(c *gin.Context) {
 	// Get nginx service
-	nginxService := getNginxService()
+	nginxService := GetNginxService()
 	if nginxService == nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Nginx service not available"})
 		return
@@ -145,4 +145,77 @@ func GetAdminIPRestrictions(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"allowed_ranges": allowedRanges})
+}
+
+// RegenerateProxyConfig godoc
+// @Summary      Regenerate nginx configuration for a specific domain
+// @Description  Regenerate nginx configuration for a proxy based on its domain name
+// @Tags         nginx
+// @Accept       json
+// @Produce      json
+// @Param        domain query string true "Domain name to regenerate config for"
+// @Success      200  {object}  map[string]string
+// @Failure      400  {object}  map[string]string
+// @Failure      404  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Router       /nginx/regenerate-config [post]
+func RegenerateProxyConfig(c *gin.Context) {
+	domain := c.Query("domain")
+	if domain == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Domain parameter is required"})
+		return
+	}
+
+	// Get nginx service
+	nginxService := GetNginxService()
+	if nginxService == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Nginx service not available"})
+		return
+	}
+
+	// Get database service
+	if dbService == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database service not available"})
+		return
+	}
+
+	// Find proxy by domain
+	proxies, err := dbService.GetProxies()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get proxies: " + err.Error()})
+		return
+	}
+
+	var targetProxy *models.Proxy
+	for _, proxy := range proxies {
+		if proxy.Domain == domain {
+			targetProxy = &proxy
+			break
+		}
+	}
+
+	if targetProxy == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Proxy not found for domain: " + domain})
+		return
+	}
+
+	// Regenerate nginx configuration
+	if err := nginxService.GenerateProxyConfig(targetProxy); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to regenerate nginx config: " + err.Error()})
+		return
+	}
+
+	// Test nginx configuration
+	if err := nginxService.TestNginxConfig(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid nginx configuration: " + err.Error()})
+		return
+	}
+
+	// Reload nginx
+	if err := nginxService.ReloadNginx(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reload nginx: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Nginx configuration regenerated successfully for domain: " + domain})
 }

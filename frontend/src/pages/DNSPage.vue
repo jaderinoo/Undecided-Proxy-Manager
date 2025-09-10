@@ -92,16 +92,13 @@
                   <div v-else-if="!scheduledJobs || Object.keys(scheduledJobs).length === 0" class="text-center py-4">
                     <v-icon size="48" color="grey-lighten-1" class="mb-2">mdi-timer-off</v-icon>
                     <p class="text-body-1 text-grey-darken-2 mb-2">No Active Jobs</p>
-                    <p class="text-body-2 text-grey-darken-1">Create DNS records with refresh rates to see scheduled jobs here.</p>
+                    <p class="text-body-2 text-grey-darken-1">Create DNS records with refresh rates to see scheduled
+                      jobs here.</p>
                   </div>
 
                   <div v-else>
                     <v-list density="compact">
-                      <v-list-item
-                        v-for="(job, recordId) in scheduledJobsWithNames"
-                        :key="recordId"
-                        class="mb-2"
-                      >
+                      <v-list-item v-for="(job, recordId) in scheduledJobsWithNames" :key="recordId" class="mb-2">
                         <template v-slot:prepend>
                           <v-icon color="green" size="small">mdi-timer</v-icon>
                         </template>
@@ -111,7 +108,8 @@
                         </v-list-item-title>
 
                         <v-list-item-subtitle class="text-caption">
-                          <v-chip size="x-small" :color="job.isPaused ? 'orange' : 'blue'" variant="outlined" class="mr-2">
+                          <v-chip size="x-small" :color="job.isPaused ? 'orange' : 'blue'" variant="outlined"
+                            class="mr-2">
                             {{ job.isPaused ? 'Paused' : job.countdown }}
                           </v-chip>
                           <span class="text-grey-darken-1">
@@ -120,14 +118,10 @@
                         </v-list-item-subtitle>
 
                         <template v-slot:append>
-                          <v-btn
-                            :icon="job.isPaused ? 'mdi-play' : 'mdi-pause'"
-                            size="x-small"
-                            variant="text"
+                          <v-btn :icon="job.isPaused ? 'mdi-play' : 'mdi-pause'" size="x-small" variant="text"
                             :color="job.isPaused ? 'success' : 'warning'"
                             @click="job.isPaused ? resumeScheduledJob(recordId) : pauseScheduledJob(recordId)"
-                            :loading="stoppingJobs[recordId]"
-                          />
+                            :loading="stoppingJobs[recordId]" />
                         </template>
                       </v-list-item>
                     </v-list>
@@ -189,13 +183,13 @@
                             <span class="text-caption text-grey-darken-2">Last Update:</span>
                             <span class="text-body-2">{{
                               formatDate(config.last_update) || 'Never'
-                              }}</span>
+                            }}</span>
                           </div>
                           <div class="d-flex justify-space-between align-center">
                             <span class="text-caption text-grey-darken-2">Last IP:</span>
                             <span class="text-body-2 font-mono">{{
                               config.last_ip || 'Unknown'
-                              }}</span>
+                            }}</span>
                           </div>
                         </div>
 
@@ -250,6 +244,9 @@
                                 <div class="d-flex" style="gap: 4px">
                                   <v-btn icon="mdi-refresh" size="x-small" variant="text" color="success"
                                     :loading="loadingUpdates[record.id]" @click="updateRecordNow(record.id)" />
+                                  <v-btn icon="mdi-file-document-edit" size="x-small" variant="text" color="blue"
+                                    :loading="loadingRegen[record.id]" @click="regenerateConfig(record)"
+                                    v-tooltip="'Regenerate Nginx Config'" />
                                   <v-btn icon="mdi-pencil" size="x-small" variant="text" @click="editRecord(record)" />
                                   <v-btn icon="mdi-delete" size="x-small" variant="text" color="error"
                                     @click="deleteRecord(record.id)" />
@@ -414,15 +411,10 @@
               </v-col>
 
               <v-col cols="12">
-                <v-text-field
-                  v-model.number="recordForm.dynamic_dns_refresh_rate"
-                  label="Dynamic DNS Refresh Rate (minutes)"
-                  type="number"
-                  placeholder="e.g., 5, 10, 30, 60"
+                <v-text-field v-model.number="recordForm.dynamic_dns_refresh_rate"
+                  label="Dynamic DNS Refresh Rate (minutes)" type="number" placeholder="e.g., 5, 10, 30, 60"
                   hint="Set refresh rate in minutes for automatic DNS updates. Leave empty to disable auto-refresh."
-                  persistent-hint
-                  min="1"
-                  max="1440"
+                  persistent-hint min="1" max="1440"
                   :error-messages="validateRefreshRate(recordForm.dynamic_dns_refresh_rate) ? [validateRefreshRate(recordForm.dynamic_dns_refresh_rate)!] : []"
                   :error="!!validateRefreshRate(recordForm.dynamic_dns_refresh_rate)">
                 </v-text-field>
@@ -542,6 +534,7 @@ const publicIP = ref<string>('');
 const loadingConfigs = ref(false);
 const loadingPublicIP = ref(false);
 const loadingUpdates = ref<Record<number, boolean>>({});
+const loadingRegen = ref<Record<number, boolean>>({});
 const savingConfig = ref(false);
 const savingRecord = ref(false);
 const savingNginxIP = ref(false);
@@ -886,6 +879,35 @@ const updateRecordNow = async (recordId: number) => {
     loadingUpdates.value[recordId] = false;
   }
 };
+
+const regenerateConfig = async (record: DNSRecord) => {
+  let domain = '';
+  try {
+    loadingRegen.value[record.id] = true;
+
+    // Get the domain name for this record
+    const config = dnsConfigs.value.find(c => c.id === record.config_id);
+    if (!config) {
+      error.value = 'DNS configuration not found for this record';
+      return;
+    }
+
+    domain = record.host === '@' ? config.domain : `${record.host}.${config.domain}`;
+
+    // Call the regenerate config API
+    await apiService.regenerateProxyConfig(domain);
+
+    // Show success message
+    error.value = null; // Clear any existing errors
+    // You could add a success notification here if you have a notification system
+
+  } catch (err) {
+    error.value = `Failed to regenerate nginx config for ${domain}: ${err}`;
+  } finally {
+    loadingRegen.value[record.id] = false;
+  }
+};
+
 
 const closeConfigModal = () => {
   showCreateConfigModal.value = false;

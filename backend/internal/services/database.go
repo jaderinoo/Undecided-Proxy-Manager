@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"upm-backend/internal/config"
@@ -660,6 +661,69 @@ func (d *DatabaseService) DeleteDNSRecord(id int) error {
 	}
 
 	return nil
+}
+
+// GetDNSRecordByDomain finds a DNS record by domain name (host + domain)
+func (d *DatabaseService) GetDNSRecordByDomain(domain string) (*models.DNSRecord, error) {
+	// Split domain into host and base domain
+	parts := strings.Split(domain, ".")
+	if len(parts) < 2 {
+		return nil, fmt.Errorf("invalid domain format")
+	}
+	
+	host := parts[0]
+	baseDomain := strings.Join(parts[1:], ".")
+	
+	query := `
+		SELECT dr.id, dr.config_id, dr.host, dr.current_ip, dr.allowed_ip_ranges, dr.dynamic_dns_refresh_rate, dr.last_update, dr.is_active, dr.created_at, dr.updated_at
+		FROM dns_records dr
+		JOIN dns_configs dc ON dr.config_id = dc.id
+		WHERE dr.host = ? AND dc.domain = ? AND dr.is_active = TRUE
+		ORDER BY dr.created_at DESC
+		LIMIT 1`
+
+	var record models.DNSRecord
+	var currentIP sql.NullString
+	var allowedIPRanges sql.NullString
+	var dynamicDNSRefreshRate sql.NullInt32
+	var lastUpdate sql.NullTime
+
+	err := d.db.QueryRow(query, host, baseDomain).Scan(
+		&record.ID,
+		&record.ConfigID,
+		&record.Host,
+		&currentIP,
+		&allowedIPRanges,
+		&dynamicDNSRefreshRate,
+		&lastUpdate,
+		&record.IsActive,
+		&record.CreatedAt,
+		&record.UpdatedAt,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, nil // No record found, not an error
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to query dns record by domain: %w", err)
+	}
+
+	// Handle nullable fields
+	if currentIP.Valid {
+		record.CurrentIP = currentIP.String
+	}
+	if allowedIPRanges.Valid {
+		record.AllowedIPRanges = allowedIPRanges.String
+	}
+	if dynamicDNSRefreshRate.Valid {
+		refreshRate := int(dynamicDNSRefreshRate.Int32)
+		record.DynamicDNSRefreshRate = &refreshRate
+	}
+	if lastUpdate.Valid {
+		record.LastUpdate = &lastUpdate.Time
+	}
+
+	return &record, nil
 }
 
 // Certificate methods

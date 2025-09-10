@@ -128,7 +128,7 @@ func main() {
 
 	var nginxService *services.NginxService
 	if nginxConfigPath != "" && nginxReloadCmd != "" {
-		nginxService = services.NewNginxService(nginxConfigPath, nginxReloadCmd, nginxContainerName)
+		nginxService = services.NewNginxService(nginxConfigPath, nginxReloadCmd, nginxContainerName, dbService)
 		handlers.SetNginxService(nginxService)
 		log.Printf("Nginx service initialized with config path: %s, container: %s", nginxConfigPath, nginxContainerName)
 	} else {
@@ -235,6 +235,7 @@ func main() {
 			{
 				nginx.POST("/reload", handlers.ReloadNginx)
 				nginx.POST("/test", handlers.TestNginxConfig)
+				nginx.POST("/regenerate-config", handlers.RegenerateProxyConfig)
 				nginx.GET("/admin-ip-restrictions", handlers.GetAdminIPRestrictions)
 				nginx.PUT("/admin-ip-restrictions", handlers.UpdateAdminIPRestrictions)
 			}

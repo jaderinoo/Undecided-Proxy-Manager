@@ -17,14 +17,16 @@ type NginxService struct {
 	ReloadCommand   string
 	TemplatePath    string
 	ContainerName   string
+	DatabaseService *DatabaseService
 }
 
-func NewNginxService(configPath, reloadCommand, containerName string) *NginxService {
+func NewNginxService(configPath, reloadCommand, containerName string, dbService *DatabaseService) *NginxService {
 	return &NginxService{
-		ConfigPath:    configPath,
-		ReloadCommand: reloadCommand,
-		TemplatePath:  filepath.Join(configPath, "proxy-template.conf"),
-		ContainerName: containerName,
+		ConfigPath:      configPath,
+		ReloadCommand:   reloadCommand,
+		TemplatePath:    filepath.Join(configPath, "proxy-template.conf"),
+		ContainerName:   containerName,
+		DatabaseService: dbService,
 	}
 }
 
@@ -36,21 +38,42 @@ func (n *NginxService) GenerateProxyConfig(proxy *models.Proxy) error {
 		return fmt.Errorf("failed to parse template: %w", err)
 	}
 
+	// Get allowed IP ranges from DNS record
+	var allowedRanges []string
+	if n.DatabaseService != nil {
+		dnsRecord, err := n.DatabaseService.GetDNSRecordByDomain(proxy.Domain)
+		if err != nil {
+			return fmt.Errorf("failed to get DNS record for domain %s: %w", proxy.Domain, err)
+		}
+		if dnsRecord != nil && dnsRecord.AllowedIPRanges != "" {
+			// Parse comma-separated IP ranges
+			ranges := strings.Split(dnsRecord.AllowedIPRanges, ",")
+			for _, r := range ranges {
+				r = strings.TrimSpace(r)
+				if r != "" {
+					allowedRanges = append(allowedRanges, r)
+				}
+			}
+		}
+	}
+
 	// Prepare template data
 	data := struct {
-		Domain     string
-		TargetURL  string
-		SSLEnabled bool
-		SSLPath    string
-		CertPath   string
-		KeyPath    string
+		Domain         string
+		TargetURL      string
+		SSLEnabled     bool
+		SSLPath        string
+		CertPath       string
+		KeyPath        string
+		AllowedRanges  []string
 	}{
-		Domain:     proxy.Domain,
-		TargetURL:  proxy.TargetURL,
-		SSLEnabled: proxy.SSLEnabled,
-		SSLPath:    "/etc/nginx/ssl",
-		CertPath:   fmt.Sprintf("/etc/ssl/certs/%s.crt", proxy.Domain),
-		KeyPath:    fmt.Sprintf("/etc/ssl/certs/%s.key", proxy.Domain),
+		Domain:        proxy.Domain,
+		TargetURL:     proxy.TargetURL,
+		SSLEnabled:    proxy.SSLEnabled,
+		SSLPath:       "/etc/nginx/ssl",
+		CertPath:      fmt.Sprintf("/etc/ssl/certs/%s.crt", proxy.Domain),
+		KeyPath:       fmt.Sprintf("/etc/ssl/certs/%s.key", proxy.Domain),
+		AllowedRanges: allowedRanges,
 	}
 
 	// Generate config content
@@ -110,7 +133,11 @@ func (n *NginxService) isDockerEnvironment() bool {
 func (n *NginxService) reloadNginxDocker() error {
 	cmd := exec.Command("sh", "-c", n.ReloadCommand)
 	output, err := cmd.CombinedOutput()
-	if err != nil {
+	
+	// Log the output for debugging
+	fmt.Printf("Nginx reload output: %s\n", string(output))
+	
+ 	if err != nil {
 		// If container doesn't exist or nginx is not available, log warning but don't fail
 		if strings.Contains(string(output), "not found") ||
 			strings.Contains(err.Error(), "not found") ||
@@ -118,10 +145,17 @@ func (n *NginxService) reloadNginxDocker() error {
 			strings.Contains(string(output), "No such container") ||
 			strings.Contains(string(output), "Container") {
 			// nginx container not available, skip reload
+			fmt.Printf("Nginx container not available, skipping reload: %s\n", string(output))
 			return nil
 		}
 		return fmt.Errorf("failed to reload nginx via Docker: %s, error: %w", string(output), err)
 	}
+	
+	// Check if there are warnings in the output
+	if strings.Contains(string(output), "warn") {
+		fmt.Printf("Nginx reload completed with warnings: %s\n", string(output))
+	}
+	
 	return nil
 }
 
@@ -155,6 +189,10 @@ func (n *NginxService) TestNginxConfig() error {
 func (n *NginxService) testNginxConfigDocker() error {
 	cmd := exec.Command("sh", "-c", fmt.Sprintf("docker exec %s nginx -t", n.ContainerName))
 	output, err := cmd.CombinedOutput()
+	
+	// Log the output for debugging
+	fmt.Printf("Nginx config test output: %s\n", string(output))
+	
 	if err != nil {
 		// If container doesn't exist or nginx is not available, log warning but don't fail
 		if strings.Contains(string(output), "not found") ||
@@ -163,10 +201,17 @@ func (n *NginxService) testNginxConfigDocker() error {
 			strings.Contains(string(output), "No such container") ||
 			strings.Contains(string(output), "Container") {
 			// nginx container not available, skip test
+			fmt.Printf("Nginx container not available, skipping config test: %s\n", string(output))
 			return nil
 		}
 		return fmt.Errorf("nginx config test failed via Docker: %s, error: %w", string(output), err)
 	}
+	
+	// Check if there are warnings in the output
+	if strings.Contains(string(output), "warn") {
+		fmt.Printf("Nginx config test completed with warnings: %s\n", string(output))
+	}
+	
 	return nil
 }
 

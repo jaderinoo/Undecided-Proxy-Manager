@@ -223,6 +223,12 @@ class ApiService {
     });
   }
 
+  async regenerateProxyConfig(domain: string): Promise<{ message: string }> {
+    return this.request(`/api/v1/nginx/regenerate-config?domain=${encodeURIComponent(domain)}`, {
+      method: 'POST',
+    });
+  }
+
   // DNS management endpoints
   async getDNSConfigs(): Promise<{ configs: DNSConfig[] }> {
     return this.request('/api/v1/dns/configs');

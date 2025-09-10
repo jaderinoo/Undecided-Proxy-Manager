@@ -74,8 +74,10 @@
                     v-for="proxy in filteredProxies"
                     :key="proxy.id"
                     :proxy="proxy"
+                    :regenerating="loadingRegenerate[proxy.id]"
                     @edit="editProxy"
                     @delete="deleteProxy"
+                    @regenerate="regenerateConfig"
                   />
                 </div>
 
@@ -291,6 +293,7 @@ const deletingProxy = ref<Proxy | null>(null);
 const saving = ref(false);
 const deleting = ref(false);
 const reloadingNginx = ref(false);
+const loadingRegenerate = ref<Record<number, boolean>>({});
 
 // Container form data for pre-filling
 const containerFormData = ref<Partial<ProxyCreateRequest> | undefined>(undefined);
@@ -671,6 +674,22 @@ const reloadNginx = async () => {
     error.value = err instanceof Error ? err.message : 'Failed to reload nginx';
   } finally {
     reloadingNginx.value = false;
+  }
+};
+
+const regenerateConfig = async (proxy: Proxy) => {
+  try {
+    loadingRegenerate.value[proxy.id] = true;
+    error.value = null;
+
+    const response = await apiService.regenerateProxyConfig(proxy.domain);
+    
+    // Show success message (you could add a toast notification here)
+    console.log('Config regenerated successfully:', response.message);
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to regenerate nginx config';
+  } finally {
+    loadingRegenerate.value[proxy.id] = false;
   }
 };
 

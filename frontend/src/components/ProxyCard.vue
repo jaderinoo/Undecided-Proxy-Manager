@@ -1,41 +1,26 @@
 <template>
   <v-card class="mb-2" :color="getStatusColor(proxy.status)" variant="outlined">
     <v-card-title class="d-flex align-center py-2">
-      <v-icon
-        :color="getStatusIconColor(proxy.status)"
-        class="mr-2"
-        size="small"
-      >
+      <v-icon :color="getStatusIconColor(proxy.status)" class="mr-2" size="small">
         {{ getStatusIcon(proxy.status) }}
       </v-icon>
       <span class="text-subtitle-1 font-weight-medium text-grey-darken-3">{{
         proxy.name
       }}</span>
       <v-spacer></v-spacer>
-      <v-chip
-        :color="getStatusChipColor(proxy.status)"
-        size="x-small"
-        class="mr-2"
-      >
+      <v-chip :color="getStatusChipColor(proxy.status)" size="x-small" class="mr-2">
         {{ proxy.status }}
       </v-chip>
-      <v-chip
-        v-if="proxy.ssl_enabled"
-        color="success"
-        size="x-small"
-        class="mr-2"
-      >
+      <v-chip v-if="proxy.ssl_enabled" color="success" size="x-small" class="mr-2">
         <v-icon left size="x-small">mdi-lock</v-icon>
         SSL
       </v-chip>
-      <v-btn
-        v-if="proxy.ssl_enabled"
-        icon
-        size="x-small"
-        @click="showCertificateInfo = true"
-        class="mr-1"
-      >
+      <v-btn v-if="proxy.ssl_enabled" icon size="x-small" @click="showCertificateInfo = true" class="mr-1">
         <v-icon size="small" color="blue">mdi-information</v-icon>
+      </v-btn>
+      <v-btn icon size="x-small" @click="$emit('regenerate', proxy)" :loading="regenerating" class="mr-1"
+        title="Regenerate Nginx Config">
+        <v-icon size="small" color="primary">mdi-cog-refresh</v-icon>
       </v-btn>
       <v-btn icon size="x-small" @click="$emit('edit', proxy)">
         <v-icon size="small" color="grey-darken-2">mdi-pencil</v-icon>
@@ -73,23 +58,15 @@
       </v-row>
 
       <!-- Connected Containers -->
-      <div
-        v-if="
-          proxy.connected_containers && proxy.connected_containers.length > 0
-        "
-        class="mt-2"
-      >
+      <div v-if="
+        proxy.connected_containers && proxy.connected_containers.length > 0
+      " class="mt-2">
         <div class="text-caption text-grey-darken-2 mb-1">
           Connected Containers
         </div>
         <div class="d-flex flex-wrap gap-1">
-          <v-chip
-            v-for="container in proxy.connected_containers"
-            :key="container.id"
-            size="x-small"
-            color="primary"
-            variant="outlined"
-          >
+          <v-chip v-for="container in proxy.connected_containers" :key="container.id" size="x-small" color="primary"
+            variant="outlined">
             <v-icon left size="x-small">mdi-docker</v-icon>
             {{ container.name || 'Unnamed' }}
           </v-chip>
@@ -132,11 +109,7 @@
                 <div class="text-caption text-grey-darken-2 mb-1">Expires</div>
                 <div class="text-body-2 text-grey-darken-3 mb-3">
                   {{ formatDate(certificate.expires_at) }}
-                  <v-chip
-                    :color="certificate.is_valid ? 'success' : 'error'"
-                    size="x-small"
-                    class="ml-2"
-                  >
+                  <v-chip :color="certificate.is_valid ? 'success' : 'error'" size="x-small" class="ml-2">
                     {{ certificate.is_valid ? 'Valid' : 'Expired' }}
                   </v-chip>
                 </div>
@@ -162,11 +135,7 @@
 
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn
-            color="grey"
-            variant="text"
-            @click="showCertificateInfo = false"
-          >
+          <v-btn color="grey" variant="text" @click="showCertificateInfo = false">
             Close
           </v-btn>
         </v-card-actions>
@@ -182,11 +151,13 @@ import type { Certificate, Proxy } from '../types/api';
 
 const props = defineProps<{
   proxy: Proxy;
+  regenerating?: boolean;
 }>();
 
 defineEmits<{
   edit: [proxy: Proxy];
   delete: [proxy: Proxy];
+  regenerate: [proxy: Proxy];
 }>();
 
 const showCertificateInfo = ref(false);
