@@ -200,6 +200,11 @@ func (n *NginxService) UpdateProxyConfig(proxy *models.Proxy) error {
 		return fmt.Errorf("failed to generate new config: %w", err)
 	}
 
+	// Reload nginx to apply the new configuration
+	if err := n.ReloadNginx(); err != nil {
+		return fmt.Errorf("failed to reload nginx: %w", err)
+	}
+
 	return nil
 }
 
