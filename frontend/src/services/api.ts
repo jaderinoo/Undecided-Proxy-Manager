@@ -28,8 +28,8 @@ import type {
 
 // Determine API base URL based on environment
 const getApiBaseUrl = () => {
-  // Development mode: Frontend on localhost:6070, Backend on localhost:6081
-  if (window.location.hostname === 'localhost' && window.location.port === '6070') {
+  // Development mode: Frontend on localhost:6071, Backend on localhost:6081
+  if (window.location.hostname === 'localhost' && window.location.port === '6071') {
     return 'http://localhost:6081';
   }
 
