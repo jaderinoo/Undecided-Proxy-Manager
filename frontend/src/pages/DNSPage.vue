@@ -183,13 +183,13 @@
                             <span class="text-caption text-grey-darken-2">Last Update:</span>
                             <span class="text-body-2">{{
                               formatDate(config.last_update) || 'Never'
-                              }}</span>
+                            }}</span>
                           </div>
                           <div class="d-flex justify-space-between align-center">
                             <span class="text-caption text-grey-darken-2">Last IP:</span>
                             <span class="text-body-2 font-mono">{{
                               config.last_ip || 'Unknown'
-                              }}</span>
+                            }}</span>
                           </div>
                         </div>
 
@@ -238,6 +238,12 @@
                                 class="text-caption text-blue-darken-1 mt-1">
                                 <v-icon size="x-small" class="mr-1">mdi-timer</v-icon>
                                 Auto-refresh: {{ record.dynamic_dns_refresh_rate }} min
+                              </v-list-item-subtitle>
+
+                              <v-list-item-subtitle v-if="record.include_backend"
+                                class="text-caption text-green-darken-1 mt-1">
+                                <v-icon size="x-small" class="mr-1">mdi-application-cog</v-icon>
+                                Backend API Access: {{ record.backend_url || 'Default' }}
                               </v-list-item-subtitle>
 
                               <template v-slot:append>
@@ -421,6 +427,17 @@
               </v-col>
 
               <v-col cols="12">
+                <v-checkbox v-model="recordForm.include_backend" label="Include Backend" color="primary"
+                  hint="Enable this to include backend API routes for this domain" persistent-hint></v-checkbox>
+              </v-col>
+
+              <v-col v-if="recordForm.include_backend" cols="12">
+                <v-text-field v-model="recordForm.backend_url" label="Backend URL" color="primary"
+                  hint="URL of the backend service (e.g., http://backend:6080, http://api.example.com:3000)"
+                  persistent-hint placeholder="http://backend:6080"></v-text-field>
+              </v-col>
+
+              <v-col cols="12">
                 <v-checkbox v-model="recordForm.is_active" label="Active" color="primary"></v-checkbox>
               </v-col>
             </v-row>
@@ -592,6 +609,8 @@ const recordForm = ref<DNSRecordCreateRequest & { is_active: boolean }>({
   host: '',
   allowed_ip_ranges: '',
   dynamic_dns_refresh_rate: undefined,
+  include_backend: false,
+  backend_url: '',
   is_active: true,
 });
 
@@ -787,6 +806,8 @@ const openCreateRecordModal = (configId: number) => {
     host: '',
     allowed_ip_ranges: '',
     dynamic_dns_refresh_rate: undefined,
+    include_backend: false,
+    backend_url: '',
     is_active: true,
   };
   showCreateRecordModal.value = true;
@@ -799,6 +820,8 @@ const editRecord = (record: DNSRecord) => {
     host: record.host,
     allowed_ip_ranges: record.allowed_ip_ranges || '',
     dynamic_dns_refresh_rate: record.dynamic_dns_refresh_rate,
+    include_backend: record.include_backend,
+    backend_url: record.backend_url || '',
     is_active: record.is_active,
   };
   showEditRecordModal.value = true;
@@ -848,6 +871,8 @@ const saveRecord = async () => {
         host: recordForm.value.host,
         allowed_ip_ranges: recordForm.value.allowed_ip_ranges,
         dynamic_dns_refresh_rate: recordForm.value.dynamic_dns_refresh_rate,
+        include_backend: recordForm.value.include_backend,
+        backend_url: recordForm.value.backend_url,
         is_active: recordForm.value.is_active,
       };
       await apiService.updateDNSRecord(editingRecord.value.id, updateData);
@@ -932,6 +957,8 @@ const closeRecordModal = () => {
     host: '',
     allowed_ip_ranges: '',
     dynamic_dns_refresh_rate: undefined,
+    include_backend: false,
+    backend_url: '',
     is_active: true,
   };
 };

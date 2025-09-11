@@ -218,6 +218,8 @@ func CreateDNSRecord(c *gin.Context) {
 		Host:                  req.Host,
 		AllowedIPRanges:       req.AllowedIPRanges,
 		DynamicDNSRefreshRate: req.DynamicDNSRefreshRate,
+		IncludeBackend:        req.IncludeBackend,
+		BackendURL:            req.BackendURL,
 		IsActive:              true,
 	}
 
@@ -266,6 +268,12 @@ func UpdateDNSRecord(c *gin.Context) {
 	}
 	if req.DynamicDNSRefreshRate != nil {
 		record.DynamicDNSRefreshRate = req.DynamicDNSRefreshRate
+	}
+	if req.IncludeBackend != nil {
+		record.IncludeBackend = *req.IncludeBackend
+	}
+	if req.BackendURL != nil {
+		record.BackendURL = *req.BackendURL
 	}
 	if req.IsActive != nil {
 		record.IsActive = *req.IsActive

@@ -156,6 +156,38 @@ func (d *DatabaseService) initTables() error {
 		fmt.Printf("Note: dynamic_dns_refresh_rate column may already exist: %v\n", err)
 	}
 
+	// Add include_backend column to existing dns_records table if it doesn't exist
+	alterTableQuery3 := `ALTER TABLE dns_records ADD COLUMN include_backend BOOLEAN DEFAULT FALSE;`
+	if _, err := d.db.Exec(alterTableQuery3); err != nil {
+		// Ignore error if column already exists
+		fmt.Printf("Note: include_backend column may already exist: %v\n", err)
+	}
+
+	// Add backend_url column to existing dns_records table if it doesn't exist
+	alterTableQuery4 := `ALTER TABLE dns_records ADD COLUMN backend_url TEXT DEFAULT '';`
+	if _, err := d.db.Exec(alterTableQuery4); err != nil {
+		// Ignore error if column already exists
+		fmt.Printf("Note: backend_url column may already exist: %v\n", err)
+	}
+
+	// Migration: Remove old is_upm_domain column and migrate data
+	// First, check if is_upm_domain column exists
+	checkColumnQuery := `SELECT COUNT(*) FROM pragma_table_info('dns_records') WHERE name='is_upm_domain';`
+	var count int
+	if err := d.db.QueryRow(checkColumnQuery).Scan(&count); err == nil && count > 0 {
+		// Column exists, migrate data and drop it
+		migrateQuery := `UPDATE dns_records SET include_backend = is_upm_domain, backend_url = 'http://backend:6080' WHERE is_upm_domain = TRUE;`
+		if _, err := d.db.Exec(migrateQuery); err != nil {
+			fmt.Printf("Warning: Failed to migrate is_upm_domain data: %v\n", err)
+		}
+		
+		// Drop the old column
+		dropColumnQuery := `ALTER TABLE dns_records DROP COLUMN is_upm_domain;`
+		if _, err := d.db.Exec(dropColumnQuery); err != nil {
+			fmt.Printf("Warning: Failed to drop is_upm_domain column: %v\n", err)
+		}
+	}
+
 	// Create ui_settings table
 	uiSettingsTable := `
 	CREATE TABLE IF NOT EXISTS ui_settings (
@@ -491,7 +523,7 @@ func (d *DatabaseService) DeleteDNSConfig(id int) error {
 // DNS Record methods
 func (d *DatabaseService) GetDNSRecords(configID int) ([]models.DNSRecord, error) {
 	query := `
-		SELECT id, config_id, host, current_ip, allowed_ip_ranges, dynamic_dns_refresh_rate, last_update, is_active, created_at, updated_at
+		SELECT id, config_id, host, current_ip, allowed_ip_ranges, dynamic_dns_refresh_rate, include_backend, backend_url, last_update, is_active, created_at, updated_at
 		FROM dns_records
 		WHERE config_id = ?
 		ORDER BY created_at DESC`
@@ -508,6 +540,7 @@ func (d *DatabaseService) GetDNSRecords(configID int) ([]models.DNSRecord, error
 		var currentIP sql.NullString
 		var allowedIPRanges sql.NullString
 		var dynamicDNSRefreshRate sql.NullInt32
+		var backendURL sql.NullString
 		var lastUpdate sql.NullTime
 
 		err := rows.Scan(
@@ -517,6 +550,8 @@ func (d *DatabaseService) GetDNSRecords(configID int) ([]models.DNSRecord, error
 			&currentIP,
 			&allowedIPRanges,
 			&dynamicDNSRefreshRate,
+			&record.IncludeBackend,
+			&backendURL,
 			&lastUpdate,
 			&record.IsActive,
 			&record.CreatedAt,
@@ -537,6 +572,9 @@ func (d *DatabaseService) GetDNSRecords(configID int) ([]models.DNSRecord, error
 			refreshRate := int(dynamicDNSRefreshRate.Int32)
 			record.DynamicDNSRefreshRate = &refreshRate
 		}
+		if backendURL.Valid {
+			record.BackendURL = backendURL.String
+		}
 		if lastUpdate.Valid {
 			record.LastUpdate = &lastUpdate.Time
 		}
@@ -549,7 +587,7 @@ func (d *DatabaseService) GetDNSRecords(configID int) ([]models.DNSRecord, error
 
 func (d *DatabaseService) GetDNSRecord(id int) (*models.DNSRecord, error) {
 	query := `
-		SELECT id, config_id, host, current_ip, allowed_ip_ranges, dynamic_dns_refresh_rate, last_update, is_active, created_at, updated_at
+		SELECT id, config_id, host, current_ip, allowed_ip_ranges, dynamic_dns_refresh_rate, include_backend, backend_url, last_update, is_active, created_at, updated_at
 		FROM dns_records
 		WHERE id = ?`
 
@@ -557,6 +595,7 @@ func (d *DatabaseService) GetDNSRecord(id int) (*models.DNSRecord, error) {
 	var currentIP sql.NullString
 	var allowedIPRanges sql.NullString
 	var dynamicDNSRefreshRate sql.NullInt32
+	var backendURL sql.NullString
 	var lastUpdate sql.NullTime
 
 	err := d.db.QueryRow(query, id).Scan(
@@ -566,6 +605,8 @@ func (d *DatabaseService) GetDNSRecord(id int) (*models.DNSRecord, error) {
 		&currentIP,
 		&allowedIPRanges,
 		&dynamicDNSRefreshRate,
+		&record.IncludeBackend,
+		&backendURL,
 		&lastUpdate,
 		&record.IsActive,
 		&record.CreatedAt,
@@ -590,6 +631,9 @@ func (d *DatabaseService) GetDNSRecord(id int) (*models.DNSRecord, error) {
 		refreshRate := int(dynamicDNSRefreshRate.Int32)
 		record.DynamicDNSRefreshRate = &refreshRate
 	}
+	if backendURL.Valid {
+		record.BackendURL = backendURL.String
+	}
 	if lastUpdate.Valid {
 		record.LastUpdate = &lastUpdate.Time
 	}
@@ -599,10 +643,10 @@ func (d *DatabaseService) GetDNSRecord(id int) (*models.DNSRecord, error) {
 
 func (d *DatabaseService) CreateDNSRecord(record *models.DNSRecord) error {
 	query := `
-		INSERT INTO dns_records (config_id, host, current_ip, allowed_ip_ranges, dynamic_dns_refresh_rate, is_active)
-		VALUES (?, ?, ?, ?, ?, ?)`
+		INSERT INTO dns_records (config_id, host, current_ip, allowed_ip_ranges, dynamic_dns_refresh_rate, include_backend, backend_url, is_active)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
 
-	result, err := d.db.Exec(query, record.ConfigID, record.Host, record.CurrentIP, record.AllowedIPRanges, record.DynamicDNSRefreshRate, record.IsActive)
+	result, err := d.db.Exec(query, record.ConfigID, record.Host, record.CurrentIP, record.AllowedIPRanges, record.DynamicDNSRefreshRate, record.IncludeBackend, record.BackendURL, record.IsActive)
 	if err != nil {
 		return fmt.Errorf("failed to insert dns record: %w", err)
 	}
@@ -622,10 +666,10 @@ func (d *DatabaseService) CreateDNSRecord(record *models.DNSRecord) error {
 func (d *DatabaseService) UpdateDNSRecord(record *models.DNSRecord) error {
 	query := `
 		UPDATE dns_records
-		SET host = ?, current_ip = ?, allowed_ip_ranges = ?, dynamic_dns_refresh_rate = ?, last_update = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP
+		SET host = ?, current_ip = ?, allowed_ip_ranges = ?, dynamic_dns_refresh_rate = ?, include_backend = ?, backend_url = ?, last_update = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?`
 
-	result, err := d.db.Exec(query, record.Host, record.CurrentIP, record.AllowedIPRanges, record.DynamicDNSRefreshRate, record.LastUpdate, record.IsActive, record.ID)
+	result, err := d.db.Exec(query, record.Host, record.CurrentIP, record.AllowedIPRanges, record.DynamicDNSRefreshRate, record.IncludeBackend, record.BackendURL, record.LastUpdate, record.IsActive, record.ID)
 	if err != nil {
 		return fmt.Errorf("failed to update dns record: %w", err)
 	}
@@ -675,7 +719,7 @@ func (d *DatabaseService) GetDNSRecordByDomain(domain string) (*models.DNSRecord
 	baseDomain := strings.Join(parts[1:], ".")
 	
 	query := `
-		SELECT dr.id, dr.config_id, dr.host, dr.current_ip, dr.allowed_ip_ranges, dr.dynamic_dns_refresh_rate, dr.last_update, dr.is_active, dr.created_at, dr.updated_at
+		SELECT dr.id, dr.config_id, dr.host, dr.current_ip, dr.allowed_ip_ranges, dr.dynamic_dns_refresh_rate, dr.include_backend, dr.backend_url, dr.last_update, dr.is_active, dr.created_at, dr.updated_at
 		FROM dns_records dr
 		JOIN dns_configs dc ON dr.config_id = dc.id
 		WHERE dr.host = ? AND dc.domain = ? AND dr.is_active = TRUE
@@ -686,6 +730,7 @@ func (d *DatabaseService) GetDNSRecordByDomain(domain string) (*models.DNSRecord
 	var currentIP sql.NullString
 	var allowedIPRanges sql.NullString
 	var dynamicDNSRefreshRate sql.NullInt32
+	var backendURL sql.NullString
 	var lastUpdate sql.NullTime
 
 	err := d.db.QueryRow(query, host, baseDomain).Scan(
@@ -695,6 +740,8 @@ func (d *DatabaseService) GetDNSRecordByDomain(domain string) (*models.DNSRecord
 		&currentIP,
 		&allowedIPRanges,
 		&dynamicDNSRefreshRate,
+		&record.IncludeBackend,
+		&backendURL,
 		&lastUpdate,
 		&record.IsActive,
 		&record.CreatedAt,
@@ -718,6 +765,9 @@ func (d *DatabaseService) GetDNSRecordByDomain(domain string) (*models.DNSRecord
 	if dynamicDNSRefreshRate.Valid {
 		refreshRate := int(dynamicDNSRefreshRate.Int32)
 		record.DynamicDNSRefreshRate = &refreshRate
+	}
+	if backendURL.Valid {
+		record.BackendURL = backendURL.String
 	}
 	if lastUpdate.Valid {
 		record.LastUpdate = &lastUpdate.Time

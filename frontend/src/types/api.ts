@@ -174,6 +174,8 @@ export interface DNSRecord {
   current_ip?: string;
   allowed_ip_ranges?: string;
   dynamic_dns_refresh_rate?: number;
+  include_backend: boolean;
+  backend_url?: string;
   last_update?: string;
   is_active: boolean;
   created_at: string;
@@ -185,12 +187,16 @@ export interface DNSRecordCreateRequest {
   host: string;
   allowed_ip_ranges?: string;
   dynamic_dns_refresh_rate?: number;
+  include_backend: boolean;
+  backend_url?: string;
 }
 
 export interface DNSRecordUpdateRequest {
   host?: string;
   allowed_ip_ranges?: string;
   dynamic_dns_refresh_rate?: number;
+  include_backend?: boolean;
+  backend_url?: string;
   is_active?: boolean;
 }
 

@@ -38,22 +38,29 @@ func (n *NginxService) GenerateProxyConfig(proxy *models.Proxy) error {
 		return fmt.Errorf("failed to parse template: %w", err)
 	}
 
-	// Get allowed IP ranges from DNS record
+	// Get allowed IP ranges and backend configuration from DNS record
 	var allowedRanges []string
+	var includeBackend bool
+	var backendURL string
 	if n.DatabaseService != nil {
 		dnsRecord, err := n.DatabaseService.GetDNSRecordByDomain(proxy.Domain)
 		if err != nil {
 			return fmt.Errorf("failed to get DNS record for domain %s: %w", proxy.Domain, err)
 		}
-		if dnsRecord != nil && dnsRecord.AllowedIPRanges != "" {
+		if dnsRecord != nil {
 			// Parse comma-separated IP ranges
-			ranges := strings.Split(dnsRecord.AllowedIPRanges, ",")
-			for _, r := range ranges {
-				r = strings.TrimSpace(r)
-				if r != "" {
-					allowedRanges = append(allowedRanges, r)
+			if dnsRecord.AllowedIPRanges != "" {
+				ranges := strings.Split(dnsRecord.AllowedIPRanges, ",")
+				for _, r := range ranges {
+					r = strings.TrimSpace(r)
+					if r != "" {
+						allowedRanges = append(allowedRanges, r)
+					}
 				}
 			}
+			// Get backend configuration
+			includeBackend = dnsRecord.IncludeBackend
+			backendURL = dnsRecord.BackendURL
 		}
 	}
 
@@ -66,14 +73,18 @@ func (n *NginxService) GenerateProxyConfig(proxy *models.Proxy) error {
 		CertPath       string
 		KeyPath        string
 		AllowedRanges  []string
+		IncludeBackend bool
+		BackendURL     string
 	}{
-		Domain:        proxy.Domain,
-		TargetURL:     proxy.TargetURL,
-		SSLEnabled:    proxy.SSLEnabled,
-		SSLPath:       "/etc/nginx/ssl",
-		CertPath:      fmt.Sprintf("/etc/ssl/certs/%s.crt", proxy.Domain),
-		KeyPath:       fmt.Sprintf("/etc/ssl/certs/%s.key", proxy.Domain),
-		AllowedRanges: allowedRanges,
+		Domain:         proxy.Domain,
+		TargetURL:      proxy.TargetURL,
+		SSLEnabled:     proxy.SSLEnabled,
+		SSLPath:        "/etc/nginx/ssl",
+		CertPath:       fmt.Sprintf("/etc/ssl/certs/%s.crt", proxy.Domain),
+		KeyPath:        fmt.Sprintf("/etc/ssl/certs/%s.key", proxy.Domain),
+		AllowedRanges:  allowedRanges,
+		IncludeBackend: includeBackend,
+		BackendURL:     backendURL,
 	}
 
 	// Generate config content

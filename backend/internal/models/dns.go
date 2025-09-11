@@ -34,6 +34,8 @@ type DNSRecord struct {
 	CurrentIP               string     `json:"current_ip" db:"current_ip"`
 	AllowedIPRanges         string     `json:"allowed_ip_ranges" db:"allowed_ip_ranges"` // Comma-separated list of IP ranges
 	DynamicDNSRefreshRate   *int       `json:"dynamic_dns_refresh_rate,omitempty" db:"dynamic_dns_refresh_rate"` // Refresh rate in minutes, nil means no auto-refresh
+	IncludeBackend          bool       `json:"include_backend" db:"include_backend"` // Whether to include backend API routes
+	BackendURL              string     `json:"backend_url" db:"backend_url"` // Backend service URL for API routes
 	LastUpdate              *time.Time `json:"last_update,omitempty" db:"last_update"`
 	IsActive                bool       `json:"is_active" db:"is_active"`
 	CreatedAt               time.Time  `json:"created_at" db:"created_at"`
@@ -63,6 +65,8 @@ type DNSRecordCreateRequest struct {
 	Host                    string `json:"host" binding:"required"`
 	AllowedIPRanges         string `json:"allowed_ip_ranges,omitempty"`
 	DynamicDNSRefreshRate   *int   `json:"dynamic_dns_refresh_rate,omitempty"` // Refresh rate in minutes, nil means no auto-refresh
+	IncludeBackend          bool   `json:"include_backend"` // Whether to include backend API routes
+	BackendURL              string `json:"backend_url,omitempty"` // Backend service URL for API routes
 }
 
 // DNSRecordUpdateRequest represents the request to update a DNS record
@@ -70,6 +74,8 @@ type DNSRecordUpdateRequest struct {
 	Host                    *string `json:"host,omitempty"`
 	AllowedIPRanges         *string `json:"allowed_ip_ranges,omitempty"`
 	DynamicDNSRefreshRate   *int    `json:"dynamic_dns_refresh_rate,omitempty"` // Refresh rate in minutes, nil means no auto-refresh
+	IncludeBackend          *bool   `json:"include_backend,omitempty"` // Whether to include backend API routes
+	BackendURL              *string `json:"backend_url,omitempty"` // Backend service URL for API routes
 	IsActive                *bool   `json:"is_active,omitempty"`
 }
 
