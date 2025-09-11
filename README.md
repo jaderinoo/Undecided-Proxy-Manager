@@ -2,6 +2,23 @@
 
 A simple proxy management system with Go backend, Vue 3 frontend, and Swagger API documentation.
 
+This Project is a work in progress. Use it at your own risk.
+
+## Mission Goals
+
+I wanted to create a user friendly proxy management system that is easy to use and maintain. It uses a simple GO REST API and a Vue 3 frontend. The hope is to make self-hosted proxy management easy for everyone.
+
+## Features
+
+- **Proxy Management**: Create and manage reverse proxies with custom domains
+- **SSL/TLS Certificates**: Automatic Let's Encrypt certificate generation and renewal
+- **Dynamic DNS**: Support for Namecheap Dynamic DNS with automatic IP updates
+- **Nginx Integration**: Automatic nginx configuration generation and reloading
+- **Docker Support**: Full containerization with docker-compose
+- **Modern UI**: Clean Vue 3 frontend with Vuetify components
+- **REST API**: Complete Swagger-documented API
+- **Security**: JWT authentication, password hashing, and encrypted storage
+
 ## Quick Start
 
 ```bash
@@ -61,13 +78,36 @@ JWT_SECRET=your_jwt_secret_here_minimum_32_characters
 ENCRYPTION_KEY=your_encryption_key_here_exactly_32_bytes
 
 # Optional
-ADMIN_PASSWORD=your_secure_admin_password_here  # If not set, will use default password
+ADMIN_PASSWORD=your_secure_admin_password_here  # Plain text password (auto-hashed)
 BACKEND_PORT=6080
 DB_PATH=/data/upm.db
 LETSENCRYPT_EMAIL=your_email@example.com
+PUBLIC_IP_SERVICE=https://api.ipify.org
+NGINX_CONFIG_PATH=/etc/nginx/sites-available
+NGINX_RELOAD_CMD=docker exec undecided-proxy-manager-nginx-1 nginx -s reload
+NGINX_CONTAINER_NAME=undecided-proxy-manager-nginx-1
 ```
 
 **Important:** The application will exit immediately if the required variables are not set in production mode.
+
+### Environment Configuration
+
+The easiest way to set up your environment is through the web interface:
+
+1. Start the application in development mode: `./dev.sh up`
+2. Navigate to the Settings page
+3. Click "Generate .env Template" to copy a complete configuration
+4. Paste the template into your `.env` file and customize as needed
+
+Alternatively, you can generate encryption keys using the built-in tools:
+
+```bash
+# Generate a secure encryption key
+cd backend && go run cmd/generate-encryption-key/main.go
+
+# Generate a JWT secret (32+ characters)
+openssl rand -base64 32
+```
 
 ### Admin User Management
 
@@ -84,36 +124,19 @@ The application maintains a 1:1 relationship between the `ADMIN_PASSWORD` enviro
 - Removing `ADMIN_PASSWORD` → Deletes admin user (disables admin access)
 - Restarting with no `ADMIN_PASSWORD` → Admin access remains disabled
 
-### Password Hashing
+### Password Security
 
-The application uses bcrypt for secure password hashing. To generate a hashed password for the `ADMIN_PASSWORD` variable:
+The application automatically handles password security:
 
-```bash
-# From the project root directory
-cd backend
-go run cmd/hash-password/main.go "your_secure_password_here"
-```
+- **Plain text in .env**: Use plain text passwords in your `.env` file (e.g., `ADMIN_PASSWORD=mySecurePassword123`)
+- **Automatic hashing**: The app automatically hashes passwords using bcrypt before storing in the database
+- **Secure storage**: Only hashed passwords are stored in the database, never plain text
+- **Password updates**: Changing `ADMIN_PASSWORD` in `.env` automatically updates the stored hash
 
-This will output:
-- The original password (for verification)
-- The bcrypt hashed password
-- A ready-to-use `.env` line with the hashed password
-
-**Example:**
-```bash
-$ go run cmd/hash-password/main.go "mySecurePassword123"
-Original password: mySecurePassword123
-Hashed password: $2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy
-
-Add this to your .env file:
-ADMIN_PASSWORD=$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy
-```
-
-**Security Notes:**
-- Never use plain text passwords in production
-- The bcrypt cost factor is set to the default (10) for good security/performance balance
-- Each password generates a unique hash due to random salt generation
-- Store the hashed password in your `.env` file, not the plain text version
+**Security Features:**
+- bcrypt hashing with default cost factor (10)
+- Random salt generation for each password
+- Secure password verification during login
 
 ## Development Notes
 
