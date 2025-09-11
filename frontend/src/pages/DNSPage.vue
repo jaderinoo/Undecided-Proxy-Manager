@@ -183,13 +183,13 @@
                             <span class="text-caption text-grey-darken-2">Last Update:</span>
                             <span class="text-body-2">{{
                               formatDate(config.last_update) || 'Never'
-                            }}</span>
+                              }}</span>
                           </div>
                           <div class="d-flex justify-space-between align-center">
                             <span class="text-caption text-grey-darken-2">Last IP:</span>
                             <span class="text-body-2 font-mono">{{
                               config.last_ip || 'Unknown'
-                            }}</span>
+                              }}</span>
                           </div>
                         </div>
 
@@ -398,9 +398,9 @@
                       <v-icon start size="small">mdi-plus</v-icon>
                       192.168.50.2/24
                     </v-chip>
-                    <v-chip size="small" color="primary" variant="outlined" @click="quickFillIPRanges('10.6.0.1/32')">
+                    <v-chip size="small" color="primary" variant="outlined" @click="quickFillIPRanges('10.6.0.1/24')">
                       <v-icon start size="small">mdi-plus</v-icon>
-                      10.6.0.1/32
+                      10.6.0.1/24
                     </v-chip>
                     <v-chip size="small" color="grey" variant="outlined" @click="clearIPRanges">
                       <v-icon start size="small">mdi-close</v-icon>
@@ -467,14 +467,14 @@
                 <div class="mt-2">
                   <v-chip-group>
                     <v-chip size="small" color="primary" variant="outlined"
-                      @click="quickFillNginxIPRanges('192.168.50.0/24')">
+                      @click="quickFillNginxIPRanges('192.168.50.2/24')">
                       <v-icon start size="small">mdi-plus</v-icon>
-                      192.168.50.0/24
+                      192.168.50.2/24
                     </v-chip>
                     <v-chip size="small" color="primary" variant="outlined"
-                      @click="quickFillNginxIPRanges('10.6.0.1/32')">
+                      @click="quickFillNginxIPRanges('10.6.0.1/24')">
                       <v-icon start size="small">mdi-plus</v-icon>
-                      10.6.0.1/32
+                      10.6.0.1/24
                     </v-chip>
                     <v-chip size="small" color="grey" variant="outlined" @click="clearNginxIPRanges">
                       <v-icon start size="small">mdi-close</v-icon>
@@ -1221,7 +1221,7 @@ const loadNginxIPRestrictions = async () => {
   } catch (err) {
     console.error('Failed to load nginx IP restrictions:', err);
     // Fallback to default ranges
-    nginxAllowedRanges.value = ['192.168.50.0/24', '10.6.0.1/32'];
+    nginxAllowedRanges.value = ['192.168.50.2/24', '10.6.0.1/24'];
     nginxIPForm.value.allowedRanges = nginxAllowedRanges.value.join(', ');
   }
 };
