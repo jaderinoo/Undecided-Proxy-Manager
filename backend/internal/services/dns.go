@@ -401,4 +401,3 @@ func (d *DNSService) GetDNSStatus() ([]models.DNSStatus, error) {
 
 	return statuses, nil
 }
-

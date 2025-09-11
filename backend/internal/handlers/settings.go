@@ -33,7 +33,6 @@ func GetSettings(c *gin.Context) {
 		LetsEncryptEmail:    cfg.LetsEncryptEmail,
 		LetsEncryptWebroot:  cfg.LetsEncryptWebroot,
 		LetsEncryptCertPath: cfg.LetsEncryptCertPath,
-		DNSCheckInterval:    cfg.DNSCheckInterval,
 		PublicIPService:     cfg.PublicIPService,
 	}
 	coreSettings.MaskSensitiveData()

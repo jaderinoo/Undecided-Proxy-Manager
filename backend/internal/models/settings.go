@@ -19,7 +19,6 @@ type CoreSettings struct {
 	LetsEncryptEmail    string `json:"letsencrypt_email"`
 	LetsEncryptWebroot  string `json:"letsencrypt_webroot"`
 	LetsEncryptCertPath string `json:"letsencrypt_cert_path"`
-	DNSCheckInterval    string `json:"dns_check_interval"`
 	PublicIPService     string `json:"public_ip_service"`
 }
 
