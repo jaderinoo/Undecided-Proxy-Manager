@@ -159,8 +159,6 @@ func main() {
 		log.Printf("Warning: Failed to load scheduled jobs: %v", err)
 	}
 
-	// Start periodic DNS updates
-	dnsService.StartPeriodicUpdates()
 
 	// Initialize Gin router
 	r := gin.Default()

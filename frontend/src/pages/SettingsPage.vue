@@ -287,9 +287,6 @@
                       </div>
                       <div>JWT_SECRET="Replace-Me"</div>
                       <div></div>
-                      <div data-comment="true"># Frontend Configuration</div>
-                      <div>VITE_API_URL=http://localhost:6081</div>
-                      <div></div>
                       <div data-comment="true">
                         # Let's Encrypt Configuration (Core Settings - Read-only
                         in UI)
@@ -301,12 +298,20 @@
                       <div data-comment="true">
                         # DNS Configuration (UI-manageable settings)
                       </div>
-                      <div>DNS_CHECK_INTERVAL=5m</div>
                       <div>PUBLIC_IP_SERVICE=https://api.ipify.org</div>
+                      <div></div>
+                      <div data-comment="true"># Encryption Configuration</div>
+                      <div data-comment="true"># Generate a secure 32-byte key for production: openssl rand -base64 32</div>
+                      <div>ENCRYPTION_KEY=upm-default-encryption-key-32byt</div>
                       <div></div>
                       <div data-comment="true"># Nginx Configuration</div>
                       <div>NGINX_CONFIG_PATH=/etc/nginx/sites-available</div>
-                      <div>NGINX_RELOAD_CMD=nginx -s reload</div>
+                      <div>NGINX_RELOAD_CMD=docker exec undecided-proxy-manager-nginx-1 nginx -s reload</div>
+                      <div>NGINX_CONTAINER_NAME=undecided-proxy-manager-nginx-1</div>
+                      <div></div>
+                      <div data-comment="true"># Development Nginx Configuration (for docker-compose.dev.yml)</div>
+                      <div>DEV_NGINX_RELOAD_CMD=docker exec undecided-proxy-manager-dev-nginx-1 nginx -s reload</div>
+                      <div>DEV_NGINX_CONTAINER_NAME=undecided-proxy-manager-dev-nginx-1</div>
                     </div>
                   </v-expansion-panel-text>
                 </v-expansion-panel>
@@ -477,21 +482,26 @@ ADMIN_PASSWORD="Replace-Me"
 # Generate a strong random secret for production
 JWT_SECRET="Replace-Me"
 
-# Frontend Configuration
-VITE_API_URL=http://localhost:6081
-
 # Let's Encrypt Configuration (Core Settings - Read-only in UI)
 LETSENCRYPT_EMAIL=jaderinoo@gmail.com
 LETSENCRYPT_WEBROOT=/var/www/html
 LETSENCRYPT_CERT_PATH=/etc/letsencrypt
 
 # DNS Configuration (UI-manageable settings)
-DNS_CHECK_INTERVAL=5m
 PUBLIC_IP_SERVICE=https://api.ipify.org
+
+# Encryption Configuration
+# Generate a secure 32-byte key for production: openssl rand -base64 32
+ENCRYPTION_KEY=upm-default-encryption-key-32byt
 
 # Nginx Configuration
 NGINX_CONFIG_PATH=/etc/nginx/sites-available
-NGINX_RELOAD_CMD=nginx -s reload`;
+NGINX_RELOAD_CMD=docker exec undecided-proxy-manager-nginx-1 nginx -s reload
+NGINX_CONTAINER_NAME=undecided-proxy-manager-nginx-1
+
+# Development Nginx Configuration (for docker-compose.dev.yml)
+DEV_NGINX_RELOAD_CMD=docker exec undecided-proxy-manager-dev-nginx-1 nginx -s reload
+DEV_NGINX_CONTAINER_NAME=undecided-proxy-manager-dev-nginx-1`;
 
     await navigator.clipboard.writeText(envTemplate);
     successMessage.value = 'Environment template copied to clipboard!';

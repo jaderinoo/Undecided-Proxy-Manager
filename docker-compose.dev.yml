@@ -38,8 +38,9 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - ENCRYPTION_KEY=${ENCRYPTION_KEY}
       - NGINX_CONFIG_PATH=${NGINX_CONFIG_PATH}
-      - NGINX_RELOAD_CMD=${DEV_NGINX_RELOAD_CMD}
-      - NGINX_CONTAINER_NAME=${DEV_NGINX_CONTAINER_NAME}
+      - NGINX_RELOAD_CMD=${DEV_NGINX_RELOAD_CMD:-${NGINX_RELOAD_CMD}}
+      - NGINX_CONTAINER_NAME=${DEV_NGINX_CONTAINER_NAME:-${NGINX_CONTAINER_NAME}}
+      - PUBLIC_IP_SERVICE=${PUBLIC_IP_SERVICE:-https://api.ipify.org}
     volumes:
       - ./backend/data:/data
       - ./backend:/app
@@ -61,7 +62,6 @@ services:
       - ./frontend:/app
       - /app/node_modules
     environment:
-      - VITE_API_URL=http://localhost:6081
     networks:
       - upm-dev-network
 

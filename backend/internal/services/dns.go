@@ -56,7 +56,7 @@ func utf16CharsetReader(charset string, input io.Reader) (io.Reader, error) {
 		utf8Data := convertUTF16ToUTF8(data)
 		return strings.NewReader(string(utf8Data)), nil
 	}
-	
+
 	return input, nil
 }
 
@@ -66,7 +66,7 @@ func isUTF8Content(data []byte) bool {
 	if len(data) >= 3 && data[0] == 0xEF && data[1] == 0xBB && data[2] == 0xBF {
 		return true
 	}
-	
+
 	// Check if the content is valid UTF-8 by trying to decode it
 	// If it's valid UTF-8, it should decode without errors
 	return utf8.Valid(data)
@@ -402,34 +402,3 @@ func (d *DNSService) GetDNSStatus() ([]models.DNSStatus, error) {
 	return statuses, nil
 }
 
-// StartPeriodicUpdates starts a goroutine that periodically updates DNS records
-func (d *DNSService) StartPeriodicUpdates() {
-	interval, err := time.ParseDuration(d.config.DNSCheckInterval)
-	if err != nil {
-		interval = 5 * time.Minute
-	}
-
-	go func() {
-		ticker := time.NewTicker(interval)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ticker.C:
-				responses, err := d.UpdateAllDNSRecords()
-				if err != nil {
-					continue
-				}
-
-				// Log results
-				for _, response := range responses {
-					if response.Success {
-						fmt.Printf("DNS update successful: %s (IP: %s)\n", response.Message, response.NewIP)
-					} else {
-						fmt.Printf("DNS update failed: %s\n", response.Message)
-					}
-				}
-			}
-		}
-	}()
-}

@@ -15,7 +15,6 @@ type Config struct {
 	DevMode       bool   // Whether we're in development mode
 	DevTestPassword string // Development test password for bypass
 	// DNS Configuration
-	DNSCheckInterval string // How often to check and update DNS (e.g., "5m", "1h")
 	PublicIPService  string // Service to get public IP (e.g., "https://api.ipify.org")
 	// Encryption Configuration
 	EncryptionKey string // Key for encrypting sensitive data like DNS passwords
@@ -44,7 +43,6 @@ func Load() *Config {
 		JWTSecret:           getEnvWithDevDefault("JWT_SECRET", "upm-default-secret-change-in-production", devMode),
 		DevMode:             devMode,
 		DevTestPassword:     getEnv("DEV_TEST_PASSWORD", "devtest"),
-		DNSCheckInterval:    getEnv("DNS_CHECK_INTERVAL", "5m"),
 		PublicIPService:     getEnv("PUBLIC_IP_SERVICE", "https://api.ipify.org"),
 		EncryptionKey:       getEnvWithDevDefault("ENCRYPTION_KEY", "upm-default-encryption-key-32byt", devMode),
 		LetsEncryptEmail:    getEnv("LETSENCRYPT_EMAIL", ""),

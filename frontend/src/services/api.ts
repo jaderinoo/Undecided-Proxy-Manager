@@ -28,11 +28,6 @@ import type {
 
 // Determine API base URL based on environment
 const getApiBaseUrl = () => {
-  // If VITE_API_URL is explicitly set, use it (for custom configurations)
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
-  }
-
   // Development mode: Frontend on localhost:6070, Backend on localhost:6081
   if (window.location.hostname === 'localhost' && window.location.port === '6070') {
     return 'http://localhost:6081';
