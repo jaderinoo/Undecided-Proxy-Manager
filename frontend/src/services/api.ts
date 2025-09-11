@@ -33,7 +33,12 @@ const getApiBaseUrl = () => {
     return 'http://localhost:6081';
   }
 
-  // Production mode: Use the same hostname and protocol as the frontend
+  // Direct frontend access (port 6070): Call backend directly on port 6080
+  if (window.location.port === '6070') {
+    return `${window.location.protocol}//${window.location.hostname}:6080`;
+  }
+
+  // Nginx proxy access (ports 80/443): Use nginx proxy
   // This ensures API calls go through nginx proxy instead of direct backend access
   return `${window.location.protocol}//${window.location.host}`;
 };
