@@ -1048,7 +1048,7 @@ const startCountdownTimer = () => {
     clearInterval(countdownTimer.value);
   }
 
-  // Start new timer that updates every second
+  // Start new timer that updates every 30 seconds
   countdownTimer.value = setInterval(() => {
     // Check if any jobs are due and refresh if needed
     let needsRefresh = false;
@@ -1068,7 +1068,7 @@ const startCountdownTimer = () => {
       // Force reactivity update by creating a new object
       scheduledJobs.value = { ...scheduledJobs.value };
     }
-  }, 1000);
+  }, 30000);
 };
 
 const stopCountdownTimer = () => {
@@ -1129,7 +1129,9 @@ const getCountdown = (nextUpdate: string): string => {
     return 'Unknown';
   }
 
+  // Ensure we're comparing UTC times properly
   const now = new Date().getTime();
+  // Parse the UTC timestamp correctly - it should already be in UTC format
   const next = new Date(nextUpdate).getTime();
 
   // Check if the date is valid
@@ -1139,6 +1141,15 @@ const getCountdown = (nextUpdate: string): string => {
   }
 
   const diff = next - now;
+  
+  // Debug logging
+  console.log('Countdown debug:', {
+    now: new Date(now).toISOString(),
+    next: new Date(next).toISOString(),
+    nextUpdate,
+    diff: diff / 1000 / 60, // diff in minutes
+    isDue: diff <= 0
+  });
 
   // If due or overdue, show a very short countdown or refresh
   if (diff <= 0) {
