@@ -1,6 +1,6 @@
 # Undecided Proxy Manager (UPM)
 
-A simple proxy management system with Go backend, Vue 3 frontend, and Swagger API documentation.
+A simple proxy management system with Go backend, Vue 3 frontend, and Swagger API documentation intended for self-hosting.
 
 This Project is a work in progress. Use it at your own risk.
 
@@ -99,16 +99,6 @@ The easiest way to set up your environment is through the web interface:
 3. Click "Generate .env Template" to copy a complete configuration
 4. Paste the template into your `.env` file and customize as needed
 
-Alternatively, you can generate encryption keys using the built-in tools:
-
-```bash
-# Generate a secure encryption key
-cd backend && go run cmd/generate-encryption-key/main.go
-
-# Generate a JWT secret (32+ characters)
-openssl rand -base64 32
-```
-
 ### Admin User Management
 
 The application maintains a 1:1 relationship between the `ADMIN_PASSWORD` environment variable and the admin user:
@@ -123,20 +113,6 @@ The application maintains a 1:1 relationship between the `ADMIN_PASSWORD` enviro
 - Changing `ADMIN_PASSWORD` → Updates admin user password
 - Removing `ADMIN_PASSWORD` → Deletes admin user (disables admin access)
 - Restarting with no `ADMIN_PASSWORD` → Admin access remains disabled
-
-### Password Security
-
-The application automatically handles password security:
-
-- **Plain text in .env**: Use plain text passwords in your `.env` file (e.g., `ADMIN_PASSWORD=mySecurePassword123`)
-- **Automatic hashing**: The app automatically hashes passwords using bcrypt before storing in the database
-- **Secure storage**: Only hashed passwords are stored in the database, never plain text
-- **Password updates**: Changing `ADMIN_PASSWORD` in `.env` automatically updates the stored hash
-
-**Security Features:**
-- bcrypt hashing with default cost factor (10)
-- Random salt generation for each password
-- Secure password verification during login
 
 ## Development Notes
 
