@@ -7,7 +7,7 @@
       <v-btn
         v-if="showRefresh"
         color="primary"
-        variant="outlined"
+        variant="text"
         size="small"
         @click="$emit('refresh')"
         :loading="loading"

@@ -23,7 +23,7 @@
                   <template #actions>
                     <v-btn
                       color="success"
-                      variant="outlined"
+                      variant="text"
                       size="small"
                       @click="showCreateDialog = true"
                     >
@@ -33,7 +33,7 @@
 
                     <v-btn
                       color="primary"
-                      variant="outlined"
+                      variant="text"
                       size="small"
                       @click="showContainerDialog = true"
                     >
@@ -43,7 +43,7 @@
 
                     <v-btn
                       color="orange"
-                      variant="outlined"
+                      variant="text"
                       size="small"
                       @click="reloadNginx"
                       :loading="reloadingNginx"
@@ -190,7 +190,7 @@
                   <v-btn
                     v-if="container.state === 'running'"
                     color="primary"
-                    variant="outlined"
+                    variant="text"
                     size="small"
                     @click.stop="createProxyFromContainer(container)"
                   >
@@ -202,7 +202,7 @@
                     <template v-slot:activator="{ props }">
                       <v-btn
                         color="grey"
-                        variant="outlined"
+                        variant="text"
                         size="small"
                         disabled
                         v-bind="props"
@@ -236,7 +236,7 @@
           </v-btn>
           <v-btn
             color="primary"
-            variant="outlined"
+            variant="text"
             @click="loadContainers"
             :loading="loadingContainers"
           >
@@ -251,15 +251,15 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import AppLayout from '../components/AppLayout.vue';
-import ConfirmationDialog from '../components/ConfirmationDialog.vue';
-import ErrorAlert from '../components/ErrorAlert.vue';
-import FilterBar from '../components/FilterBar.vue';
-import LoadingSpinner from '../components/LoadingSpinner.vue';
-import PageHeader from '../components/PageHeader.vue';
-import ProxyCard from '../components/ProxyCard.vue';
-import ProxyFormDialog from '../components/ProxyFormDialog.vue';
-import StatsCards from '../components/StatsCards.vue';
+import AppLayout from '../components/layout/AppLayout.vue';
+import ProxyCard from '../components/proxy/ProxyCard.vue';
+import ProxyFormDialog from '../components/proxy/ProxyFormDialog.vue';
+import ConfirmationDialog from '../components/ui/ConfirmationDialog.vue';
+import ErrorAlert from '../components/ui/ErrorAlert.vue';
+import FilterBar from '../components/ui/FilterBar.vue';
+import LoadingSpinner from '../components/ui/LoadingSpinner.vue';
+import PageHeader from '../components/ui/PageHeader.vue';
+import StatsCards from '../components/ui/StatsCards.vue';
 import { apiService } from '../services/api';
 import type {
     Container,
@@ -683,7 +683,7 @@ const regenerateConfig = async (proxy: Proxy) => {
     error.value = null;
 
     const response = await apiService.regenerateProxyConfig(proxy.domain);
-    
+
     // Show success message (you could add a toast notification here)
     console.log('Config regenerated successfully:', response.message);
   } catch (err) {

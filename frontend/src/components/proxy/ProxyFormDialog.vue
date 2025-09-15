@@ -95,7 +95,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import type { Proxy, ProxyCreateRequest, ProxyUpdateRequest } from '../types/api';
+import type { Proxy, ProxyCreateRequest, ProxyUpdateRequest } from '../../types/api';
 
 interface Props {
   show: boolean;

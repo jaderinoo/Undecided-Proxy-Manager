@@ -1,61 +1,86 @@
 <template>
-  <v-card class="mb-2" :color="getStatusColor(proxy.status)" variant="outlined">
-    <v-card-title class="d-flex align-center py-2">
-      <v-icon :color="getStatusIconColor(proxy.status)" class="mr-2" size="small">
-        {{ getStatusIcon(proxy.status) }}
-      </v-icon>
-      <span class="text-subtitle-1 font-weight-medium text-grey-darken-3">{{
-        proxy.name
-      }}</span>
-      <v-spacer></v-spacer>
-      <v-chip :color="getStatusChipColor(proxy.status)" size="x-small" class="mr-2">
-        {{ proxy.status }}
-      </v-chip>
-      <v-chip v-if="proxy.ssl_enabled" color="success" size="x-small" class="mr-2">
-        <v-icon left size="x-small">mdi-lock</v-icon>
-        SSL
-      </v-chip>
-      <v-btn v-if="proxy.ssl_enabled" icon size="x-small" @click="showCertificateInfo = true" class="mr-1">
-        <v-icon size="small" color="blue">mdi-information</v-icon>
-      </v-btn>
-      <v-btn icon size="x-small" @click="$emit('regenerate', proxy)" :loading="regenerating" class="mr-1"
-        title="Regenerate Nginx Config">
-        <v-icon size="small" color="primary">mdi-cog-refresh</v-icon>
-      </v-btn>
-      <v-btn icon size="x-small" @click="$emit('edit', proxy)">
-        <v-icon size="small" color="grey-darken-2">mdi-pencil</v-icon>
-      </v-btn>
-      <v-btn icon size="x-small" @click="$emit('delete', proxy)" class="ml-1">
-        <v-icon size="small" color="grey-darken-2">mdi-delete</v-icon>
-      </v-btn>
+  <v-card class="mb-2" variant="outlined">
+    <v-card-title class="card-header">
+      <div class="proxy-info">
+        <v-icon :color="getStatusIconColor(proxy.status)" size="small">
+          {{ getStatusIcon(proxy.status) }}
+        </v-icon>
+        <span class="responsive-title">{{ proxy.name }}</span>
+        <v-chip :color="getStatusChipColor(proxy.status)" size="x-small">
+          {{ proxy.status }}
+        </v-chip>
+        <v-chip v-if="proxy.ssl_enabled" color="success" size="x-small">
+          <v-icon left size="x-small">mdi-lock</v-icon>
+          SSL
+        </v-chip>
+      </div>
+      <div class="card-actions">
+        <v-btn
+          v-if="proxy.ssl_enabled"
+          size="small"
+          variant="text"
+          color="info"
+          @click="showCertificateInfo = true"
+        >
+          <v-icon>mdi-information</v-icon>
+          <span class="d-none d-sm-inline">Info</span>
+        </v-btn>
+        <v-btn
+          size="small"
+          variant="text"
+          color="primary"
+          @click="$emit('regenerate', proxy)"
+          :loading="regenerating"
+        >
+          <v-tooltip activator="parent" location="top">
+            Regenerate nginx proxy configuration
+          </v-tooltip>
+          <v-icon>mdi-cog-refresh</v-icon>
+          <span class="d-none d-sm-inline">Regenerate</span>
+        </v-btn>
+        <v-btn
+          size="small"
+          variant="text"
+          color="grey-darken-1"
+          @click="$emit('edit', proxy)"
+        >
+          <v-icon>mdi-pencil</v-icon>
+          <span class="d-none d-sm-inline">Edit</span>
+        </v-btn>
+        <v-btn
+          size="small"
+          variant="text"
+          color="error"
+          @click="$emit('delete', proxy)"
+        >
+          <v-icon>mdi-delete</v-icon>
+          <span class="d-none d-sm-inline">Delete</span>
+        </v-btn>
+      </div>
     </v-card-title>
 
-    <v-card-text class="py-2">
-      <v-row>
-        <v-col cols="12" md="6">
-          <div class="text-caption text-grey-darken-2 mb-1">Domain</div>
-          <div class="text-body-2 text-grey-darken-3 mb-1">
-            {{ proxy.domain }}
-          </div>
+    <v-card-text class="card-content">
+      <div class="details-grid">
+        <div class="detail-item">
+          <div class="detail-label">Domain</div>
+          <div class="detail-value">{{ proxy.domain }}</div>
+        </div>
 
-          <div class="text-caption text-grey-darken-2 mb-1">Target URL</div>
-          <div class="text-body-2 text-grey-darken-3 mb-1">
-            {{ proxy.target_url }}
-          </div>
-        </v-col>
+        <div class="detail-item">
+          <div class="detail-label">Target URL</div>
+          <div class="detail-value">{{ proxy.target_url }}</div>
+        </div>
 
-        <v-col cols="12" md="6">
-          <div class="text-caption text-grey-darken-2 mb-1">Created</div>
-          <div class="text-body-2 text-grey-darken-3 mb-1">
-            {{ formatDate(proxy.created_at) }}
-          </div>
+        <div class="detail-item">
+          <div class="detail-label">Created</div>
+          <div class="detail-value">{{ formatDate(proxy.created_at) }}</div>
+        </div>
 
-          <div class="text-caption text-grey-darken-2 mb-1">Updated</div>
-          <div class="text-body-2 text-grey-darken-3 mb-1">
-            {{ formatDate(proxy.updated_at) }}
-          </div>
-        </v-col>
-      </v-row>
+        <div class="detail-item">
+          <div class="detail-label">Updated</div>
+          <div class="detail-value">{{ formatDate(proxy.updated_at) }}</div>
+        </div>
+      </div>
 
       <!-- Connected Containers -->
       <div v-if="
@@ -146,8 +171,8 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { apiService } from '../services/api';
-import type { Certificate, Proxy } from '../types/api';
+import { apiService } from '../../services/api';
+import type { Certificate, Proxy } from '../../types/api';
 
 const props = defineProps<{
   proxy: Proxy;
@@ -242,3 +267,61 @@ const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleString();
 };
 </script>
+
+<style scoped>
+.proxy-info {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  min-width: 0;
+  flex: 1;
+}
+
+/* Mobile layout improvements */
+@media (max-width: 600px) {
+  .card-header {
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .proxy-info {
+    justify-content: center;
+    text-align: center;
+  }
+
+  .card-actions {
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-1);
+    width: 100%;
+  }
+
+  .card-actions .v-btn {
+    width: auto;
+    min-width: 120px;
+    justify-content: center;
+  }
+}
+
+/* Very small screens */
+@media (max-width: 400px) {
+  .card-actions .v-btn span {
+    display: none;
+  }
+
+  .card-actions .v-btn {
+    min-width: 40px;
+    width: auto;
+  }
+}
+
+/* Touch optimization */
+@media (max-width: 768px) {
+  .card-actions .v-btn {
+    min-height: 36px;
+    touch-action: manipulation;
+  }
+}
+</style>

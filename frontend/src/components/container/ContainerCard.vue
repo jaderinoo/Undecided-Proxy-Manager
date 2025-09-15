@@ -11,10 +11,17 @@
       <v-chip :color="getStatusChipColor()" size="x-small" class="mr-2">
         {{ container.state }}
       </v-chip>
-      <v-btn icon size="x-small" @click="toggleExpanded">
-        <v-icon size="small" color="grey-darken-2">{{
+      <v-btn
+        size="small"
+        variant="text"
+        color="grey-darken-1"
+        @click="toggleExpanded"
+        class="action-btn"
+      >
+        <v-icon left size="small">{{
           expanded ? 'mdi-chevron-up' : 'mdi-chevron-down'
         }}</v-icon>
+        <span class="d-none d-sm-inline">{{ expanded ? 'Collapse' : 'Expand' }}</span>
       </v-btn>
     </v-card-title>
 
@@ -181,7 +188,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import type { Container } from '../types/api';
+import type { Container } from '../../types/api';
 
 interface Props {
   container: Container;
@@ -283,5 +290,22 @@ const getProxyStatusColor = (status: string): string => {
 <style scoped>
 .font-mono {
   font-family: 'Courier New', monospace;
+}
+
+.action-btn {
+  min-width: auto;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+/* On mobile, make buttons more touchable */
+@media (max-width: 768px) {
+  .action-btn {
+    min-height: 36px;
+    touch-action: manipulation;
+    padding: 8px 12px;
+  }
 }
 </style>

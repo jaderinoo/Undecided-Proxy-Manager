@@ -4,229 +4,58 @@
       <!-- Quick Stats -->
       <v-row class="mb-4">
         <v-col cols="12" sm="6" md="4">
-          <v-card color="primary" variant="outlined">
-            <v-card-text class="text-center">
-              <v-icon color="primary" size="large">mdi-server-network</v-icon>
-              <div class="text-h6">{{ proxies?.length || 0 }}</div>
-              <div class="text-caption">Proxies</div>
-            </v-card-text>
-          </v-card>
+          <QuickStatCard
+            :value="proxies?.length || 0"
+            label="Proxies"
+            icon="mdi-server-network"
+            color="primary"
+            icon-color="primary"
+          />
         </v-col>
         <v-col cols="12" sm="6" md="4">
-          <v-card color="success" variant="outlined">
-            <v-card-text class="text-center">
-              <v-icon color="success" size="large">mdi-docker</v-icon>
-              <div class="text-h6">{{ containers?.length || 0 }}</div>
-              <div class="text-caption">Containers</div>
-            </v-card-text>
-          </v-card>
+          <QuickStatCard
+            :value="containers?.length || 0"
+            label="Containers"
+            icon="mdi-docker"
+            color="success"
+            icon-color="success"
+          />
         </v-col>
         <v-col cols="12" sm="6" md="4">
-          <v-card color="warning" variant="outlined">
-            <v-card-text class="text-center">
-              <v-icon color="warning" size="large">mdi-shield-check</v-icon>
-              <div class="text-h6">{{ sslCount }}</div>
-              <div class="text-caption">SSL Enabled</div>
-            </v-card-text>
-          </v-card>
+          <QuickStatCard
+            :value="sslCount"
+            label="SSL Enabled"
+            icon="mdi-shield-check"
+            color="warning"
+            icon-color="warning"
+          />
         </v-col>
       </v-row>
 
       <v-row>
-        <v-col cols="12" md="6">
-          <v-card>
-            <v-card-title>
-              <v-icon left>mdi-server-network</v-icon>
-              Proxy Management
-              <v-spacer></v-spacer>
-              <v-btn
-                color="success"
-                variant="outlined"
-                size="small"
-                @click="openCreateProxyDialog"
-                class="mr-2"
-              >
-                <v-icon left>mdi-plus</v-icon>
-                Add Proxy
-              </v-btn>
-              <v-btn
-                color="primary"
-                variant="outlined"
-                size="small"
-                @click="loadProxies"
-                :loading="loading"
-                class="mr-2"
-              >
-                <v-icon left>mdi-refresh</v-icon>
-                Refresh
-              </v-btn>
-              <v-btn
-                color="orange"
-                variant="outlined"
-                size="small"
-                @click="reloadNginx"
-                :loading="reloadingNginx"
-              >
-                <v-icon left>mdi-reload</v-icon>
-                Reload Nginx
-              </v-btn>
-            </v-card-title>
-            <v-card-text>
-              <ErrorAlert :error="error" @clear="error = null" />
-
-              <LoadingSpinner v-if="loading" />
-
-              <div v-else>
-                <v-list>
-                  <ProxyCard
-                    v-for="proxy in proxies"
-                    :key="proxy.id"
-                    :proxy="proxy"
-                    @edit="openEditProxyDialog"
-                    @delete="openDeleteProxyDialog"
-                  />
-                </v-list>
-
-                <v-empty-state
-                  v-if="proxies && proxies.length === 0"
-                  title="No proxies found"
-                  text="Create your first proxy to get started"
-                >
-                  <template v-slot:default>
-                    <v-icon size="100" color="grey-lighten-1"
-                      >mdi-server-network</v-icon
-                    >
-                  </template>
-                </v-empty-state>
-              </div>
-            </v-card-text>
-          </v-card>
+        <v-col cols="12">
+          <ProxyOverview
+            :proxies="proxies"
+            :loading="loading"
+            :error="error"
+            @refresh="loadProxies"
+            @clear-error="error = null"
+            @view-all="$router.push('/proxies')"
+            @add-proxy="$router.push('/proxies')"
+          />
         </v-col>
 
-        <v-col cols="12" md="6">
-          <v-card>
-            <v-card-title>
-              <v-icon left>mdi-docker</v-icon>
-              Container Overview
-              <v-spacer></v-spacer>
-              <v-btn
-                color="success"
-                variant="outlined"
-                size="small"
-                @click="loadContainers"
-                :loading="loadingContainers"
-              >
-                <v-icon left>mdi-refresh</v-icon>
-                Refresh
-              </v-btn>
-            </v-card-title>
-            <v-card-text>
-              <ErrorAlert
-                :error="containerError"
-                @clear="containerError = null"
-              />
-
-              <LoadingSpinner v-if="loadingContainers" />
-
-              <div v-else>
-                <div v-if="containers && containers.length > 0">
-                  <div class="d-flex flex-wrap gap-2 mb-3">
-                    <v-chip color="green" size="small">
-                      {{ runningContainers }} Running
-                    </v-chip>
-                    <v-chip color="red" size="small">
-                      {{ stoppedContainers }} Stopped
-                    </v-chip>
-                    <v-chip color="blue" size="small">
-                      {{ createdContainers }} Created
-                    </v-chip>
-                  </div>
-
-                  <v-list density="compact">
-                    <v-list-item
-                      v-for="container in displayedContainers"
-                      :key="container.id"
-                      class="px-0"
-                    >
-                      <template v-slot:prepend>
-                        <v-icon
-                          :color="getContainerStatusColor(container.state)"
-                          size="small"
-                        >
-                          {{ getContainerStatusIcon(container.state) }}
-                        </v-icon>
-                      </template>
-                      <v-list-item-title class="text-body-2">
-                        {{ container.name || 'Unnamed' }}
-                      </v-list-item-title>
-                      <v-list-item-subtitle class="text-caption">
-                        {{ container.image }} • {{ container.state }}
-                      </v-list-item-subtitle>
-                      <template v-slot:append>
-                        <v-chip
-                          :color="getContainerStatusColor(container.state)"
-                          size="x-small"
-                          variant="outlined"
-                          class="mr-2"
-                        >
-                          {{ container.state }}
-                        </v-chip>
-                        <v-btn
-                          icon
-                          size="small"
-                          variant="text"
-                          color="primary"
-                          @click="openCreateProxyForContainer(container)"
-                          :disabled="container.state !== 'running'"
-                          v-tooltip="
-                            container.state === 'running'
-                              ? 'Create proxy for this container'
-                              : 'Container must be running to create proxy'
-                          "
-                        >
-                          <v-icon size="small">mdi-plus-circle</v-icon>
-                        </v-btn>
-                      </template>
-                    </v-list-item>
-                  </v-list>
-
-                  <v-btn
-                    v-if="hasMoreContainers"
-                    color="primary"
-                    variant="text"
-                    size="small"
-                    class="mt-2"
-                    @click="toggleContainerDisplay"
-                  >
-                    <v-icon left>
-                      {{
-                        showAllContainers
-                          ? 'mdi-chevron-up'
-                          : 'mdi-chevron-down'
-                      }}
-                    </v-icon>
-                    {{
-                      showAllContainers
-                        ? 'Show Less'
-                        : `Show All ${containers.length} Containers`
-                    }}
-                  </v-btn>
-                </div>
-
-                <v-empty-state
-                  v-else
-                  title="No containers found"
-                  text="No Docker containers are currently available"
-                >
-                  <template v-slot:default>
-                    <v-icon size="100" color="grey-lighten-1"
-                      >mdi-docker</v-icon
-                    >
-                  </template>
-                </v-empty-state>
-              </div>
-            </v-card-text>
-          </v-card>
+        <v-col cols="12">
+          <ContainerOverview
+            :containers="containers"
+            :loading="loadingContainers"
+            :error="containerError"
+            :show-all-containers="showAllContainers"
+            @refresh="loadContainers"
+            @clear-error="containerError = null"
+            @create-proxy-for-container="openCreateProxyForContainer"
+            @toggle-display="toggleContainerDisplay"
+          />
         </v-col>
       </v-row>
     </v-container>
@@ -274,11 +103,11 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import AppLayout from '../components/AppLayout.vue';
-import ErrorAlert from '../components/ErrorAlert.vue';
-import LoadingSpinner from '../components/LoadingSpinner.vue';
-import ProxyCard from '../components/ProxyCard.vue';
-import ProxyFormDialog from '../components/ProxyFormDialog.vue';
+import ContainerOverview from '../components/container/ContainerOverview.vue';
+import AppLayout from '../components/layout/AppLayout.vue';
+import ProxyFormDialog from '../components/proxy/ProxyFormDialog.vue';
+import ProxyOverview from '../components/proxy/ProxyOverview.vue';
+import QuickStatCard from '../components/ui/QuickStatCard.vue';
 import { apiService } from '../services/api';
 import type {
   Container,
@@ -316,26 +145,7 @@ const sslCount = computed(
   () => proxies.value.filter(p => p.ssl_enabled).length
 );
 
-const runningContainers = computed(
-  () => containers.value.filter(c => c.state === 'running').length
-);
 
-const stoppedContainers = computed(
-  () => containers.value.filter(c => c.state === 'exited').length
-);
-
-const createdContainers = computed(
-  () => containers.value.filter(c => c.state === 'created').length
-);
-
-const displayedContainers = computed(() => {
-  if (showAllContainers.value) {
-    return containers.value;
-  }
-  return containers.value.slice(0, 5);
-});
-
-const hasMoreContainers = computed(() => containers.value.length > 5);
 
 const loadProxies = async () => {
   try {
@@ -366,35 +176,6 @@ const loadContainers = async () => {
   }
 };
 
-const getContainerStatusColor = (state: string) => {
-  switch (state) {
-    case 'running':
-      return 'green';
-    case 'exited':
-      return 'red';
-    case 'created':
-      return 'blue';
-    case 'paused':
-      return 'orange';
-    default:
-      return 'grey';
-  }
-};
-
-const getContainerStatusIcon = (state: string) => {
-  switch (state) {
-    case 'running':
-      return 'mdi-play-circle';
-    case 'exited':
-      return 'mdi-stop-circle';
-    case 'created':
-      return 'mdi-plus-circle';
-    case 'paused':
-      return 'mdi-pause-circle';
-    default:
-      return 'mdi-help-circle';
-  }
-};
 
 const getContainerTargetUrl = (container: Container) => {
   // Try to find a port mapping for common web ports
@@ -417,9 +198,6 @@ const getContainerTargetUrl = (container: Container) => {
   return 'http://localhost:3000';
 };
 
-const toggleContainerDisplay = () => {
-  showAllContainers.value = !showAllContainers.value;
-};
 
 // Create proxy dialog methods
 const openCreateProxyDialog = () => {
@@ -557,6 +335,11 @@ const reloadNginx = async () => {
     reloadingNginx.value = false;
   }
 };
+
+const toggleContainerDisplay = () => {
+  showAllContainers.value = !showAllContainers.value;
+};
+
 
 onMounted(async () => {
   // Load all data when component mounts

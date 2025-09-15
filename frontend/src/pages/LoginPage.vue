@@ -63,10 +63,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import ErrorAlert from '../components/ui/ErrorAlert.vue';
 import { useAuthStore } from '../stores/auth';
-import ErrorAlert from '../components/ErrorAlert.vue';
 import type { UserLoginRequest } from '../types/api';
 
 const router = useRouter();

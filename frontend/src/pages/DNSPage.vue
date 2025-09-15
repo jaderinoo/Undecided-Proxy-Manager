@@ -13,7 +13,7 @@
 
               <PageHeader :count="dnsConfigs?.length || 0" item-name="DNS Configurations" :show-refresh="false">
                 <template #actions>
-                  <v-btn color="success" variant="outlined" size="small" @click="showCreateConfigModal = true">
+                  <v-btn color="success" variant="text" size="small" @click="showCreateConfigModal = true">
                     <v-icon left>mdi-plus</v-icon>
                     Add Configuration
                   </v-btn>
@@ -21,115 +21,77 @@
               </PageHeader>
 
               <!-- Public IP Display -->
-              <v-card class="mb-4" variant="outlined">
-                <v-card-title>
-                  <v-icon left>mdi-earth</v-icon>
-                  Current Public IP
-                  <v-spacer></v-spacer>
-                  <v-btn color="primary" variant="outlined" size="small" @click="refreshPublicIP"
-                    :loading="loadingPublicIP">
-                    <v-icon left>mdi-refresh</v-icon>
-                    Refresh
-                  </v-btn>
-                </v-card-title>
-                <v-card-text>
-                  <div class="d-flex align-center">
-                    <span class="text-body-1 mr-2">Public IP:</span>
-                    <v-chip color="primary" variant="outlined" class="font-mono">
-                      {{ publicIP || 'Loading...' }}
-                    </v-chip>
-                  </div>
-                </v-card-text>
-              </v-card>
+              <InfoCard
+                title="Current Public IP"
+                icon="mdi-earth"
+                content="Public IP"
+                :chip-content="publicIP || 'Loading...'"
+                chip-color="primary"
+                chip-class="font-mono"
+                content-label="IPv4 Address"
+                :action-button="{
+                  text: 'Refresh',
+                  icon: 'mdi-refresh',
+                  color: 'primary',
+                  loading: loadingPublicIP
+                }"
+                @action="refreshPublicIP"
+              />
 
               <!-- Nginx IP Restrictions -->
-              <v-card class="mb-4" variant="outlined">
-                <v-card-title>
-                  <v-icon left>mdi-shield-account</v-icon>
-                  Nginx Access Control
-                  <v-spacer></v-spacer>
-                  <v-btn color="primary" variant="outlined" size="small" @click="showNginxIPModal = true">
-                    <v-icon left>mdi-cog</v-icon>
-                    Configure
-                  </v-btn>
-                </v-card-title>
-                <v-card-text>
-                  <div class="d-flex align-center">
-                    <span class="text-body-1 mr-2">Allowed IP Ranges:</span>
-                    <div v-if="nginxAllowedRanges.length === 0" class="text-grey">
-                      No restrictions (all IPs allowed)
-                    </div>
-                    <div v-else>
-                      <v-chip v-for="range in nginxAllowedRanges" :key="range" size="small" color="primary"
-                        variant="outlined" class="mr-1">
-                        {{ range }}
-                      </v-chip>
-                    </div>
+              <InfoCard
+                title="Nginx Access Control"
+                icon="mdi-shield-account"
+                :action-button="{
+                  text: 'Configure',
+                  icon: 'mdi-cog',
+                  color: 'primary'
+                }"
+                @action="showNginxIPModal = true"
+              >
+                <div class="d-flex align-center">
+                  <span class="text-body-1 mr-2">Allowed IP Ranges:</span>
+                  <div v-if="nginxAllowedRanges.length === 0" class="text-grey">
+                    No restrictions (all IPs allowed)
                   </div>
-                </v-card-text>
-              </v-card>
+                  <div v-else>
+                    <v-chip v-for="range in nginxAllowedRanges" :key="range" size="small" color="primary"
+                      variant="outlined" class="mr-1">
+                      {{ range }}
+                    </v-chip>
+                  </div>
+                </div>
+              </InfoCard>
 
               <!-- DNS Stats -->
               <StatsCards :stats="dnsStats" />
 
               <!-- Active Dynamic DNS Jobs -->
-              <v-card class="mb-4" variant="outlined">
-                <v-card-title>
-                  <v-icon left>mdi-timer</v-icon>
-                  Active Dynamic DNS Jobs
-                  <v-spacer></v-spacer>
-                  <v-btn color="primary" variant="outlined" size="small" @click="refreshAllData" :loading="loadingJobs">
-                    <v-icon left>mdi-refresh</v-icon>
-                    Refresh
-                  </v-btn>
-                </v-card-title>
-                <v-card-text>
-                  <div v-if="loadingJobs" class="text-center py-4">
-                    <v-progress-circular indeterminate color="primary" size="32" class="mb-2"></v-progress-circular>
-                    <p class="text-body-2 text-grey-darken-2">Loading scheduled jobs...</p>
-                  </div>
+              <ScheduledJobsList
+                :jobs="scheduledJobsWithNames"
+                :loading="loadingJobs"
+                :stopping-jobs="stoppingJobs"
+                @refresh="refreshAllData"
+                @pause="pauseScheduledJob"
+                @resume="resumeScheduledJob"
+              />
 
-                  <div v-else-if="!scheduledJobs || Object.keys(scheduledJobs).length === 0" class="text-center py-4">
-                    <v-icon size="48" color="grey-lighten-1" class="mb-2">mdi-timer-off</v-icon>
-                    <p class="text-body-1 text-grey-darken-2 mb-2">No Active Jobs</p>
-                    <p class="text-body-2 text-grey-darken-1">Create DNS records with refresh rates to see scheduled
-                      jobs here.</p>
-                  </div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+      </v-row>
+    </v-container>
 
-                  <div v-else>
-                    <v-list density="compact">
-                      <v-list-item v-for="(job, recordId) in scheduledJobsWithNames" :key="recordId" class="mb-2">
-                        <template v-slot:prepend>
-                          <v-icon color="green" size="small">mdi-timer</v-icon>
-                        </template>
-
-                        <v-list-item-title class="text-body-2">
-                          {{ job.displayName }}
-                        </v-list-item-title>
-
-                        <v-list-item-subtitle class="text-caption">
-                          <v-chip size="x-small" :color="job.isPaused ? 'orange' : 'blue'" variant="outlined"
-                            class="mr-2">
-                            {{ job.isPaused ? 'Paused' : job.countdown }}
-                          </v-chip>
-                          <span class="text-grey-darken-1">
-                            {{ job.isPaused ? 'Paused' : 'Next update' }}
-                          </span>
-                        </v-list-item-subtitle>
-
-                        <template v-slot:append>
-                          <v-btn :icon="job.isPaused ? 'mdi-play' : 'mdi-pause'" size="x-small" variant="text"
-                            :color="job.isPaused ? 'success' : 'warning'"
-                            @click="job.isPaused ? resumeScheduledJob(recordId) : pauseScheduledJob(recordId)"
-                            :loading="stoppingJobs[recordId]" />
-                        </template>
-                      </v-list-item>
-                    </v-list>
-                  </div>
-                </v-card-text>
-              </v-card>
-
-              <!-- DNS Configurations -->
+    <!-- DNS Configurations -->
+    <v-container>
+      <v-row>
+        <v-col cols="12">
+          <v-card>
+            <v-card-title>
+              <v-icon left>mdi-dns</v-icon>
+              DNS Configurations
+            </v-card-title>
+            <v-card-text>
               <div v-if="loadingConfigs" class="text-center py-8">
                 <v-progress-circular indeterminate color="primary" size="64" class="mb-4"></v-progress-circular>
                 <p class="text-body-1 text-grey-darken-2">
@@ -146,123 +108,27 @@
                   Create your first DNS configuration to start managing dynamic
                   DNS records.
                 </p>
-                <v-btn color="primary" prepend-icon="mdi-plus" @click="showCreateConfigModal = true">
+                <v-btn color="primary" variant="text" prepend-icon="mdi-plus" @click="showCreateConfigModal = true">
                   Add Configuration
                 </v-btn>
               </div>
 
               <div v-else class="dns-configs-grid">
                 <v-row>
-                  <v-col v-for="config in dnsConfigs || []" :key="config.id" cols="12" md="6" lg="4">
-                    <v-card variant="outlined" class="mb-4">
-                      <v-card-title>
-                        <div class="d-flex align-center justify-space-between w-100">
-                          <div>
-                            <div class="text-h6">{{ config.domain }}</div>
-                            <v-chip size="small" color="primary" variant="outlined">
-                              {{ config.provider }}
-                            </v-chip>
-                          </div>
-                          <div class="d-flex" style="gap: 4px">
-                            <v-btn icon="mdi-pencil" size="small" variant="text" @click="editConfig(config)" />
-                            <v-btn icon="mdi-delete" size="small" variant="text" color="error"
-                              @click="deleteConfig(config.id)" />
-                          </div>
-                        </div>
-                      </v-card-title>
-
-                      <v-card-text>
-                        <div class="mb-3">
-                          <div class="d-flex justify-space-between align-center mb-1">
-                            <span class="text-caption text-grey-darken-2">Status:</span>
-                            <v-chip :color="config.is_active ? 'green' : 'orange'" size="small" variant="outlined">
-                              {{ config.is_active ? 'Active' : 'Inactive' }}
-                            </v-chip>
-                          </div>
-                          <div class="d-flex justify-space-between align-center mb-1">
-                            <span class="text-caption text-grey-darken-2">Last Update:</span>
-                            <span class="text-body-2">{{
-                              formatDate(config.last_update) || 'Never'
-                            }}</span>
-                          </div>
-                          <div class="d-flex justify-space-between align-center">
-                            <span class="text-caption text-grey-darken-2">Last IP:</span>
-                            <span class="text-body-2 font-mono">{{
-                              config.last_ip || 'Unknown'
-                            }}</span>
-                          </div>
-                        </div>
-
-                        <v-divider class="my-3"></v-divider>
-
-                        <div class="d-flex justify-space-between align-center mb-2">
-                          <span class="text-subtitle-2">DNS Records</span>
-                          <v-btn size="small" color="primary" variant="outlined" prepend-icon="mdi-plus"
-                            @click="openCreateRecordModal(config.id)">
-                            Add Record
-                          </v-btn>
-                        </div>
-
-                        <div v-if="configRecords[config.id]?.length === 0" class="text-center py-4">
-                          <v-icon color="grey-lighten-1">mdi-dns</v-icon>
-                          <p class="text-caption text-grey-darken-1 mt-2">
-                            No DNS records configured
-                          </p>
-                        </div>
-
-                        <div v-else>
-                          <v-list density="compact">
-                            <v-list-item v-for="record in configRecords[config.id] || []" :key="record.id" class="px-0">
-                              <template v-slot:prepend>
-                                <v-icon size="small">mdi-dns</v-icon>
-                              </template>
-
-                              <v-list-item-title class="text-body-2">
-                                {{
-                                  record.host === '@'
-                                    ? config.domain
-                                    : `${record.host}.${config.domain}`
-                                }}
-                              </v-list-item-title>
-
-                              <v-list-item-subtitle class="font-mono text-caption">
-                                {{ record.current_ip || 'Not set' }}
-                              </v-list-item-subtitle>
-
-                              <v-list-item-subtitle v-if="record.allowed_ip_ranges"
-                                class="text-caption text-grey-darken-1 mt-1">
-                                Allowed: {{ record.allowed_ip_ranges }}
-                              </v-list-item-subtitle>
-
-                              <v-list-item-subtitle v-if="record.dynamic_dns_refresh_rate"
-                                class="text-caption text-blue-darken-1 mt-1">
-                                <v-icon size="x-small" class="mr-1">mdi-timer</v-icon>
-                                Auto-refresh: {{ record.dynamic_dns_refresh_rate }} min
-                              </v-list-item-subtitle>
-
-                              <v-list-item-subtitle v-if="record.include_backend"
-                                class="text-caption text-green-darken-1 mt-1">
-                                <v-icon size="x-small" class="mr-1">mdi-application-cog</v-icon>
-                                Backend API Access: {{ record.backend_url || 'Default' }}
-                              </v-list-item-subtitle>
-
-                              <template v-slot:append>
-                                <div class="d-flex" style="gap: 4px">
-                                  <v-btn icon="mdi-refresh" size="x-small" variant="text" color="success"
-                                    :loading="loadingUpdates[record.id]" @click="updateRecordNow(record.id)" />
-                                  <v-btn icon="mdi-file-document-edit" size="x-small" variant="text" color="blue"
-                                    :loading="loadingRegen[record.id]" @click="regenerateConfig(record)"
-                                    v-tooltip="'Regenerate Nginx Config'" />
-                                  <v-btn icon="mdi-pencil" size="x-small" variant="text" @click="editRecord(record)" />
-                                  <v-btn icon="mdi-delete" size="x-small" variant="text" color="error"
-                                    @click="deleteRecord(record.id)" />
-                                </div>
-                              </template>
-                            </v-list-item>
-                          </v-list>
-                        </div>
-                      </v-card-text>
-                    </v-card>
+                  <v-col v-for="config in dnsConfigs || []" :key="config.id" cols="12">
+                    <DNSConfigCard
+                      :config="config"
+                      :records="configRecords[config.id] || []"
+                      :loading-updates="loadingUpdates"
+                      :loading-regen="loadingRegen"
+                      @edit="editConfig"
+                      @delete="deleteConfig"
+                      @add-record="openCreateRecordModal"
+                      @update-record="updateRecordNow"
+                      @regenerate="regenerateConfig"
+                      @edit-record="editRecord"
+                      @delete-record="deleteRecord"
+                    />
                   </v-col>
                 </v-row>
               </div>
@@ -360,8 +226,8 @@
 
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn @click="closeConfigModal" color="grey"> Cancel </v-btn>
-          <v-btn @click="saveConfig" :loading="savingConfig" color="primary">
+          <v-btn @click="closeConfigModal" color="grey" variant="text"> Cancel </v-btn>
+          <v-btn @click="saveConfig" :loading="savingConfig" color="primary" variant="text">
             {{ showCreateConfigModal ? 'Create' : 'Update' }}
           </v-btn>
         </v-card-actions>
@@ -446,8 +312,8 @@
 
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn @click="closeRecordModal" color="grey"> Cancel </v-btn>
-          <v-btn @click="saveRecord" :loading="savingRecord" color="primary">
+          <v-btn @click="closeRecordModal" color="grey" variant="text"> Cancel </v-btn>
+          <v-btn @click="saveRecord" :loading="savingRecord" color="primary" variant="text">
             {{ showCreateRecordModal ? 'Create' : 'Update' }}
           </v-btn>
         </v-card-actions>
@@ -506,8 +372,8 @@
 
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn @click="closeNginxIPModal" color="grey"> Cancel </v-btn>
-          <v-btn @click="saveNginxIPRestrictions" :loading="savingNginxIP" color="primary">
+          <v-btn @click="closeNginxIPModal" color="grey" variant="text"> Cancel </v-btn>
+          <v-btn @click="saveNginxIPRestrictions" :loading="savingNginxIP" color="primary" variant="text">
             Save & Apply
           </v-btn>
         </v-card-actions>
@@ -528,11 +394,14 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import AppLayout from '../components/AppLayout.vue';
-import ConfirmationDialog from '../components/ConfirmationDialog.vue';
-import ErrorAlert from '../components/ErrorAlert.vue';
-import PageHeader from '../components/PageHeader.vue';
-import StatsCards from '../components/StatsCards.vue';
+import DNSConfigCard from '../components/dns/DNSConfigCard.vue';
+import ScheduledJobsList from '../components/dns/ScheduledJobsList.vue';
+import AppLayout from '../components/layout/AppLayout.vue';
+import ConfirmationDialog from '../components/ui/ConfirmationDialog.vue';
+import ErrorAlert from '../components/ui/ErrorAlert.vue';
+import InfoCard from '../components/ui/InfoCard.vue';
+import PageHeader from '../components/ui/PageHeader.vue';
+import StatsCards from '../components/ui/StatsCards.vue';
 import apiService from '../services/api';
 import type {
   DNSConfig,
@@ -563,19 +432,25 @@ const scheduledJobs = ref<Record<number, JobInfo>>({});
 const loadingJobs = ref(false);
 const stoppingJobs = ref<Record<number, boolean>>({});
 const countdownTimer = ref<number | null>(null);
+const serverDataTimer = ref<number | null>(null);
+const mockCountdowns = ref<Record<number, { nextUpdate: string; isPaused: boolean }>>({});
 
 // Computed property for scheduled jobs with display names and countdown
 const scheduledJobsWithNames = computed(() => {
   const jobs: Record<number, { interval: number; displayName: string; nextUpdate: string; countdown: string; isPaused: boolean }> = {};
   for (const [recordId, jobInfo] of Object.entries(scheduledJobs.value)) {
     const id = parseInt(recordId);
-    const nextUpdate = jobInfo.next_update;
+    // Use mock countdown if available, otherwise fall back to server data
+    const mockData = mockCountdowns.value[id];
+    const nextUpdate = mockData?.nextUpdate || jobInfo.next_update;
+    const isPaused = mockData?.isPaused !== undefined ? mockData.isPaused : jobInfo.is_paused;
+
     jobs[id] = {
       interval: jobInfo.interval,
       displayName: getRecordDisplayName(id),
       nextUpdate: nextUpdate,
       countdown: getCountdown(nextUpdate),
-      isPaused: jobInfo.is_paused
+      isPaused: isPaused
     };
   }
   return jobs;
@@ -663,18 +538,10 @@ const dnsStats = computed(() => [
     key: 'records',
     value: Object.values(configRecords.value).flat().length,
     label: 'Total Records',
-    icon: 'mdi-list',
+    icon: 'mdi-dns',
     color: 'orange-lighten-5',
     iconColor: 'orange',
-  },
-  {
-    key: 'public-ip',
-    value: publicIP.value ? 'Set' : 'Unknown',
-    label: 'Public IP',
-    icon: 'mdi-earth',
-    color: 'purple-lighten-5',
-    iconColor: 'purple',
-  },
+  }
 ]);
 
 // Methods
@@ -1034,7 +901,18 @@ const loadScheduledJobs = async () => {
     loadingJobs.value = true;
     const response = await apiService.getScheduledJobs();
     scheduledJobs.value = response.active_jobs || {};
+
+    // Initialize mock countdowns with server data
+    for (const [recordId, jobInfo] of Object.entries(scheduledJobs.value)) {
+      const id = parseInt(recordId);
+      mockCountdowns.value[id] = {
+        nextUpdate: jobInfo.next_update,
+        isPaused: jobInfo.is_paused
+      };
+    }
+
     startCountdownTimer();
+    startServerDataTimer();
   } catch (err: any) {
     error.value = err.response?.data?.error || 'Failed to load scheduled jobs';
   } finally {
@@ -1048,27 +926,88 @@ const startCountdownTimer = () => {
     clearInterval(countdownTimer.value);
   }
 
-  // Start new timer that updates every 30 seconds
-  countdownTimer.value = setInterval(() => {
-    // Check if any jobs are due and refresh if needed
-    let needsRefresh = false;
-    for (const [, jobInfo] of Object.entries(scheduledJobs.value)) {
-      const now = new Date().getTime();
-      const next = new Date(jobInfo.next_update).getTime();
-      if (next <= now) {
-        needsRefresh = true;
-        break;
+  // Start visual countdown timer that updates every second
+  countdownTimer.value = setInterval(async () => {
+    let needsServerRefresh = false;
+
+    // Check if any countdowns are due without modifying the stored times
+    for (const [recordId, mockData] of Object.entries(mockCountdowns.value)) {
+      if (!mockData.isPaused) {
+        const currentTime = new Date(mockData.nextUpdate).getTime();
+        const now = new Date().getTime();
+
+        // If the countdown has reached zero or gone negative, mark for server refresh
+        if (currentTime <= now) {
+          needsServerRefresh = true;
+        }
       }
     }
 
-    if (needsRefresh) {
-      // Refresh scheduled jobs to get updated times
-      loadScheduledJobs();
-    } else {
-      // Force reactivity update by creating a new object
-      scheduledJobs.value = { ...scheduledJobs.value };
+    // Force reactivity update to trigger countdown display refresh
+    scheduledJobs.value = { ...scheduledJobs.value };
+
+    // If any job is due, immediately fetch fresh data and reset the server timer
+    if (needsServerRefresh) {
+      try {
+        const response = await apiService.getScheduledJobs();
+        const serverJobs = response.active_jobs || {};
+
+        // Update server data
+        scheduledJobs.value = serverJobs;
+
+        // Update mock countdowns with fresh server data
+        for (const [recordId, jobInfo] of Object.entries(serverJobs)) {
+          const id = parseInt(recordId);
+          mockCountdowns.value[id] = {
+            nextUpdate: jobInfo.next_update,
+            isPaused: jobInfo.is_paused
+          };
+        }
+
+        // Reset the server data timer to start fresh
+        stopServerDataTimer();
+        startServerDataTimer();
+      } catch (err) {
+        console.error('Failed to refresh scheduled jobs when due:', err);
+      }
+    }
+  }, 1000);
+};
+
+const startServerDataTimer = () => {
+  // Clear existing timer
+  if (serverDataTimer.value) {
+    clearInterval(serverDataTimer.value);
+  }
+
+  // Start server data timer that updates every 30 seconds
+  serverDataTimer.value = setInterval(async () => {
+    try {
+      const response = await apiService.getScheduledJobs();
+      const serverJobs = response.active_jobs || {};
+
+      // Update server data
+      scheduledJobs.value = serverJobs;
+
+      // Update mock countdowns with fresh server data
+      for (const [recordId, jobInfo] of Object.entries(serverJobs)) {
+        const id = parseInt(recordId);
+        mockCountdowns.value[id] = {
+          nextUpdate: jobInfo.next_update,
+          isPaused: jobInfo.is_paused
+        };
+      }
+    } catch (err) {
+      console.error('Failed to refresh scheduled jobs:', err);
     }
   }, 30000);
+};
+
+const stopServerDataTimer = () => {
+  if (serverDataTimer.value) {
+    clearInterval(serverDataTimer.value);
+    serverDataTimer.value = null;
+  }
 };
 
 const stopCountdownTimer = () => {
@@ -1086,6 +1025,15 @@ const pauseScheduledJob = async (recordId: number) => {
   try {
     stoppingJobs.value[recordId] = true;
     await apiService.pauseScheduledJob(recordId);
+
+    // Update mock countdown immediately for responsive UI
+    if (mockCountdowns.value[recordId]) {
+      mockCountdowns.value[recordId] = {
+        ...mockCountdowns.value[recordId],
+        isPaused: true
+      };
+    }
+
     // Refresh the scheduled jobs to get updated state
     await loadScheduledJobs();
   } catch (err: any) {
@@ -1099,6 +1047,15 @@ const resumeScheduledJob = async (recordId: number) => {
   try {
     stoppingJobs.value[recordId] = true;
     await apiService.resumeScheduledJob(recordId);
+
+    // Update mock countdown immediately for responsive UI
+    if (mockCountdowns.value[recordId]) {
+      mockCountdowns.value[recordId] = {
+        ...mockCountdowns.value[recordId],
+        isPaused: false
+      };
+    }
+
     // Refresh the scheduled jobs to get updated state
     await loadScheduledJobs();
   } catch (err: any) {
@@ -1141,7 +1098,7 @@ const getCountdown = (nextUpdate: string): string => {
   }
 
   const diff = next - now;
-  
+
   // Debug logging
   console.log('Countdown debug:', {
     now: new Date(now).toISOString(),
@@ -1249,6 +1206,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   stopCountdownTimer();
+  stopServerDataTimer();
 });
 
 const loadNginxIPRestrictions = async () => {

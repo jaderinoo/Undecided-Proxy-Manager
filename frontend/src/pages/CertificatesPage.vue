@@ -23,7 +23,7 @@
                   <template #actions>
                     <v-btn
                       color="success"
-                      variant="outlined"
+                      variant="text"
                       size="small"
                       @click="showCreateDialog = true"
                     >
@@ -143,6 +143,7 @@
           </v-btn>
           <v-btn
             color="primary"
+            variant="text"
             @click="createCertificate"
             :loading="isCreating"
           >
@@ -155,16 +156,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import type { Certificate, CertificateCreateRequest } from '../types/api';
+import { computed, onMounted, ref } from 'vue';
+import CertificateCard from '../components/certificate/CertificateCard.vue';
+import AppLayout from '../components/layout/AppLayout.vue';
+import ErrorAlert from '../components/ui/ErrorAlert.vue';
+import FilterBar from '../components/ui/FilterBar.vue';
+import LoadingSpinner from '../components/ui/LoadingSpinner.vue';
+import PageHeader from '../components/ui/PageHeader.vue';
+import StatsCards from '../components/ui/StatsCards.vue';
 import apiService from '../services/api';
-import AppLayout from '../components/AppLayout.vue';
-import ErrorAlert from '../components/ErrorAlert.vue';
-import LoadingSpinner from '../components/LoadingSpinner.vue';
-import CertificateCard from '../components/CertificateCard.vue';
-import PageHeader from '../components/PageHeader.vue';
-import StatsCards from '../components/StatsCards.vue';
-import FilterBar from '../components/FilterBar.vue';
+import type { Certificate, CertificateCreateRequest } from '../types/api';
 
 const certificates = ref<Certificate[]>([]);
 const filteredCertificates = ref<Certificate[]>([]);

@@ -73,25 +73,6 @@
                   class="mb-2"
                 />
 
-                <v-text-field
-                  v-model="coreSettings.admin_password"
-                  label="Admin Password"
-                  readonly
-                  variant="outlined"
-                  density="compact"
-                  class="mb-2"
-                  hint="Password is masked for security"
-                />
-
-                <v-text-field
-                  v-model="coreSettings.jwt_secret"
-                  label="JWT Secret"
-                  readonly
-                  variant="outlined"
-                  density="compact"
-                  class="mb-2"
-                  hint="Secret is masked for security"
-                />
 
                 <v-text-field
                   v-model="coreSettings.letsencrypt_email"
@@ -120,14 +101,6 @@
                   class="mb-2"
                 />
 
-                <v-text-field
-                  v-model="coreSettings.dns_check_interval"
-                  label="DNS Check Interval"
-                  readonly
-                  variant="outlined"
-                  density="compact"
-                  class="mb-2"
-                />
 
                 <v-text-field
                   v-model="coreSettings.public_ip_service"
@@ -267,27 +240,6 @@
                       <div>PROD_FRONTEND_PORT=6070</div>
                       <div></div>
                       <div data-comment="true">
-                        # Authentication Configuration (Pi-hole style)
-                      </div>
-                      <div data-comment="true">
-                        # Set a strong password for admin access
-                      </div>
-                      <div data-comment="true">
-                        # The password will be hashed automatically
-                      </div>
-                      <div>
-                        ADMIN_PASSWORD="Replace-Me"
-                      </div>
-                      <div></div>
-                      <div data-comment="true">
-                        # JWT Secret for token signing
-                      </div>
-                      <div data-comment="true">
-                        # Generate a strong random secret for production
-                      </div>
-                      <div>JWT_SECRET="Replace-Me"</div>
-                      <div></div>
-                      <div data-comment="true">
                         # Let's Encrypt Configuration (Core Settings - Read-only
                         in UI)
                       </div>
@@ -326,13 +278,13 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import AppLayout from '../components/AppLayout.vue';
-import PageHeader from '../components/PageHeader.vue';
+import AppLayout from '../components/layout/AppLayout.vue';
+import PageHeader from '../components/ui/PageHeader.vue';
 import apiService from '../services/api';
 import type {
-  CoreSettings,
-  SettingsUpdateRequest,
-  UISettings,
+    CoreSettings,
+    SettingsUpdateRequest,
+    UISettings,
 } from '../types/api';
 
 // Reactive data
@@ -340,12 +292,9 @@ const coreSettings = ref<CoreSettings>({
   database_path: '',
   environment: '',
   backend_port: '',
-  admin_password: '',
-  jwt_secret: '',
   letsencrypt_email: '',
   letsencrypt_webroot: '',
   letsencrypt_cert_path: '',
-  dns_check_interval: '',
   public_ip_service: '',
 });
 
@@ -473,14 +422,6 @@ PROD_NGINX_HTTPS_PORT=443
 PROD_BACKEND_PORT=6080
 PROD_FRONTEND_PORT=6070
 
-# Authentication Configuration (Pi-hole style)
-# Set a strong password for admin access
-# The password will be hashed automatically
-ADMIN_PASSWORD="Replace-Me"
-
-# JWT Secret for token signing
-# Generate a strong random secret for production
-JWT_SECRET="Replace-Me"
 
 # Let's Encrypt Configuration (Core Settings - Read-only in UI)
 LETSENCRYPT_EMAIL=jaderinoo@gmail.com

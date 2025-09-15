@@ -1,50 +1,122 @@
 // =============================================================================
-// UPM Main SCSS - Ultra Minimal
+// UPM Main SCSS - Bauhaus Design System
 // =============================================================================
 
 @import 'utils/variables';
 
-// Core theme variables - absolute minimum needed
+// Bauhaus Design System - Core Variables
 :root {
-  --bg: #{$white};
-  --fg: #{$grey-900};
-  --border: #{$grey-200};
-  --primary: #{$primary-700};
-  --elevated: #{$white};
-  --text-light: #{$white};
-  --nav-bg: #{$white};
+  // Bauhaus Primary Colors
+  --bauhaus-red: #e53e3e;
+  --bauhaus-blue: #3182ce1a;
+  --bauhaus-yellow: #f6e05e;
+  --bauhaus-black: #1a202c;
+  --bauhaus-white: #ffffff;
+  --bauhaus-grey: #4a5568;
+
+  // Application Colors
+  --bg: var(--bauhaus-white);
+  --fg: var(--bauhaus-black);
+  --border: #e2e8f0;
+  --primary: #3182ce;
+  --primary-light: #3182ce1a;
+  --secondary: var(--bauhaus-red);
+  --accent: var(--bauhaus-yellow);
+  --elevated: var(--bauhaus-white);
+  --text-light: var(--bauhaus-white);
+  --nav-bg: var(--bauhaus-white);
+
+  // Bauhaus Typography
+  --font-primary: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+
+  // Bauhaus Spacing (based on 8px grid)
+  --space-1: 0.5rem;   // 8px
+  --space-2: 1rem;     // 16px
+  --space-3: 1.5rem;   // 24px`
+  --space-4: 2rem;     // 32px
+  --space-6: 3rem;     // 48px
+  --space-8: 4rem;     // 64px
+
+  // Bauhaus Border Radius (minimal, geometric)
+  --radius-none: 0;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+
+  // Bauhaus Shadows (minimal, functional)
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
 }
 
 [data-theme='dark'] {
-  --bg: #{$grey-900};
-  --fg: #{$grey-100};
-  --border: #{$grey-700};
-  --primary: #{$primary-300};
-  --elevated: #{$grey-800};
-  --text-light: #{$grey-100};
-  --nav-bg: #{$grey-800};
+  --bg: var(--bauhaus-black);
+  --fg: var(--bauhaus-white);
+  --border: #2d3748;
+  --primary: #63b3ed;
+  --primary-light: #63b3ed1a;
+  --secondary: #fc8181;
+  --accent: #faf089;
+  --elevated: #2d3748;
+  --text-light: var(--bauhaus-white);
+  --nav-bg: #2d3748;
 }
 
-// Base styles
+// =============================================================================
+// Bauhaus Base Styles
+// =============================================================================
+
 body {
   background: var(--bg);
   color: var(--fg);
   margin: 0;
+  font-family: var(--font-primary);
+  font-weight: 400;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-// Minimal component styles
+// =============================================================================
+// Bauhaus Typography
+// =============================================================================
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-primary);
+  font-weight: 600;
+  line-height: 1.25;
+  margin: 0;
+  color: var(--fg);
+}
+
+h1 { font-size: 2.25rem; } // 36px
+h2 { font-size: 1.875rem; } // 30px
+h3 { font-size: 1.5rem; } // 24px
+h4 { font-size: 1.25rem; } // 20px
+h5 { font-size: 1.125rem; } // 18px
+h6 { font-size: 1rem; } // 16px
+
+// =============================================================================
+// Bauhaus Navigation
+// =============================================================================
+
 .v-app-bar {
   background: var(--nav-bg) !important;
   color: var(--fg) !important;
   height: 64px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 2px solid var(--border);
+  box-shadow: var(--shadow-sm);
 
   .v-toolbar__content {
     background: var(--nav-bg) !important;
+    padding: 0 var(--space-2);
   }
 
   .v-toolbar-title {
     color: var(--fg) !important;
+    font-weight: 600;
+    font-size: 1.25rem;
   }
 
   .v-icon {
@@ -53,19 +125,49 @@ body {
 
   .v-btn {
     color: var(--fg) !important;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
   }
 }
 
 .v-navigation-drawer {
   background: var(--elevated);
-  border-right: 1px solid var(--border);
+  border-right: 2px solid var(--border);
+  box-shadow: var(--shadow-sm);
+
+  .v-list-item {
+    color: var(--fg);
+
+    &--active {
+      background: var(--primary) !important;
+      color: var(--text-light) !important;
+      font-weight: 600;
+    }
+
+    &:hover:not(.v-list-item--active) {
+      background: var(--primary-light);
+      color: var(--fg);
+    }
+  }
 }
+
+// =============================================================================
+// Bauhaus Cards
+// =============================================================================
 
 .v-card {
   background: var(--elevated);
   color: var(--fg);
-  border: 1px solid var(--border);
-  box-shadow: none;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+
+  &:hover {
+    box-shadow: var(--shadow-md);
+    border-color: var(--primary);
+  }
 
   &.green-lighten-5,
   &.orange-lighten-5,
@@ -73,78 +175,374 @@ body {
   &.grey-lighten-5 {
     background: var(--elevated);
   }
+
+  .v-card-title {
+    font-weight: 600;
+    font-size: 1.125rem;
+    padding: var(--space-2);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .v-card-text {
+    padding: var(--space-2);
+  }
 }
 
-// Fix list backgrounds inside cards
+// =============================================================================
+// Bauhaus Buttons
+// =============================================================================
+
+.v-btn {
+  font-family: var(--font-primary);
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+    opacity: 0.8;
+  }
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: var(--shadow-sm);
+    opacity: 0.9;
+  }
+
+  // Size variants
+  &.v-btn--size-small {
+    padding: var(--space-1) var(--space-2);
+    font-size: 0.75rem;
+    min-height: 32px;
+
+    .v-icon {
+      font-size: 16px;
+    }
+  }
+
+  &.v-btn--size-default {
+    padding: var(--space-2) var(--space-3);
+    font-size: 0.875rem;
+    min-height: 40px;
+
+    .v-icon {
+      font-size: 18px;
+    }
+  }
+
+  &.v-btn--size-large {
+    padding: var(--space-2) var(--space-4);
+    font-size: 1rem;
+    min-height: 48px;
+
+    .v-icon {
+      font-size: 20px;
+    }
+  }
+
+  // Variant styles
+  &.v-btn--variant-elevated {
+    box-shadow: var(--shadow-sm);
+    background: var(--primary);
+    color: var(--bauhaus-white);
+
+    &:hover {
+      box-shadow: var(--shadow-md);
+      background: var(--secondary);
+      opacity: 0.8;
+    }
+  }
+
+  &.v-btn--variant-outlined {
+    border: 2px solid currentColor;
+    background: transparent;
+
+    &:hover {
+      background: currentColor;
+      color: var(--bauhaus-white);
+      opacity: 0.8;
+    }
+  }
+
+  &.v-btn--variant-text {
+    background: transparent;
+    border: 2px solid transparent;
+    color: currentColor;
+
+    &:hover {
+      background: transparent;
+      opacity: 0.8;
+      color: currentColor;
+    }
+
+    &:active {
+      color: currentColor;
+    }
+
+      // Ensure text and icons maintain maximum contrast
+    .v-btn__content {
+      color: inherit !important;
+    }
+
+    .v-icon {
+      color: inherit !important;
+    }
+
+    span {
+      color: inherit !important;
+    }
+
+    // Override any Vuetify color inheritance that might reduce contrast
+    &.v-btn--density-default,
+    &.v-btn--density-comfortable,
+    &.v-btn--density-compact {
+      .v-btn__content {
+        color: inherit !important;
+      }
+    }
+  }
+
+  // Action hierarchy styles
+  &.action-primary {
+    background: var(--primary);
+    color: var(--bauhaus-white);
+    border-color: var(--primary);
+
+    &:hover {
+      background: var(--secondary);
+      border-color: var(--secondary);
+      opacity: 0.8;
+    }
+  }
+
+  &.action-secondary {
+    color: var(--bauhaus-grey);
+    border-color: var(--border);
+
+    &:hover {
+      background: var(--border);
+      color: var(--fg);
+      opacity: 0.8;
+    }
+  }
+
+  &.action-destructive {
+    color: var(--bauhaus-red);
+    border-color: var(--bauhaus-red);
+
+    &:hover {
+      background: var(--bauhaus-red);
+      color: var(--bauhaus-white);
+      opacity: 0.8;
+    }
+  }
+}
+
+// =============================================================================
+// Bauhaus Lists
+// =============================================================================
+
 .v-card .v-list {
   background: transparent !important;
 
   .v-list-item {
     background: transparent;
+    border-radius: var(--radius-sm);
+    margin: 2px var(--space-1);
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
 
     &:hover {
-      background: var(--bg);
+      background: var(--border);
+      border-color: var(--primary);
     }
-  }
-}
-
-// Fix text colors in dark mode
-[data-theme='dark'] {
-  .text-grey-darken-2,
-  .text-grey-darken-3 {
-    color: var(--text-light) !important;
   }
 }
 
 .v-list-item {
   color: var(--fg);
-  border-radius: 6px;
-  margin: 2px 8px;
+  border-radius: var(--radius-sm);
+  margin: 2px var(--space-1);
   border: 1px solid transparent;
+  transition: all 0.2s ease;
 
   &--active {
-    background: transparent;
-    color: var(--fg);
-    border: 1px solid var(--border);
+    background: var(--primary);
+    color: var(--text-light);
+    border: 2px solid var(--primary);
+    font-weight: 600;
   }
 
   &:hover {
-    background: var(--bg);
+    background: var(--border);
+    border-color: var(--primary);
   }
 }
 
-// Icon base style
+// =============================================================================
+// Bauhaus Icons
+// =============================================================================
+
 .v-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 24px;
   height: 24px;
+  transition: all 0.2s ease;
 }
 
-// Status colors
+// =============================================================================
+// Bauhaus Status Colors
+// =============================================================================
+
 .green {
-  color: #{$success-500} !important;
+  color: var(--bauhaus-blue) !important;
 }
 
 .orange {
-  color: #{$warning-500} !important;
+  color: var(--bauhaus-yellow) !important;
 }
 
 .red {
-  color: #{$error-500} !important;
+  color: var(--bauhaus-red) !important;
 }
 
 .grey {
-  color: #{$grey-500} !important;
+  color: var(--bauhaus-grey) !important;
 }
 
-// Status dot
+// =============================================================================
+// Bauhaus Status Indicators
+// =============================================================================
+
 .status-indicator::before {
   content: '';
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  margin-right: 8px;
+  margin-right: var(--space-1);
   background: currentColor;
+}
+
+// =============================================================================
+// Bauhaus Utility Classes
+// =============================================================================
+
+// Spacing utilities
+.p-1 { padding: var(--space-1); }
+.p-2 { padding: var(--space-2); }
+.p-3 { padding: var(--space-3); }
+.p-4 { padding: var(--space-4); }
+
+.m-1 { margin: var(--space-1); }
+.m-2 { margin: var(--space-2); }
+.m-3 { margin: var(--space-3); }
+.m-4 { margin: var(--space-4); }
+
+// Border radius utilities
+.rounded-none { border-radius: var(--radius-none); }
+.rounded-sm { border-radius: var(--radius-sm); }
+.rounded-md { border-radius: var(--radius-md); }
+.rounded-lg { border-radius: var(--radius-lg); }
+
+// Shadow utilities
+.shadow-sm { box-shadow: var(--shadow-sm); }
+.shadow-md { box-shadow: var(--shadow-md); }
+.shadow-lg { box-shadow: var(--shadow-lg); }
+
+// =============================================================================
+// Bauhaus Card Layout
+// =============================================================================
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--border);
+  gap: var(--space-2);
+}
+
+.card-content {
+  padding: var(--space-2);
+}
+
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+
+// =============================================================================
+// Bauhaus Grid Layout
+// =============================================================================
+
+.details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.detail-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--bauhaus-grey);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.detail-value {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--fg);
+  word-break: break-word;
+}
+
+// =============================================================================
+// Bauhaus Responsive Typography
+// =============================================================================
+
+.responsive-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.25;
+
+  @media (max-width: 600px) {
+    font-size: 1.125rem;
+  }
+
+  @media (max-width: 400px) {
+    font-size: 1rem;
+  }
+}
+
+// =============================================================================
+// Dark Mode Text Fixes
+// =============================================================================
+
+[data-theme='dark'] {
+  .text-grey-darken-2,
+  .text-grey-darken-3 {
+    color: var(--text-light) !important;
+  }
 }

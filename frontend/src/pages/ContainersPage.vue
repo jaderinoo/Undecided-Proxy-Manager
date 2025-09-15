@@ -23,7 +23,7 @@
                   <template #actions>
                     <v-btn
                       color="success"
-                      variant="outlined"
+                      variant="text"
                       size="small"
                       @click="loadContainers"
                     >
@@ -78,13 +78,13 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import AppLayout from '../components/AppLayout.vue';
-import ContainerCard from '../components/ContainerCard.vue';
-import ErrorAlert from '../components/ErrorAlert.vue';
-import FilterBar from '../components/FilterBar.vue';
-import LoadingSpinner from '../components/LoadingSpinner.vue';
-import PageHeader from '../components/PageHeader.vue';
-import StatsCards from '../components/StatsCards.vue';
+import ContainerCard from '../components/container/ContainerCard.vue';
+import AppLayout from '../components/layout/AppLayout.vue';
+import ErrorAlert from '../components/ui/ErrorAlert.vue';
+import FilterBar from '../components/ui/FilterBar.vue';
+import LoadingSpinner from '../components/ui/LoadingSpinner.vue';
+import PageHeader from '../components/ui/PageHeader.vue';
+import StatsCards from '../components/ui/StatsCards.vue';
 import { apiService } from '../services/api';
 import type { Container, Proxy } from '../types/api';
 
