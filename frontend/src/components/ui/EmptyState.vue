@@ -24,7 +24,7 @@ interface ActionButton {
   text: string;
   icon?: string;
   color?: string;
-  variant?: string;
+  variant?: 'flat' | 'text' | 'elevated' | 'tonal' | 'outlined' | 'plain';
 }
 
 interface Props {

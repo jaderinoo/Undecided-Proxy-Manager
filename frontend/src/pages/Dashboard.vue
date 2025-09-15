@@ -199,11 +199,6 @@ const getContainerTargetUrl = (container: Container) => {
 };
 
 
-// Create proxy dialog methods
-const openCreateProxyDialog = () => {
-  containerFormData.value = undefined;
-  createProxyDialog.value = true;
-};
 
 const closeCreateProxyDialog = () => {
   createProxyDialog.value = false;
@@ -244,10 +239,6 @@ const handleCreateProxy = async (data: ProxyCreateRequest | ProxyUpdateRequest, 
 };
 
 // Edit proxy dialog methods
-const openEditProxyDialog = (proxy: Proxy) => {
-  editingProxy.value = proxy;
-  editProxyDialog.value = true;
-};
 
 const closeEditProxyDialog = () => {
   editProxyDialog.value = false;
@@ -282,10 +273,6 @@ const handleEditProxy = async (data: ProxyCreateRequest | ProxyUpdateRequest, _i
 };
 
 // Delete proxy dialog methods
-const openDeleteProxyDialog = (proxy: Proxy) => {
-  proxyToDelete.value = proxy;
-  deleteProxyDialog.value = true;
-};
 
 const closeDeleteProxyDialog = () => {
   deleteProxyDialog.value = false;
@@ -320,21 +307,6 @@ const deleteProxy = async () => {
   }
 };
 
-const reloadNginx = async () => {
-  try {
-    reloadingNginx.value = true;
-    error.value = null;
-
-    await apiService.reloadNginx();
-
-    // Show success message (you could add a toast notification here)
-    console.log('Nginx reloaded successfully');
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to reload nginx';
-  } finally {
-    reloadingNginx.value = false;
-  }
-};
 
 const toggleContainerDisplay = () => {
   showAllContainers.value = !showAllContainers.value;

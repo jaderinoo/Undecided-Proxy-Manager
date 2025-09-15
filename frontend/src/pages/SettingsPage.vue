@@ -282,9 +282,9 @@ import AppLayout from '../components/layout/AppLayout.vue';
 import PageHeader from '../components/ui/PageHeader.vue';
 import apiService from '../services/api';
 import type {
-    CoreSettings,
-    SettingsUpdateRequest,
-    UISettings,
+  CoreSettings,
+  SettingsUpdateRequest,
+  UISettings,
 } from '../types/api';
 
 // Reactive data
@@ -292,9 +292,12 @@ const coreSettings = ref<CoreSettings>({
   database_path: '',
   environment: '',
   backend_port: '',
+  admin_password: '',
+  jwt_secret: '',
   letsencrypt_email: '',
   letsencrypt_webroot: '',
   letsencrypt_cert_path: '',
+  dns_check_interval: '',
   public_ip_service: '',
 });
 

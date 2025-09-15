@@ -830,10 +830,6 @@ const closeRecordModal = () => {
   };
 };
 
-const formatDate = (dateString?: string) => {
-  if (!dateString) return null;
-  return new Date(dateString).toLocaleString();
-};
 
 // IP range validation
 const validateIPRanges = (ipRanges: string): string | null => {
@@ -931,7 +927,7 @@ const startCountdownTimer = () => {
     let needsServerRefresh = false;
 
     // Check if any countdowns are due without modifying the stored times
-    for (const [recordId, mockData] of Object.entries(mockCountdowns.value)) {
+    for (const [_recordId, mockData] of Object.entries(mockCountdowns.value)) {
       if (!mockData.isPaused) {
         const currentTime = new Date(mockData.nextUpdate).getTime();
         const now = new Date().getTime();

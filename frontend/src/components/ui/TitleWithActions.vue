@@ -20,7 +20,7 @@ import ActionButtons from './ActionButtons.vue';
 interface ActionButton {
   key: string;
   color?: string;
-  variant?: string;
+  variant?: 'flat' | 'text' | 'elevated' | 'tonal' | 'outlined' | 'plain';
   size?: string;
   icon?: string;
   text?: string;
@@ -39,7 +39,6 @@ interface Props {
 defineProps<Props>();
 
 const isMobile = ref(false);
-const containerRef = ref<HTMLElement>();
 
 const checkMobile = () => {
   isMobile.value = window.innerWidth <= 768;

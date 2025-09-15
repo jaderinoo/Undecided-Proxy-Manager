@@ -211,18 +211,6 @@ watch(showCertificateInfo, (newValue) => {
   }
 });
 
-const getStatusColor = (status: string): string => {
-  switch (status) {
-    case 'active':
-      return 'green-lighten-5';
-    case 'inactive':
-      return 'orange-lighten-5';
-    case 'error':
-      return 'red-lighten-5';
-    default:
-      return 'grey-lighten-5';
-  }
-};
 
 const getStatusIconColor = (status: string): string => {
   switch (status) {

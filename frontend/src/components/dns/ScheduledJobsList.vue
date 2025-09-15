@@ -47,7 +47,7 @@
               <v-btn :icon="job.isPaused ? 'mdi-play' : 'mdi-pause'" size="x-small" variant="text"
                 :color="job.isPaused ? 'success' : 'warning'"
                 @click="job.isPaused ? $emit('resume', parseInt(recordId)) : $emit('pause', parseInt(recordId))"
-                :loading="stoppingJobs[recordId]" />
+                :loading="stoppingJobs[parseInt(recordId)]" />
             </template>
           </v-list-item>
         </v-list>
