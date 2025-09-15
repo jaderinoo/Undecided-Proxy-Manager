@@ -47,7 +47,7 @@
               <v-btn :icon="job.isPaused ? 'mdi-play' : 'mdi-pause'" size="x-small" variant="text"
                 :color="job.isPaused ? 'success' : 'warning'"
                 @click="job.isPaused ? $emit('resume', parseInt(recordId)) : $emit('pause', parseInt(recordId))"
-                :loading="stoppingJobs[parseInt(recordId)]" />
+                :loading="stoppingJobs[recordId]" />
             </template>
           </v-list-item>
         </v-list>
@@ -66,9 +66,9 @@ interface Job {
 }
 
 interface Props {
-  jobs: Record<number, Job>;
+  jobs: Record<string, Job>;
   loading: boolean;
-  stoppingJobs: Record<number, boolean>;
+  stoppingJobs: Record<string, boolean>;
 }
 
 defineProps<Props>();

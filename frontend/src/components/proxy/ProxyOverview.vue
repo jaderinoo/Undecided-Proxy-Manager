@@ -118,7 +118,7 @@ const actionButtons = computed(() => [
   {
     key: 'refresh',
     color: 'primary',
-    variant: 'text',
+    variant: 'text' as const,
     size: 'small',
     icon: 'mdi-refresh',
     loading: props.loading,

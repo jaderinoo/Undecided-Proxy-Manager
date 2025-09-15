@@ -138,7 +138,6 @@ const deletingProxy = ref(false);
 const proxyToDelete = ref<Proxy | null>(null);
 
 // Nginx reload state
-const reloadingNginx = ref(false);
 
 // Computed properties
 const sslCount = computed(

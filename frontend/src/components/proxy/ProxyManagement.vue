@@ -69,7 +69,7 @@ const actionButtons = computed(() => [
   {
     key: 'create',
     color: 'success',
-    variant: 'text',
+    variant: 'text' as const,
     size: 'default',
     icon: 'mdi-plus',
     text: 'Add Proxy',
@@ -78,7 +78,7 @@ const actionButtons = computed(() => [
   {
     key: 'refresh',
     color: 'primary',
-    variant: 'text',
+    variant: 'text' as const,
     size: 'small',
     icon: 'mdi-refresh',
     loading: props.loading,
@@ -88,7 +88,7 @@ const actionButtons = computed(() => [
   {
     key: 'reload-nginx',
     color: 'orange',
-    variant: 'text',
+    variant: 'text' as const,
     size: 'small',
     icon: 'mdi-reload',
     loading: props.reloadingNginx,
