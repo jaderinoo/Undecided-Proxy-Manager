@@ -18,6 +18,7 @@ services:
       - ./nginx/webroot:/var/www/html
       - nginx_data:/var/lib/nginx
       - ssl_certs:/etc/ssl/certs
+      - letsencrypt_data:/etc/letsencrypt
     command: >
       sh -c "
         nginx -g 'daemon off;'
@@ -58,6 +59,7 @@ services:
       - ./nginx/webroot:/var/www/html
       - ./nginx/ssl:/etc/nginx/ssl
       - ssl_certs:/etc/ssl/certs
+      - letsencrypt_data:/etc/letsencrypt
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
     depends_on:
@@ -95,6 +97,8 @@ volumes:
   sqlite_data:
   nginx_data:
   ssl_certs:
+  letsencrypt_data:
+
 
 networks:
   upm-network:

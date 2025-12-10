@@ -122,26 +122,36 @@ func CreateProxy(c *gin.Context) {
 		Status:     "active",
 	}
 
-	// If SSL is enabled, generate Let's Encrypt certificate
+	// If SSL is enabled, check if certificate already exists
 	if req.SSLEnabled {
-		certService := services.NewCertificateService("/etc/ssl/certs")
-
-		// Generate Let's Encrypt certificate
-		certificate, err := certService.GenerateLetsEncryptCertificate(req.Domain)
-		if err != nil {
-			// If certificate generation fails, disable SSL and continue
-			proxy.SSLEnabled = false
-			proxy.Status = "active" // Still create proxy but without SSL
-
-			// Log the error but don't fail the proxy creation
-			fmt.Printf("Warning: Failed to generate Let's Encrypt certificate for %s: %v. Creating proxy without SSL.\n", req.Domain, err)
+		// First check if a certificate already exists for this domain
+		existingCert, err := dbService.GetCertificateByDomain(req.Domain)
+		if err == nil && existingCert != nil {
+			// Certificate already exists, use it
+			proxy.SSLEnabled = true
+			proxy.SSLPath = existingCert.CertPath
+			fmt.Printf("Found existing certificate for %s, enabling SSL\n", req.Domain)
 		} else {
-			// Certificate generated successfully, save it to database
-			if err := dbService.CreateCertificate(certificate); err != nil {
-				fmt.Printf("Warning: Failed to save certificate to database: %v\n", err)
+			// No existing certificate, generate Let's Encrypt certificate
+			certService := services.NewCertificateService("/etc/ssl/certs")
+
+			// Generate Let's Encrypt certificate
+			certificate, err := certService.GenerateLetsEncryptCertificate(req.Domain)
+			if err != nil {
+				// If certificate generation fails, disable SSL and continue
+				proxy.SSLEnabled = false
+				proxy.Status = "active" // Still create proxy but without SSL
+
+				// Log the error but don't fail the proxy creation
+				fmt.Printf("Warning: Failed to generate Let's Encrypt certificate for %s: %v. Creating proxy without SSL.\n", req.Domain, err)
 			} else {
-				// Set SSL path in proxy
-				proxy.SSLPath = fmt.Sprintf("/etc/ssl/certs/certs/%s", req.Domain)
+				// Certificate generated successfully, save it to database
+				if err := dbService.CreateCertificate(certificate); err != nil {
+					fmt.Printf("Warning: Failed to save certificate to database: %v\n", err)
+				} else {
+					// Set SSL path in proxy using the certificate path from database
+					proxy.SSLPath = certificate.CertPath
+				}
 			}
 		}
 	}
@@ -246,7 +256,7 @@ func UpdateProxy(c *gin.Context) {
 			if err == nil && existingCert != nil {
 				// Certificate already exists, enable SSL
 				proxy.SSLEnabled = true
-				proxy.SSLPath = fmt.Sprintf("/etc/ssl/certs/certs/%s", proxy.Domain)
+				proxy.SSLPath = existingCert.CertPath
 				fmt.Printf("Found existing certificate for %s, enabling SSL\n", proxy.Domain)
 			} else {
 				// No existing certificate, generate Let's Encrypt certificate
@@ -265,7 +275,7 @@ func UpdateProxy(c *gin.Context) {
 						proxy.SSLEnabled = false
 					} else {
 						proxy.SSLEnabled = true
-						proxy.SSLPath = fmt.Sprintf("/etc/ssl/certs/certs/%s", proxy.Domain)
+						proxy.SSLPath = certificate.CertPath
 					}
 				}
 			}
@@ -403,13 +413,7 @@ func GetProxyCertificate(c *gin.Context) {
 		return
 	}
 
-	// Check if SSL is enabled
-	if !proxy.SSLEnabled {
-		c.JSON(http.StatusNotFound, gin.H{"error": "SSL is not enabled for this proxy"})
-		return
-	}
-
-	// Get certificate by domain
+	// Get certificate by domain (return if present regardless of flag)
 	certificate, err := dbService.GetCertificateByDomain(proxy.Domain)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Certificate not found for this domain"})

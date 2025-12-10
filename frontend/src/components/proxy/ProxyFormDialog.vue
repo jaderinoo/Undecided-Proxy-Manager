@@ -45,12 +45,24 @@
             </v-col>
 
             <v-col cols="12">
-              <v-switch
-                v-model="form.ssl_enabled"
-                label="Enable SSL"
-                color="primary"
-                hide-details
-              />
+              <div class="d-flex align-center mb-2">
+                <v-switch
+                  v-model="form.ssl_enabled"
+                  :label="sslSwitchLabel"
+                  color="primary"
+                  hide-details
+                  class="mr-2"
+                />
+                <v-chip
+                  v-if="existingCertificate"
+                  color="success"
+                  size="small"
+                  variant="flat"
+                  prepend-icon="mdi-certificate"
+                >
+                  Certificate Exists
+                </v-chip>
+              </div>
               <v-alert
                 v-if="form.ssl_enabled"
                 type="info"
@@ -62,7 +74,12 @@
                   <v-icon>mdi-information</v-icon>
                 </template>
                 <div class="text-caption">
-                  <strong>Let's Encrypt Certificate:</strong> When SSL is enabled, a free SSL certificate will be automatically generated using Let's Encrypt for the specified domain. This may take a few moments.
+                  <span v-if="existingCertificate">
+                    An existing certificate will be used for this domain.
+                  </span>
+                  <span v-else>
+                    A free Let's Encrypt certificate will be generated for this domain.
+                  </span>
                 </div>
               </v-alert>
             </v-col>
@@ -94,13 +111,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
-import type { Proxy, ProxyCreateRequest, ProxyUpdateRequest } from '../../types/api';
+import { computed, ref, watch } from 'vue';
+import type { Certificate, Proxy, ProxyCreateRequest, ProxyUpdateRequest } from '../../types/api';
 
 interface Props {
   show: boolean;
   editingProxy?: Proxy | null;
   initialData?: Partial<ProxyCreateRequest>;
+  certificates?: Certificate[];
 }
 
 const props = defineProps<Props>();
@@ -120,6 +138,22 @@ const form = ref<ProxyCreateRequest & { id?: number }>({
   domain: '',
   target_url: '',
   ssl_enabled: false,
+});
+
+// Check if a certificate exists for the current domain
+const existingCertificate = computed(() => {
+  if (!form.value.domain || !props.certificates) {
+    return null;
+  }
+  return props.certificates.find(cert => cert.domain === form.value.domain);
+});
+
+// Update SSL switch label based on whether cert exists
+const sslSwitchLabel = computed(() => {
+  if (existingCertificate.value) {
+    return 'Enable SSL (use existing certificate)';
+  }
+  return 'Enable SSL (creates Let\'s Encrypt cert)';
 });
 
 // Watch for changes in props to update form

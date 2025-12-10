@@ -83,7 +83,20 @@ class ApiService {
     });
 
     if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      // Try to extract error message from response body
+      let errorMessage = `${response.status} ${response.statusText}`;
+      try {
+        const errorData = await response.json();
+        if (errorData.error) {
+          errorMessage = errorData.error;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
+        }
+      } catch (e) {
+        // If response body is not JSON, use status text
+        errorMessage = `${response.status} ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
     }
 
     // Handle 204 No Content responses (like DELETE operations)
@@ -375,6 +388,13 @@ class ApiService {
   async renewCertificate(id: number): Promise<ApiResponse<Certificate>> {
     return this.request(`/api/v1/certificates/${id}/renew`, {
       method: 'POST',
+    });
+  }
+
+  async generateLetsEncryptCertificate(domain: string): Promise<ApiResponse<Certificate>> {
+    return this.request('/api/v1/certificates/letsencrypt', {
+      method: 'POST',
+      body: JSON.stringify({ domain }),
     });
   }
 

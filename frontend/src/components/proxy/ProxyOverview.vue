@@ -59,7 +59,7 @@
                   {{ proxy.status }}
                 </v-chip>
                 <v-chip
-                  v-if="proxy.ssl_enabled"
+                  v-if="hasMatchingCert(proxy)"
                   color="success"
                   size="x-small"
                   class="ml-1"
@@ -136,8 +136,11 @@ const inactiveProxies = computed(
   () => props.proxies.filter(p => p.status === 'inactive').length
 );
 
+const hasMatchingCert = (proxy: Proxy) =>
+  !!proxy.certificate && proxy.certificate.domain === proxy.domain;
+
 const sslCount = computed(
-  () => props.proxies.filter(p => p.ssl_enabled).length
+  () => props.proxies.filter(hasMatchingCert).length
 );
 
 const errorProxies = computed(

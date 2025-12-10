@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"upm-backend/internal/models"
@@ -199,10 +200,43 @@ func RegenerateProxyConfig(c *gin.Context) {
 		return
 	}
 
+	// Check if a certificate exists for this domain and auto-enable SSL if needed
+	if !targetProxy.SSLEnabled {
+		existingCert, err := dbService.GetCertificateByDomain(targetProxy.Domain)
+		if err == nil && existingCert != nil {
+			// Certificate exists, enable SSL on the proxy
+			targetProxy.SSLEnabled = true
+			targetProxy.SSLPath = existingCert.CertPath
+			// Update the proxy in the database
+			if err := dbService.UpdateProxy(targetProxy); err != nil {
+				fmt.Printf("Warning: Failed to update proxy SSL status for %s: %v\n", targetProxy.Domain, err)
+			} else {
+				fmt.Printf("Auto-enabled SSL for %s based on existing certificate\n", targetProxy.Domain)
+				// Reload the proxy from database to ensure we have the latest state
+				updatedProxy, err := dbService.GetProxy(targetProxy.ID)
+				if err == nil {
+					targetProxy = updatedProxy
+				}
+			}
+		} else {
+			if err != nil {
+				fmt.Printf("Certificate lookup for %s: %v\n", targetProxy.Domain, err)
+			} else {
+				fmt.Printf("No certificate found in database for %s\n", targetProxy.Domain)
+			}
+		}
+	}
+
 	// Regenerate nginx configuration
 	if err := nginxService.GenerateProxyConfig(targetProxy); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to regenerate nginx config: " + err.Error()})
 		return
+	}
+
+	// Reload proxy from database to get final SSL status after GenerateProxyConfig
+	finalProxy, err := dbService.GetProxy(targetProxy.ID)
+	if err == nil {
+		targetProxy = finalProxy
 	}
 
 	// Test nginx configuration
@@ -217,5 +251,18 @@ func RegenerateProxyConfig(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Nginx configuration regenerated successfully for domain: " + domain})
+	message := fmt.Sprintf("Nginx configuration regenerated successfully for domain: %s", domain)
+	if targetProxy.SSLEnabled {
+		message += " (SSL enabled)"
+	} else {
+		// Check if certificate exists to provide helpful message
+		existingCert, err := dbService.GetCertificateByDomain(targetProxy.Domain)
+		if err == nil && existingCert != nil {
+			message += " (SSL disabled - certificate files may be missing or invalid, check backend logs)"
+		} else {
+			message += " (SSL disabled - no certificate found)"
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": message, "ssl_enabled": targetProxy.SSLEnabled})
 }

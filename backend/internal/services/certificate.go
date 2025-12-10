@@ -104,7 +104,7 @@ func (c *CertificateService) GenerateLetsEncryptCertificate(domain string) (*mod
 	}
 
 	// Copy certificate to nginx ssl directory
-	if err := c.copyCertificateToNginx(domain, cert); err != nil {
+	if err := c.CopyCertificateToNginx(domain, cert); err != nil {
 		return nil, fmt.Errorf("failed to copy certificate to nginx: %w", err)
 	}
 
@@ -233,10 +233,11 @@ type CertificateInfo struct {
 	IsValid   bool
 }
 
-// copyCertificateToNginx copies the certificate files to the nginx ssl directory
-func (c *CertificateService) copyCertificateToNginx(domain string, cert *models.Certificate) error {
-	// Create nginx ssl directory (this is mounted to the host nginx/ssl directory)
-	nginxCertDir := c.CertPath
+// CopyCertificateToNginx copies the certificate files to the nginx ssl directory
+func (c *CertificateService) CopyCertificateToNginx(domain string, cert *models.Certificate) error {
+	// Nginx expects certificates at /etc/ssl/certs (Docker volume ssl_certs)
+	// This is shared between backend and nginx containers
+	nginxCertDir := "/etc/ssl/certs"
 	if err := os.MkdirAll(nginxCertDir, 0755); err != nil {
 		return fmt.Errorf("failed to create nginx cert directory: %w", err)
 	}

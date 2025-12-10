@@ -9,14 +9,18 @@
         <v-chip :color="getStatusChipColor(proxy.status)" size="x-small">
           {{ proxy.status }}
         </v-chip>
-        <v-chip v-if="proxy.ssl_enabled" color="success" size="x-small">
+        <v-chip
+          v-if="hasMatchingCert"
+          color="success"
+          size="x-small"
+        >
           <v-icon left size="x-small">mdi-lock</v-icon>
           SSL
         </v-chip>
       </div>
       <div class="card-actions">
         <v-btn
-          v-if="proxy.ssl_enabled"
+          v-if="hasMatchingCert"
           size="small"
           variant="text"
           color="info"
@@ -170,7 +174,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { apiService } from '../../services/api';
 import type { Certificate, Proxy } from '../../types/api';
 
@@ -190,6 +194,10 @@ const loadingCertificate = ref(false);
 const certificateError = ref<string | null>(null);
 const certificate = ref<Certificate | null>(null);
 
+const hasMatchingCert = computed(
+  () => !!props.proxy.certificate && props.proxy.certificate.domain === props.proxy.domain
+);
+
 const loadCertificate = async (proxyId: number) => {
   try {
     loadingCertificate.value = true;
@@ -206,7 +214,7 @@ const loadCertificate = async (proxyId: number) => {
 
 // Watch for dialog opening to load certificate data
 watch(showCertificateInfo, (newValue) => {
-  if (newValue && props.proxy.ssl_enabled) {
+  if (newValue && hasMatchingCert.value) {
     loadCertificate(props.proxy.id);
   }
 });

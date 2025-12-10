@@ -3,6 +3,7 @@ package services
 import (
 	"bytes"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -65,6 +66,69 @@ func (n *NginxService) GenerateProxyConfig(proxy *models.Proxy) error {
 	}
 
 	// Prepare template data
+	// Prefer cert paths from DB certificate if present
+	certPath := fmt.Sprintf("/etc/ssl/certs/%s.crt", proxy.Domain)
+	keyPath := fmt.Sprintf("/etc/ssl/certs/%s.key", proxy.Domain)
+	var hasCertInDB bool
+	if n.DatabaseService != nil {
+		cert, err := n.DatabaseService.GetCertificateByDomain(proxy.Domain)
+		if err != nil {
+			fmt.Printf("Certificate lookup for %s: %v\n", proxy.Domain, err)
+		} else if cert != nil {
+			hasCertInDB = true
+			fmt.Printf("Found certificate in DB for %s: certPath=%s, keyPath=%s\n", proxy.Domain, cert.CertPath, cert.KeyPath)
+			if cert.CertPath != "" {
+				certPath = cert.CertPath
+			}
+			if cert.KeyPath != "" {
+				keyPath = cert.KeyPath
+			}
+		} else {
+			fmt.Printf("No certificate found in DB for %s\n", proxy.Domain)
+		}
+	}
+
+	sslEnabled := proxy.SSLEnabled
+	fmt.Printf("Proxy %s: initial SSL state=%v, hasCertInDB=%v\n", proxy.Domain, sslEnabled, hasCertInDB)
+
+	// If proxy not marked SSL but certificate exists in DB, check files and auto-enable if valid
+	if !sslEnabled && hasCertInDB {
+		certValid := isValidPEMFile(certPath, "CERTIFICATE")
+		keyValid := isValidPEMFile(keyPath, "PRIVATE KEY")
+		fmt.Printf("Checking cert files for %s: cert=%v (path: %s), key=%v (path: %s)\n", proxy.Domain, certValid, certPath, keyValid, keyPath)
+		if certValid && keyValid {
+			sslEnabled = true
+			if n.DatabaseService != nil {
+				proxy.SSLEnabled = true
+				proxy.SSLPath = certPath
+				if err := n.DatabaseService.UpdateProxy(proxy); err != nil {
+					fmt.Printf("Failed to persist SSL enable for %s: %v\n", proxy.Domain, err)
+				} else {
+					fmt.Printf("Auto-enabled SSL for %s based on valid certificate files\n", proxy.Domain)
+				}
+			}
+		} else {
+			fmt.Printf("Certificate exists in DB for %s but files are invalid - SSL not enabled. cert=%v, key=%v\n", proxy.Domain, certValid, keyValid)
+		}
+	}
+
+	// If SSL is enabled, validate files one more time and disable if invalid (to prevent nginx errors)
+	if sslEnabled {
+		certValid := isValidPEMFile(certPath, "CERTIFICATE")
+		keyValid := isValidPEMFile(keyPath, "PRIVATE KEY")
+		if !certValid || !keyValid {
+			fmt.Printf("SSL disabled for %s: certificate files invalid (cert=%v, key=%v). Paths: %s, %s\n", proxy.Domain, certValid, keyValid, certPath, keyPath)
+			sslEnabled = false
+			// Update DB to reflect disabled state
+			if n.DatabaseService != nil {
+				proxy.SSLEnabled = false
+				_ = n.DatabaseService.UpdateProxy(proxy)
+			}
+		}
+	}
+
+	sanitizedRanges := sanitizeAllowedRanges(allowedRanges)
+
 	data := struct {
 		Domain         string
 		TargetURL      string
@@ -78,11 +142,11 @@ func (n *NginxService) GenerateProxyConfig(proxy *models.Proxy) error {
 	}{
 		Domain:         proxy.Domain,
 		TargetURL:      proxy.TargetURL,
-		SSLEnabled:     proxy.SSLEnabled,
+		SSLEnabled:     sslEnabled,
 		SSLPath:        "/etc/nginx/ssl",
-		CertPath:       fmt.Sprintf("/etc/ssl/certs/%s.crt", proxy.Domain),
-		KeyPath:        fmt.Sprintf("/etc/ssl/certs/%s.key", proxy.Domain),
-		AllowedRanges:  allowedRanges,
+		CertPath:       certPath,
+		KeyPath:        keyPath,
+		AllowedRanges:  sanitizedRanges,
 		IncludeBackend: includeBackend,
 		BackendURL:     backendURL,
 	}
@@ -241,6 +305,60 @@ func (n *NginxService) testNginxConfigDirect() error {
 		return fmt.Errorf("nginx config test failed: %s, error: %w", string(output), err)
 	}
 	return nil
+}
+
+// sanitizeAllowedRanges normalizes CIDRs/IPs so nginx doesn't warn about host bits.
+func sanitizeAllowedRanges(ranges []string) []string {
+	var sanitized []string
+	for _, r := range ranges {
+		r = strings.TrimSpace(r)
+		if r == "" {
+			continue
+		}
+
+		// If it parses as CIDR, normalize to network address.
+		if ip, ipNet, err := net.ParseCIDR(r); err == nil {
+			network := ip.Mask(ipNet.Mask)
+			sanitized = append(sanitized, fmt.Sprintf("%s/%d", network.String(), ones(ipNet.Mask)))
+			continue
+		}
+
+		// Fallback: if it's a bare IP, treat as /32.
+		if ip := net.ParseIP(r); ip != nil {
+			if ip.To4() != nil {
+				sanitized = append(sanitized, fmt.Sprintf("%s/32", ip.String()))
+			} else {
+				sanitized = append(sanitized, fmt.Sprintf("%s/128", ip.String()))
+			}
+		}
+	}
+	return sanitized
+}
+
+// ones is a small helper to get prefix length from a mask.
+func ones(mask net.IPMask) int {
+	ones, _ := mask.Size()
+	return ones
+}
+
+// isValidPEMFile does a light check: file exists, readable, and contains the expected BEGIN marker.
+func isValidPEMFile(path string, marker string) bool {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	content := string(b)
+	
+	// For PRIVATE KEY, check for common variants: RSA PRIVATE KEY, EC PRIVATE KEY, or just PRIVATE KEY
+	if marker == "PRIVATE KEY" {
+		return strings.Contains(content, "-----BEGIN RSA PRIVATE KEY") ||
+			strings.Contains(content, "-----BEGIN EC PRIVATE KEY") ||
+			strings.Contains(content, "-----BEGIN PRIVATE KEY")
+	}
+	
+	// For other markers (like CERTIFICATE), check exact match
+	needle := fmt.Sprintf("-----BEGIN %s", marker)
+	return strings.Contains(content, needle)
 }
 
 // UpdateProxyConfig updates nginx configuration for a proxy

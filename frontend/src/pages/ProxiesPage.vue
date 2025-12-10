@@ -104,6 +104,7 @@
       v-model:show="showCreateDialog"
       :editing-proxy="editingProxy"
       :initial-data="containerFormData"
+      :certificates="certificatesCache"
       @save="handleProxySave"
       @cancel="cancelEdit"
     />
@@ -262,11 +263,12 @@ import PageHeader from '../components/ui/PageHeader.vue';
 import StatsCards from '../components/ui/StatsCards.vue';
 import { apiService } from '../services/api';
 import type {
-    Container,
-    Proxy,
-    ProxyCreateRequest,
-    ProxyResponse,
-    ProxyUpdateRequest,
+  Certificate,
+  Container,
+  Proxy,
+  ProxyCreateRequest,
+  ProxyResponse,
+  ProxyUpdateRequest,
 } from '../types/api';
 
 const proxies = ref<Proxy[]>([]);
@@ -276,6 +278,7 @@ const error = ref<string | null>(null);
 const searchQuery = ref('');
 const statusFilter = ref('');
 const sortBy = ref('name');
+const certificatesCache = ref<Certificate[]>([]);
 
 // Container-related state
 const containers = ref<Container[]>([]);
@@ -323,8 +326,10 @@ const errorCount = computed(
   () => proxies.value.filter(p => p.status === 'error').length
 );
 
-const sslCount = computed(
-  () => proxies.value.filter(p => p.ssl_enabled).length
+const sslCount = computed(() =>
+  proxies.value.filter(
+    p => p.certificate && p.certificate.domain === p.domain
+  ).length
 );
 
 const proxyStats = computed(() => [
@@ -406,17 +411,21 @@ const loadProxies = async () => {
 };
 
 const loadCertificateInfo = async () => {
-  const sslProxies = proxies.value.filter(proxy => proxy.ssl_enabled);
-
-  for (const proxy of sslProxies) {
-    try {
-      const response = await apiService.getProxyCertificate(proxy.id);
-      proxy.certificate = response.data;
-    } catch (err) {
-      // Silently fail for certificate loading - it's not critical
-      console.warn(`Failed to load certificate for proxy ${proxy.id}:`, err);
-    }
+  try {
+    const response = await apiService.getCertificates();
+    certificatesCache.value = response.data || [];
+  } catch (err) {
+    certificatesCache.value = [];
   }
+
+  const certMap = new Map<string, Certificate>();
+  certificatesCache.value.forEach(cert => {
+    certMap.set(cert.domain, cert);
+  });
+
+  proxies.value.forEach(proxy => {
+    proxy.certificate = certMap.get(proxy.domain);
+  });
 };
 
 const loadContainers = async () => {

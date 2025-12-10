@@ -25,7 +25,7 @@
                       color="success"
                       variant="text"
                       size="small"
-                      @click="showCreateDialog = true"
+                      @click="openCreateDialog"
                     >
                       <v-icon left>mdi-plus</v-icon>
                       Add Certificate
@@ -86,52 +86,156 @@
           Add New Certificate
         </v-card-title>
 
-        <v-card-text>
+<v-card-text>
           <v-form @submit.prevent="createCertificate" ref="form">
             <v-row>
-              <v-col cols="12">
-                <v-text-field
-                  v-model="newCertificate.domain"
-                  label="Domain"
-                  placeholder="example.com or *.example.com"
-                  variant="outlined"
-                  :rules="[v => !!v || 'Domain is required']"
-                  required
-                ></v-text-field>
+              <!-- Certificate Type Selection -->
+              <v-col cols="12" class="pb-0">
+                <div class="d-flex align-center justify-space-between">
+                  <span class="text-subtitle-2 text-medium-emphasis">
+                    Certificate Type
+                  </span>
+                  <span class="text-caption text-medium-emphasis">
+                    Choose how you want to create it
+                  </span>
+                </div>
+                <v-radio-group
+                  v-model="certificateType"
+                  inline
+                  class="mt-1"
+                  color="primary"
+                >
+                  <v-radio
+                    label="Let's Encrypt (Auto)"
+                    value="letsencrypt"
+                  ></v-radio>
+                  <v-radio
+                    label="Manual Certificate"
+                    value="manual"
+                  ></v-radio>
+                </v-radio-group>
               </v-col>
 
-              <v-col cols="12">
-                <v-text-field
-                  v-model="newCertificate.cert_path"
-                  label="Certificate Path"
-                  placeholder="/etc/nginx/ssl/example.com.crt"
-                  variant="outlined"
-                  :rules="[v => !!v || 'Certificate path is required']"
-                  required
-                ></v-text-field>
-              </v-col>
+              <!-- Let's Encrypt Options -->
+              <template v-if="certificateType === 'letsencrypt'">
+                <v-col cols="12" class="pt-2 pb-0">
+                  <div class="d-flex align-center justify-space-between">
+                    <span class="text-subtitle-2 text-medium-emphasis">
+                      Domain Source
+                    </span>
+                    <span class="text-caption text-medium-emphasis">
+                      Enter a domain or pick an existing proxy
+                    </span>
+                  </div>
+                  <v-radio-group
+                    v-model="domainSource"
+                    inline
+                    class="mt-1"
+                    color="primary"
+                  >
+                    <v-radio
+                      label="Enter Domain"
+                      value="freeform"
+                    ></v-radio>
+                    <v-radio
+                      label="Select from Proxy"
+                      :disabled="proxyOptions.length === 0 && !isLoadingProxies"
+                      value="proxy"
+                    ></v-radio>
+                  </v-radio-group>
+                </v-col>
 
-              <v-col cols="12">
-                <v-text-field
-                  v-model="newCertificate.key_path"
-                  label="Private Key Path"
-                  placeholder="/etc/nginx/ssl/example.com.key"
-                  variant="outlined"
-                  :rules="[v => !!v || 'Private key path is required']"
-                  required
-                ></v-text-field>
-              </v-col>
+                <!-- Freeform Domain Input -->
+                <v-col v-if="domainSource === 'freeform'" cols="12">
+                  <v-text-field
+                    v-model="letsEncryptDomain"
+                    label="Domain"
+                    placeholder="example.com"
+                    variant="outlined"
+                    :rules="[v => !!v || 'Domain is required']"
+                    required
+                  ></v-text-field>
+                </v-col>
 
-              <v-col cols="12">
-                <v-text-field
-                  v-model="newCertificate.expires_at"
-                  label="Expiration Date"
-                  type="datetime-local"
-                  variant="outlined"
-                  :rules="[v => !!v || 'Expiration date is required']"
-                  required
-                ></v-text-field>
-              </v-col>
+                <!-- Proxy Selection -->
+                <template v-if="domainSource === 'proxy'">
+                  <v-col cols="12">
+                    <v-select
+                      v-model="selectedProxyId"
+                      :items="proxyOptions"
+                      item-title="label"
+                      item-value="id"
+                      label="Select Proxy"
+                      variant="outlined"
+                      :rules="[v => !!v || 'Please select a proxy']"
+                      :loading="isLoadingProxies"
+                      required
+                    ></v-select>
+                    <small
+                      v-if="!isLoadingProxies && proxyOptions.length === 0"
+                      class="text-caption text-medium-emphasis"
+                    >
+                      No proxies available yet. Create a proxy first to pick from it.
+                    </small>
+                  </v-col>
+                  <v-col cols="12">
+                    <v-text-field
+                      :model-value="selectedProxyDomain"
+                      label="Domain to generate"
+                      variant="outlined"
+                      readonly
+                      prepend-inner-icon="mdi-earth"
+                    ></v-text-field>
+                  </v-col>
+                </template>
+              </template>
+
+              <!-- Manual Certificate Fields -->
+              <template v-if="certificateType === 'manual'">
+                <v-col cols="12">
+                  <v-text-field
+                    v-model="newCertificate.domain"
+                    label="Domain"
+                    placeholder="example.com or *.example.com"
+                    variant="outlined"
+                    :rules="[v => !!v || 'Domain is required']"
+                    required
+                  ></v-text-field>
+                </v-col>
+
+                <v-col cols="12">
+                  <v-text-field
+                    v-model="newCertificate.cert_path"
+                    label="Certificate Path"
+                    placeholder="/etc/nginx/ssl/example.com.crt"
+                    variant="outlined"
+                    :rules="[v => !!v || 'Certificate path is required']"
+                    required
+                  ></v-text-field>
+                </v-col>
+
+                <v-col cols="12">
+                  <v-text-field
+                    v-model="newCertificate.key_path"
+                    label="Private Key Path"
+                    placeholder="/etc/nginx/ssl/example.com.key"
+                    variant="outlined"
+                    :rules="[v => !!v || 'Private key path is required']"
+                    required
+                  ></v-text-field>
+                </v-col>
+
+                <v-col cols="12">
+                  <v-text-field
+                    v-model="newCertificate.expires_at"
+                    label="Expiration Date"
+                    type="datetime-local"
+                    variant="outlined"
+                    :rules="[v => !!v || 'Expiration date is required']"
+                    required
+                  ></v-text-field>
+                </v-col>
+              </template>
             </v-row>
           </v-form>
         </v-card-text>
@@ -147,7 +251,7 @@
             @click="createCertificate"
             :loading="isCreating"
           >
-            Create Certificate
+            {{ certificateType === 'letsencrypt' ? 'Generate Certificate' : 'Create Certificate' }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -156,7 +260,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import CertificateCard from '../components/certificate/CertificateCard.vue';
 import AppLayout from '../components/layout/AppLayout.vue';
 import ErrorAlert from '../components/ui/ErrorAlert.vue';
@@ -165,7 +269,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner.vue';
 import PageHeader from '../components/ui/PageHeader.vue';
 import StatsCards from '../components/ui/StatsCards.vue';
 import apiService from '../services/api';
-import type { Certificate, CertificateCreateRequest } from '../types/api';
+import type { Certificate, CertificateCreateRequest, Proxy } from '../types/api';
 
 const certificates = ref<Certificate[]>([]);
 const filteredCertificates = ref<Certificate[]>([]);
@@ -178,11 +282,37 @@ const statusFilter = ref('');
 const sortBy = ref('domain');
 const form = ref();
 
+// Certificate creation state
+const certificateType = ref<'letsencrypt' | 'manual'>('letsencrypt');
+const domainSource = ref<'freeform' | 'proxy'>('freeform');
+const letsEncryptDomain = ref('');
+const selectedProxyId = ref<number | null>(null);
+type ProxyWithCertFlag = Proxy & { certificateExists?: boolean };
+
+const proxies = ref<ProxyWithCertFlag[]>([]);
+const isLoadingProxies = ref(false);
+
 const newCertificate = ref<CertificateCreateRequest>({
   domain: '',
   cert_path: '',
   key_path: '',
   expires_at: '',
+});
+
+// Proxy options for dropdown
+const proxyOptions = computed(() => {
+  return proxies.value
+    .filter(proxy => !proxy.certificateExists)
+    .map(proxy => ({
+      id: proxy.id,
+      label: `${proxy.domain} (${proxy.name || 'Unnamed'})`,
+      domain: proxy.domain,
+    }));
+});
+
+const selectedProxyDomain = computed(() => {
+  const proxy = proxies.value.find(p => p.id === selectedProxyId.value);
+  return proxy?.domain || '';
 });
 
 const statusFilterItems = [
@@ -335,6 +465,44 @@ const filterCertificates = () => {
   filteredCertificates.value = filtered;
 };
 
+const loadProxies = async () => {
+  try {
+    isLoadingProxies.value = true;
+    const response = await apiService.getProxies();
+    proxies.value = (response.data as ProxyWithCertFlag[]) || [];
+
+    // Mark proxies that already have a certificate (by domain match)
+    const certificateDomains = new Set(
+      (certificates.value || []).map(cert => cert.domain)
+    );
+    proxies.value.forEach(proxy => {
+      proxy.certificateExists = certificateDomains.has(proxy.domain);
+    });
+
+    if (
+      certificateType.value === 'letsencrypt' &&
+      proxyOptions.value.length > 0
+    ) {
+      domainSource.value = 'proxy';
+      if (!selectedProxyId.value && proxyOptions.value.length > 0) {
+        selectedProxyId.value = proxyOptions.value[0].id;
+      }
+      letsEncryptDomain.value =
+        selectedProxyDomain.value || proxyOptions.value[0]?.domain || '';
+    } else if (domainSource.value === 'proxy') {
+      // No eligible proxies; fall back to freeform
+      domainSource.value = 'freeform';
+      selectedProxyId.value = null;
+      letsEncryptDomain.value = '';
+    }
+  } catch (err) {
+    console.error('Failed to load proxies:', err);
+    proxies.value = [];
+  } finally {
+    isLoadingProxies.value = false;
+  }
+};
+
 const createCertificate = async () => {
   if (isCreating.value) return;
 
@@ -344,8 +512,30 @@ const createCertificate = async () => {
   try {
     isCreating.value = true;
     error.value = null;
-    const response = await apiService.createCertificate(newCertificate.value);
-    certificates.value.unshift(response.data);
+
+    if (certificateType.value === 'letsencrypt') {
+      // Determine domain from either freeform input or selected proxy
+      let domain = '';
+      if (domainSource.value === 'freeform') {
+        domain = letsEncryptDomain.value.trim();
+      } else if (domainSource.value === 'proxy' && selectedProxyDomain.value) {
+        domain = selectedProxyDomain.value;
+      }
+
+      if (!domain) {
+        error.value = 'Domain is required';
+        return;
+      }
+
+      // Generate Let's Encrypt certificate
+      const response = await apiService.generateLetsEncryptCertificate(domain);
+      certificates.value.unshift(response.data);
+    } else {
+      // Create manual certificate
+      const response = await apiService.createCertificate(newCertificate.value);
+      certificates.value.unshift(response.data);
+    }
+
     filterCertificates();
     closeCreateDialog();
   } catch (err) {
@@ -358,6 +548,10 @@ const createCertificate = async () => {
 
 const closeCreateDialog = () => {
   showCreateDialog.value = false;
+  certificateType.value = 'letsencrypt';
+  domainSource.value = 'freeform';
+  letsEncryptDomain.value = '';
+  selectedProxyId.value = null;
   newCertificate.value = {
     domain: '',
     cert_path: '',
@@ -365,6 +559,17 @@ const closeCreateDialog = () => {
     expires_at: '',
   };
   form.value?.reset();
+};
+
+// Load proxies when dialog opens
+const openCreateDialog = () => {
+  // reset to defaults on every open so switches are visible
+  certificateType.value = 'letsencrypt';
+  domainSource.value = 'freeform';
+  letsEncryptDomain.value = '';
+  selectedProxyId.value = null;
+  showCreateDialog.value = true;
+  loadProxies();
 };
 
 const handleCertificateDeleted = (id: number) => {
@@ -384,6 +589,40 @@ const handleCertificateRenewed = (certificate: Certificate) => {
 
 onMounted(() => {
   loadCertificates();
+});
+
+// Keep the domain in sync when toggling sources or proxies
+watch(selectedProxyId, () => {
+  if (domainSource.value === 'proxy') {
+    letsEncryptDomain.value = selectedProxyDomain.value;
+  }
+});
+
+watch(domainSource, value => {
+  if (value === 'freeform') {
+    selectedProxyId.value = null;
+    letsEncryptDomain.value = '';
+  } else if (value === 'proxy') {
+    if (!selectedProxyId.value && proxyOptions.value.length > 0) {
+      selectedProxyId.value = proxyOptions.value[0].id;
+    }
+    letsEncryptDomain.value = selectedProxyDomain.value;
+  }
+});
+
+watch(certificateType, type => {
+  if (type === 'letsencrypt') {
+    if (domainSource.value === 'proxy' && proxyOptions.value.length > 0) {
+      if (!selectedProxyId.value) {
+        selectedProxyId.value = proxyOptions.value[0].id;
+      }
+      letsEncryptDomain.value = selectedProxyDomain.value;
+    }
+  } else {
+    domainSource.value = 'freeform';
+    selectedProxyId.value = null;
+    letsEncryptDomain.value = '';
+  }
 });
 </script>
 
