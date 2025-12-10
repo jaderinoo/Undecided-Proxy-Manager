@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"io"
@@ -231,15 +232,65 @@ func (l *LetsEncryptService) createNewUser(userFile, keyFile string) (*User, err
 
 // loadUser loads an existing user from files
 func (l *LetsEncryptService) loadUser(userFile, keyFile string) (*User, error) {
-	// This is a simplified implementation
-	// In production, you'd want to properly serialize/deserialize the user data
-	return nil, fmt.Errorf("user loading not implemented yet")
+	// Load private key
+	keyData, err := os.ReadFile(keyFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read key file: %w", err)
+	}
+
+	block, _ := pem.Decode(keyData)
+	if block == nil {
+		return nil, fmt.Errorf("failed to decode PEM block from key file")
+	}
+
+	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse private key: %w", err)
+	}
+
+	// Load user data
+	userData, err := os.ReadFile(userFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read user file: %w", err)
+	}
+
+	var userDataStruct struct {
+		Email        string                   `json:"email"`
+		Registration *registration.Resource   `json:"registration"`
+	}
+
+	if err := json.Unmarshal(userData, &userDataStruct); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal user data: %w", err)
+	}
+
+	user := &User{
+		Email:        userDataStruct.Email,
+		Registration: userDataStruct.Registration,
+		key:          privateKey,
+	}
+
+	return user, nil
 }
 
 // saveUser saves user data to file
 func (l *LetsEncryptService) saveUser(user *User, userFile string) error {
-	// This is a simplified implementation
-	// In production, you'd want to properly serialize the user data
+	userData := struct {
+		Email        string                   `json:"email"`
+		Registration *registration.Resource   `json:"registration"`
+	}{
+		Email:        user.Email,
+		Registration: user.Registration,
+	}
+
+	data, err := json.MarshalIndent(userData, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal user data: %w", err)
+	}
+
+	if err := os.WriteFile(userFile, data, 0644); err != nil {
+		return fmt.Errorf("failed to write user file: %w", err)
+	}
+
 	return nil
 }
 
