@@ -61,6 +61,7 @@ func (d *DatabaseService) initTables() error {
 		domain TEXT NOT NULL UNIQUE,
 		target_url TEXT NOT NULL,
 		ssl_enabled BOOLEAN DEFAULT FALSE,
+		ws_enabled BOOLEAN DEFAULT FALSE,
 		ssl_path TEXT,
 		status TEXT DEFAULT 'active',
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -69,6 +70,13 @@ func (d *DatabaseService) initTables() error {
 
 	if _, err := d.db.Exec(proxyTable); err != nil {
 		return fmt.Errorf("failed to create proxies table: %w", err)
+	}
+
+	// Migration: Add ws_enabled column to existing proxies table if it doesn't exist
+	alterTableQuery2 := `ALTER TABLE proxies ADD COLUMN ws_enabled BOOLEAN DEFAULT FALSE;`
+	if _, err := d.db.Exec(alterTableQuery2); err != nil {
+		// Ignore error if column already exists
+		fmt.Printf("Note: ws_enabled column may already exist: %v\n", err)
 	}
 
 	// Create users table
@@ -150,8 +158,8 @@ func (d *DatabaseService) initTables() error {
 	}
 
 	// Add dynamic_dns_refresh_rate column to existing dns_records table if it doesn't exist
-	alterTableQuery2 := `ALTER TABLE dns_records ADD COLUMN dynamic_dns_refresh_rate INTEGER;`
-	if _, err := d.db.Exec(alterTableQuery2); err != nil {
+	alterTableQueryDNS1 := `ALTER TABLE dns_records ADD COLUMN dynamic_dns_refresh_rate INTEGER;`
+	if _, err := d.db.Exec(alterTableQueryDNS1); err != nil {
 		// Ignore error if column already exists
 		fmt.Printf("Note: dynamic_dns_refresh_rate column may already exist: %v\n", err)
 	}
@@ -208,7 +216,7 @@ func (d *DatabaseService) initTables() error {
 // Proxy methods
 func (d *DatabaseService) GetProxies() ([]models.Proxy, error) {
 	query := `
-		SELECT id, name, domain, target_url, ssl_enabled, ssl_path, status, created_at, updated_at
+		SELECT id, name, domain, target_url, ssl_enabled, ws_enabled, ssl_path, status, created_at, updated_at
 		FROM proxies
 		ORDER BY created_at DESC`
 
@@ -227,6 +235,7 @@ func (d *DatabaseService) GetProxies() ([]models.Proxy, error) {
 			&proxy.Domain,
 			&proxy.TargetURL,
 			&proxy.SSLEnabled,
+			&proxy.WSEnabled,
 			&proxy.SSLPath,
 			&proxy.Status,
 			&proxy.CreatedAt,
@@ -243,7 +252,7 @@ func (d *DatabaseService) GetProxies() ([]models.Proxy, error) {
 
 func (d *DatabaseService) GetProxy(id int) (*models.Proxy, error) {
 	query := `
-		SELECT id, name, domain, target_url, ssl_enabled, ssl_path, status, created_at, updated_at
+		SELECT id, name, domain, target_url, ssl_enabled, ws_enabled, ssl_path, status, created_at, updated_at
 		FROM proxies
 		WHERE id = ?`
 
@@ -254,6 +263,7 @@ func (d *DatabaseService) GetProxy(id int) (*models.Proxy, error) {
 		&proxy.Domain,
 		&proxy.TargetURL,
 		&proxy.SSLEnabled,
+		&proxy.WSEnabled,
 		&proxy.SSLPath,
 		&proxy.Status,
 		&proxy.CreatedAt,
@@ -272,10 +282,10 @@ func (d *DatabaseService) GetProxy(id int) (*models.Proxy, error) {
 
 func (d *DatabaseService) CreateProxy(proxy *models.Proxy) error {
 	query := `
-		INSERT INTO proxies (name, domain, target_url, ssl_enabled, ssl_path, status)
-		VALUES (?, ?, ?, ?, ?, ?)`
+		INSERT INTO proxies (name, domain, target_url, ssl_enabled, ws_enabled, ssl_path, status)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`
 
-	result, err := d.db.Exec(query, proxy.Name, proxy.Domain, proxy.TargetURL, proxy.SSLEnabled, proxy.SSLPath, proxy.Status)
+	result, err := d.db.Exec(query, proxy.Name, proxy.Domain, proxy.TargetURL, proxy.SSLEnabled, proxy.WSEnabled, proxy.SSLPath, proxy.Status)
 	if err != nil {
 		return fmt.Errorf("failed to insert proxy: %w", err)
 	}
@@ -295,10 +305,10 @@ func (d *DatabaseService) CreateProxy(proxy *models.Proxy) error {
 func (d *DatabaseService) UpdateProxy(proxy *models.Proxy) error {
 	query := `
 		UPDATE proxies
-		SET name = ?, domain = ?, target_url = ?, ssl_enabled = ?, ssl_path = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+		SET name = ?, domain = ?, target_url = ?, ssl_enabled = ?, ws_enabled = ?, ssl_path = ?, status = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?`
 
-	result, err := d.db.Exec(query, proxy.Name, proxy.Domain, proxy.TargetURL, proxy.SSLEnabled, proxy.SSLPath, proxy.Status, proxy.ID)
+	result, err := d.db.Exec(query, proxy.Name, proxy.Domain, proxy.TargetURL, proxy.SSLEnabled, proxy.WSEnabled, proxy.SSLPath, proxy.Status, proxy.ID)
 	if err != nil {
 		return fmt.Errorf("failed to update proxy: %w", err)
 	}

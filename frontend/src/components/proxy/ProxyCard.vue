@@ -17,6 +17,14 @@
           <v-icon left size="x-small">mdi-lock</v-icon>
           SSL
         </v-chip>
+        <v-chip
+          v-if="proxy.ws_enabled"
+          color="info"
+          size="x-small"
+        >
+          <v-icon left size="x-small">mdi-web-sync</v-icon>
+          WebSocket
+        </v-chip>
       </div>
       <div class="card-actions">
         <v-btn

@@ -114,11 +114,16 @@ func CreateProxy(c *gin.Context) {
 	}
 
 	// Create proxy object
+	wsEnabled := false
+	if req.WSEnabled != nil {
+		wsEnabled = *req.WSEnabled
+	}
 	proxy := &models.Proxy{
 		Name:       req.Name,
 		Domain:     req.Domain,
 		TargetURL:  req.TargetURL,
 		SSLEnabled: req.SSLEnabled,
+		WSEnabled:  wsEnabled,
 		Status:     "active",
 	}
 
@@ -247,6 +252,9 @@ func UpdateProxy(c *gin.Context) {
 	}
 	if req.TargetURL != nil {
 		proxy.TargetURL = *req.TargetURL
+	}
+	if req.WSEnabled != nil {
+		proxy.WSEnabled = *req.WSEnabled
 	}
 	if req.SSLEnabled != nil {
 		// If SSL is being enabled, check if certificate already exists

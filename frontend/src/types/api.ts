@@ -11,6 +11,7 @@ export interface Proxy {
   domain: string;
   target_url: string;
   ssl_enabled: boolean;
+  ws_enabled?: boolean;
   ssl_path?: string;
   status: 'active' | 'inactive' | 'error';
   created_at: string;
@@ -25,6 +26,7 @@ export interface ProxyCreateRequest {
   domain: string;
   target_url: string;
   ssl_enabled: boolean;
+  ws_enabled?: boolean;
 }
 
 export interface ProxyUpdateRequest {
@@ -33,6 +35,7 @@ export interface ProxyUpdateRequest {
   domain?: string;
   target_url?: string;
   ssl_enabled?: boolean;
+  ws_enabled?: boolean;
 }
 
 export interface ProxyResponse {

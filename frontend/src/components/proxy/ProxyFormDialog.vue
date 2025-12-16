@@ -83,6 +83,29 @@
                 </div>
               </v-alert>
             </v-col>
+
+            <v-col cols="12">
+              <v-switch
+                v-model="form.ws_enabled"
+                label="Enable WebSocket Support"
+                color="primary"
+                hide-details
+              />
+              <v-alert
+                v-if="form.ws_enabled"
+                type="info"
+                variant="tonal"
+                density="compact"
+                class="mt-2"
+              >
+                <template v-slot:prepend>
+                  <v-icon>mdi-information</v-icon>
+                </template>
+                <div class="text-caption">
+                  WebSocket support will be added to the nginx configuration. This enables real-time communication for applications that require it.
+                </div>
+              </v-alert>
+            </v-col>
           </v-row>
         </v-form>
       </v-card-text>
@@ -138,6 +161,7 @@ const form = ref<ProxyCreateRequest & { id?: number }>({
   domain: '',
   target_url: '',
   ssl_enabled: false,
+  ws_enabled: false,
 });
 
 // Check if a certificate exists for the current domain
@@ -175,6 +199,7 @@ watch(() => props.editingProxy, (newValue) => {
       domain: newValue.domain,
       target_url: newValue.target_url,
       ssl_enabled: newValue.ssl_enabled,
+      ws_enabled: newValue.ws_enabled || false,
     };
   }
 });
@@ -192,6 +217,7 @@ const populateFormFromInitialData = () => {
       domain: props.initialData.domain || '',
       target_url: props.initialData.target_url || '',
       ssl_enabled: props.initialData.ssl_enabled || false,
+      ws_enabled: props.initialData.ws_enabled || false,
     };
   }
 };
@@ -202,6 +228,7 @@ const resetForm = () => {
     domain: '',
     target_url: '',
     ssl_enabled: false,
+    ws_enabled: false,
   };
   formValid.value = false;
   formRef.value?.reset();

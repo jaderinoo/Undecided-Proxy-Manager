@@ -10,6 +10,7 @@ type Proxy struct {
 	Domain     string    `json:"domain" db:"domain"`
 	TargetURL  string    `json:"target_url" db:"target_url"`
 	SSLEnabled bool      `json:"ssl_enabled" db:"ssl_enabled"`
+	WSEnabled  bool      `json:"ws_enabled" db:"ws_enabled"`
 	SSLPath    string    `json:"ssl_path,omitempty" db:"ssl_path"`
 	Status     string    `json:"status" db:"status"` // active, inactive, error
 	CreatedAt  time.Time `json:"created_at" db:"created_at"`
@@ -21,6 +22,7 @@ type ProxyCreateRequest struct {
 	Domain     string `json:"domain" binding:"required"`
 	TargetURL  string `json:"target_url" binding:"required"`
 	SSLEnabled bool   `json:"ssl_enabled"`
+	WSEnabled  *bool  `json:"ws_enabled,omitempty"`
 }
 
 type ProxyUpdateRequest struct {
@@ -28,6 +30,7 @@ type ProxyUpdateRequest struct {
 	Domain     *string `json:"domain,omitempty"`
 	TargetURL  *string `json:"target_url,omitempty"`
 	SSLEnabled *bool   `json:"ssl_enabled,omitempty"`
+	WSEnabled  *bool   `json:"ws_enabled,omitempty"`
 }
 
 type Certificate struct {

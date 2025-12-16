@@ -133,6 +133,7 @@ func (n *NginxService) GenerateProxyConfig(proxy *models.Proxy) error {
 		Domain         string
 		TargetURL      string
 		SSLEnabled     bool
+		WSEnabled      bool
 		SSLPath        string
 		CertPath       string
 		KeyPath        string
@@ -143,6 +144,7 @@ func (n *NginxService) GenerateProxyConfig(proxy *models.Proxy) error {
 		Domain:         proxy.Domain,
 		TargetURL:      proxy.TargetURL,
 		SSLEnabled:     sslEnabled,
+		WSEnabled:      proxy.WSEnabled,
 		SSLPath:        "/etc/nginx/ssl",
 		CertPath:       certPath,
 		KeyPath:        keyPath,
