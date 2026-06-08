@@ -159,6 +159,15 @@ func main() {
 		log.Printf("Warning: Failed to load scheduled jobs: %v", err)
 	}
 
+	// Start certificate auto-renewal when Let's Encrypt is configured
+	if cfg.LetsEncryptEmail != "" {
+		certRenewalService := services.NewCertificateRenewalService(dbService, nginxService, cfg.CertRenewalCheckInterval)
+		handlers.SetCertificateRenewalService(certRenewalService)
+		certRenewalService.Start()
+		log.Printf("Certificate auto-renewal enabled (check interval: %v)", cfg.CertRenewalCheckInterval)
+	} else {
+		log.Printf("Certificate auto-renewal disabled - LETSENCRYPT_EMAIL not set")
+	}
 
 	// Initialize Gin router
 	r := gin.Default()
@@ -271,6 +280,7 @@ func main() {
 				certificates.GET("", handlers.GetCertificates)
 				certificates.POST("", handlers.CreateCertificate)
 				certificates.POST("/letsencrypt", handlers.GenerateLetsEncryptCertificate)
+				certificates.POST("/renew-all", handlers.RenewAllCertificates)
 				certificates.GET("/:id", handlers.GetCertificate)
 				certificates.PUT("/:id", handlers.UpdateCertificate)
 				certificates.DELETE("/:id", handlers.DeleteCertificate)

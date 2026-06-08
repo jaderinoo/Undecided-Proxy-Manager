@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"upm-backend/internal/config"
@@ -184,6 +185,43 @@ func (c *CertificateService) RenewCertificate(cert *models.Certificate) (*models
 	}
 
 	return renewedCert, nil
+}
+
+// SyncCertificateStatus updates expiry and validity from the certificate file when possible.
+func (c *CertificateService) SyncCertificateStatus(cert *models.Certificate) bool {
+	certPaths := []string{cert.CertPath}
+	if strings.Contains(cert.CertPath, "/etc/letsencrypt") {
+		nginxPath := strings.Replace(cert.CertPath, "/etc/letsencrypt/certs", "/etc/ssl/certs", 1)
+		certPaths = append(certPaths, nginxPath)
+	}
+
+	var certInfo *CertificateInfo
+	for _, path := range certPaths {
+		info, err := c.GetCertificateInfo(path)
+		if err == nil {
+			certInfo = info
+			break
+		}
+	}
+
+	if certInfo == nil {
+		return false
+	}
+
+	changed := false
+	if !cert.ExpiresAt.Equal(certInfo.NotAfter) {
+		cert.ExpiresAt = certInfo.NotAfter
+		changed = true
+	}
+	if cert.IsValid != certInfo.IsValid {
+		cert.IsValid = certInfo.IsValid
+		changed = true
+	}
+	if changed {
+		cert.UpdatedAt = time.Now()
+	}
+
+	return changed
 }
 
 // CheckCertificateExpiry checks if a certificate is expiring soon

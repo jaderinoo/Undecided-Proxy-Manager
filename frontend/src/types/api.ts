@@ -97,6 +97,13 @@ export interface CertificateUpdateRequest {
   is_valid?: boolean;
 }
 
+export interface CertificateRenewResponse {
+  domain: string;
+  success: boolean;
+  message: string;
+  certificate?: Certificate;
+}
+
 // Container Types
 export interface Container {
   id: string;

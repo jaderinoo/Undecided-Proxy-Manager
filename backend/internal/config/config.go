@@ -3,6 +3,7 @@ package config
 import (
 	"log"
 	"os"
+	"time"
 )
 
 type Config struct {
@@ -22,6 +23,8 @@ type Config struct {
 	LetsEncryptEmail    string // Email for Let's Encrypt registration
 	LetsEncryptWebroot  string // Webroot for HTTP-01 challenges
 	LetsEncryptCertPath string // Path to store Let's Encrypt certificates
+	// Certificate auto-renewal
+	CertRenewalCheckInterval time.Duration // How often to check for expiring certificates
 }
 
 func Load() *Config {
@@ -45,15 +48,26 @@ func Load() *Config {
 		DevTestPassword:     getEnv("DEV_TEST_PASSWORD", "devtest"),
 		PublicIPService:     getEnv("PUBLIC_IP_SERVICE", "https://api.ipify.org"),
 		EncryptionKey:       getEnvWithDevDefault("ENCRYPTION_KEY", "upm-default-encryption-key-32byt", devMode),
-		LetsEncryptEmail:    getEnv("LETSENCRYPT_EMAIL", ""),
-		LetsEncryptWebroot:  getEnv("LETSENCRYPT_WEBROOT", "/var/www/html"),
-		LetsEncryptCertPath: getEnv("LETSENCRYPT_CERT_PATH", "/etc/letsencrypt"),
+		LetsEncryptEmail:           getEnv("LETSENCRYPT_EMAIL", ""),
+		LetsEncryptWebroot:         getEnv("LETSENCRYPT_WEBROOT", "/var/www/html"),
+		LetsEncryptCertPath:        getEnv("LETSENCRYPT_CERT_PATH", "/etc/letsencrypt"),
+		CertRenewalCheckInterval:   getEnvDuration("CERT_RENEWAL_CHECK_INTERVAL", 12*time.Hour),
 	}
 }
 
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
+	}
+	return defaultValue
+}
+
+func getEnvDuration(key string, defaultValue time.Duration) time.Duration {
+	if value := os.Getenv(key); value != "" {
+		if parsed, err := time.ParseDuration(value); err == nil {
+			return parsed
+		}
+		log.Printf("Warning: invalid duration for %s, using default %v", key, defaultValue)
 	}
 	return defaultValue
 }

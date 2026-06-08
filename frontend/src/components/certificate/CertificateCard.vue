@@ -9,7 +9,7 @@
       }}</span>
       <v-spacer></v-spacer>
       <v-chip :color="getValidityChipColor()" size="x-small" class="mr-2">
-        {{ certificate.is_valid ? 'Valid' : 'Invalid' }}
+        {{ daysUntilExpiry() > 0 && certificate.is_valid ? 'Valid' : 'Invalid' }}
       </v-chip>
       <v-chip :color="getExpiryChipColor()" size="x-small" class="mr-2">
         {{ getExpiryText() }}
@@ -94,7 +94,7 @@
                 Days Until Expiry
               </div>
               <div class="text-body-2 text-grey-darken-3 mb-2">
-                {{ getDaysUntilExpiry() }}
+                {{ getDaysUntilExpiryText() }}
               </div>
             </v-col>
 
@@ -178,6 +178,7 @@
 import { ref } from 'vue';
 import apiService from '../../services/api';
 import type { Certificate, Proxy } from '../../types/api';
+import { getDaysUntilExpiry } from '../../utils/certificate';
 
 interface Props {
   certificate: Certificate;
@@ -253,94 +254,68 @@ const deleteCertificate = async () => {
   }
 };
 
+const daysUntilExpiry = () =>
+  getDaysUntilExpiry(props.certificate.expires_at);
+
 const getStatusColor = () => {
+  const days = daysUntilExpiry();
+
+  if (days <= 0) return 'red-lighten-5';
+  if (days < 7) return 'orange-lighten-5';
+  if (days <= 30) return 'yellow-lighten-5';
   if (!props.certificate.is_valid) return 'red-lighten-5';
-
-  const now = new Date();
-  const expiry = new Date(props.certificate.expires_at);
-  const daysUntilExpiry = Math.ceil(
-    (expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-  );
-
-  if (daysUntilExpiry < 0) return 'red-lighten-5';
-  if (daysUntilExpiry < 7) return 'orange-lighten-5';
-  if (daysUntilExpiry < 30) return 'yellow-lighten-5';
   return 'green-lighten-5';
 };
 
 const getStatusIconColor = () => {
+  const days = daysUntilExpiry();
+
+  if (days <= 0) return 'red';
+  if (days < 7) return 'orange';
+  if (days <= 30) return 'yellow';
   if (!props.certificate.is_valid) return 'red';
-
-  const now = new Date();
-  const expiry = new Date(props.certificate.expires_at);
-  const daysUntilExpiry = Math.ceil(
-    (expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-  );
-
-  if (daysUntilExpiry < 0) return 'red';
-  if (daysUntilExpiry < 7) return 'orange';
-  if (daysUntilExpiry < 30) return 'yellow';
   return 'green';
 };
 
 const getStatusIcon = () => {
+  const days = daysUntilExpiry();
+
+  if (days <= 0) return 'mdi-certificate-remove';
+  if (days < 7) return 'mdi-certificate-alert';
+  if (days <= 30) return 'mdi-certificate-clock';
   if (!props.certificate.is_valid) return 'mdi-certificate-remove';
-
-  const now = new Date();
-  const expiry = new Date(props.certificate.expires_at);
-  const daysUntilExpiry = Math.ceil(
-    (expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-  );
-
-  if (daysUntilExpiry < 0) return 'mdi-certificate-remove';
-  if (daysUntilExpiry < 7) return 'mdi-certificate-alert';
-  if (daysUntilExpiry < 30) return 'mdi-certificate-clock';
   return 'mdi-certificate';
 };
 
 const getValidityChipColor = () => {
-  return props.certificate.is_valid ? 'green' : 'red';
+  return daysUntilExpiry() > 0 && props.certificate.is_valid ? 'green' : 'red';
 };
 
 const getExpiryChipColor = () => {
-  const now = new Date();
-  const expiry = new Date(props.certificate.expires_at);
-  const daysUntilExpiry = Math.ceil(
-    (expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-  );
+  const days = daysUntilExpiry();
 
-  if (daysUntilExpiry < 0) return 'red';
-  if (daysUntilExpiry < 7) return 'orange';
-  if (daysUntilExpiry < 30) return 'yellow';
+  if (days <= 0) return 'red';
+  if (days < 7) return 'orange';
+  if (days <= 30) return 'yellow';
   return 'green';
 };
 
 const getExpiryText = () => {
-  const now = new Date();
-  const expiry = new Date(props.certificate.expires_at);
-  const daysUntilExpiry = Math.ceil(
-    (expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-  );
+  const days = daysUntilExpiry();
 
-  if (daysUntilExpiry < 0) return 'Expired';
-  if (daysUntilExpiry === 0) return 'Today';
-  if (daysUntilExpiry === 1) return 'Tomorrow';
-  if (daysUntilExpiry < 7) return `${daysUntilExpiry}d`;
-  if (daysUntilExpiry < 30) return `${daysUntilExpiry}d`;
-  return `${daysUntilExpiry}d`;
+  if (days < 0) return 'Expired';
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Tomorrow';
+  return `${days}d`;
 };
 
-const getDaysUntilExpiry = () => {
-  const now = new Date();
-  const expiry = new Date(props.certificate.expires_at);
-  const daysUntilExpiry = Math.ceil(
-    (expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-  );
+const getDaysUntilExpiryText = () => {
+  const days = daysUntilExpiry();
 
-  if (daysUntilExpiry < 0) return 'Expired';
-  if (daysUntilExpiry === 0) return 'Expires today';
-  if (daysUntilExpiry === 1) return 'Expires tomorrow';
-  return `${daysUntilExpiry} days`;
+  if (days < 0) return 'Expired';
+  if (days === 0) return 'Expires today';
+  if (days === 1) return 'Expires tomorrow';
+  return `${days} days`;
 };
 
 const getProxyStatusColor = (status: string): string => {

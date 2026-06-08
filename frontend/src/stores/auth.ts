@@ -8,6 +8,7 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null);
   const token = ref<string | null>(localStorage.getItem('upm_token'));
   const loading = ref(false);
+  const sessionValidated = ref(false);
 
   // Getters
   const isAuthenticated = computed(() => !!token.value);
@@ -29,6 +30,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       // Set default authorization header for future requests
       apiService.setAuthToken(response.data.token);
+      sessionValidated.value = true;
 
       return response.data;
     } catch (error) {
@@ -43,17 +45,14 @@ export const useAuthStore = defineStore('auth', () => {
   const logout = () => {
     user.value = null;
     token.value = null;
+    sessionValidated.value = false;
     localStorage.removeItem('upm_token');
     apiService.clearAuthToken();
   };
 
   const initializeAuth = () => {
-    // Check if we have a stored token
     if (token.value) {
-      // Set the auth token for API requests
       apiService.setAuthToken(token.value);
-
-      // Create a basic user object (we could validate the token here)
       user.value = {
         id: 1,
         username: 'admin',
@@ -62,6 +61,27 @@ export const useAuthStore = defineStore('auth', () => {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
+    }
+  };
+
+  const validateSession = async (): Promise<boolean> => {
+    if (!token.value) {
+      return false;
+    }
+
+    if (sessionValidated.value) {
+      return true;
+    }
+
+    try {
+      await apiService.getSettings();
+      sessionValidated.value = true;
+      return true;
+    } catch {
+      if (token.value) {
+        logout();
+      }
+      return false;
     }
   };
 
@@ -79,5 +99,6 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     logout,
     initializeAuth,
+    validateSession,
   };
 });

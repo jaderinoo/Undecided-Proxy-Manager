@@ -3,6 +3,7 @@ import type {
   AuthResponse,
   Certificate,
   CertificateCreateRequest,
+  CertificateRenewResponse,
   CertificateUpdateRequest,
   Container,
   ContainerListResponse,
@@ -48,6 +49,8 @@ const API_BASE_URL = getApiBaseUrl();
 class ApiService {
   private baseUrl: string;
   private authToken: string | null = null;
+  private onUnauthorized: (() => void) | null = null;
+  private handlingUnauthorized = false;
 
   constructor(baseUrl: string = API_BASE_URL) {
     this.baseUrl = baseUrl;
@@ -59,6 +62,10 @@ class ApiService {
 
   clearAuthToken() {
     this.authToken = null;
+  }
+
+  setUnauthorizedHandler(handler: () => void) {
+    this.onUnauthorized = handler;
   }
 
   private async request<T>(
@@ -83,6 +90,20 @@ class ApiService {
     });
 
     if (!response.ok) {
+      if (
+        response.status === 401 &&
+        !endpoint.includes('/auth/login') &&
+        this.onUnauthorized &&
+        !this.handlingUnauthorized
+      ) {
+        this.handlingUnauthorized = true;
+        try {
+          this.onUnauthorized();
+        } finally {
+          this.handlingUnauthorized = false;
+        }
+      }
+
       // Try to extract error message from response body
       let errorMessage = `${response.status} ${response.statusText}`;
       try {
@@ -387,6 +408,14 @@ class ApiService {
 
   async renewCertificate(id: number): Promise<ApiResponse<Certificate>> {
     return this.request(`/api/v1/certificates/${id}/renew`, {
+      method: 'POST',
+    });
+  }
+
+  async renewAllCertificates(): Promise<{
+    responses: CertificateRenewResponse[];
+  }> {
+    return this.request('/api/v1/certificates/renew-all', {
       method: 'POST',
     });
   }

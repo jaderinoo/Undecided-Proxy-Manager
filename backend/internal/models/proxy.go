@@ -62,3 +62,10 @@ type CertificateUpdateRequest struct {
 type LetsEncryptRequest struct {
 	Domain string `json:"domain" binding:"required"`
 }
+
+type CertificateRenewResponse struct {
+	Domain      string       `json:"domain"`
+	Success     bool         `json:"success"`
+	Message     string       `json:"message"`
+	Certificate *Certificate `json:"certificate,omitempty"`
+}

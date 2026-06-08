@@ -22,6 +22,17 @@
                 >
                   <template #actions>
                     <v-btn
+                      color="primary"
+                      variant="text"
+                      size="small"
+                      :disabled="renewableCertificates.length === 0"
+                      :loading="isRenewingAll"
+                      @click="renewAllCertificates"
+                    >
+                      <v-icon left>mdi-refresh</v-icon>
+                      Renew All
+                    </v-btn>
+                    <v-btn
                       color="success"
                       variant="text"
                       size="small"
@@ -270,10 +281,16 @@ import PageHeader from '../components/ui/PageHeader.vue';
 import StatsCards from '../components/ui/StatsCards.vue';
 import apiService from '../services/api';
 import type { Certificate, CertificateCreateRequest, Proxy } from '../types/api';
+import {
+  getDaysUntilExpiry,
+  isCertificateExpired,
+  isExpiringSoon,
+} from '../utils/certificate';
 
 const certificates = ref<Certificate[]>([]);
 const filteredCertificates = ref<Certificate[]>([]);
 const isLoading = ref(false);
+const isRenewingAll = ref(false);
 const error = ref<string | null>(null);
 const showCreateDialog = ref(false);
 const isCreating = ref(false);
@@ -330,23 +347,32 @@ const sortOptions = [
 ];
 
 const validCertificates = computed(
-  () => certificates.value.filter(cert => cert.is_valid).length
+  () =>
+    certificates.value.filter(
+      cert => !isCertificateExpired(cert.expires_at) && cert.is_valid
+    ).length
 );
 
 const invalidCertificates = computed(
-  () => certificates.value.filter(cert => !cert.is_valid).length
+  () =>
+    certificates.value.filter(
+      cert => isCertificateExpired(cert.expires_at) || !cert.is_valid
+    ).length
 );
 
 const expiringSoon = computed(
   () =>
-    certificates.value.filter(cert => {
-      const now = new Date();
-      const expiry = new Date(cert.expires_at);
-      const daysUntilExpiry = Math.ceil(
-        (expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-      );
-      return daysUntilExpiry <= 30 && daysUntilExpiry > 0;
-    }).length
+    certificates.value.filter(cert => isExpiringSoon(cert.expires_at)).length
+);
+
+const isLetsEncryptCertificate = (cert: Certificate) =>
+  cert.cert_path.includes('/etc/letsencrypt') ||
+  cert.cert_path.includes('/etc/ssl/certs');
+
+const renewableCertificates = computed(() =>
+  certificates.value.filter(
+    cert => isLetsEncryptCertificate(cert) && isExpiringSoon(cert.expires_at)
+  )
 );
 
 const sslEnabledCount = computed(
@@ -422,12 +448,8 @@ const filterCertificates = () => {
 
   // Status filter
   if (statusFilter.value) {
-    const now = new Date();
     filtered = filtered.filter(cert => {
-      const expiry = new Date(cert.expires_at);
-      const daysUntilExpiry = Math.ceil(
-        (expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-      );
+      const daysUntilExpiry = getDaysUntilExpiry(cert.expires_at);
 
       switch (statusFilter.value) {
         case 'valid':
@@ -435,7 +457,7 @@ const filterCertificates = () => {
         case 'invalid':
           return !cert.is_valid || daysUntilExpiry <= 0;
         case 'expiring':
-          return daysUntilExpiry <= 30 && daysUntilExpiry > 0;
+          return isExpiringSoon(cert.expires_at);
         default:
           return true;
       }
@@ -584,6 +606,43 @@ const handleCertificateRenewed = (certificate: Certificate) => {
   if (index !== -1) {
     certificates.value[index] = certificate;
     filterCertificates();
+  }
+};
+
+const renewAllCertificates = async () => {
+  if (isRenewingAll.value || renewableCertificates.value.length === 0) return;
+
+  const count = renewableCertificates.value.length;
+  if (
+    !confirm(
+      `Renew ${count} Let's Encrypt certificate${count === 1 ? '' : 's'} expiring within 30 days?`
+    )
+  ) {
+    return;
+  }
+
+  try {
+    isRenewingAll.value = true;
+    error.value = null;
+
+    const { responses } = await apiService.renewAllCertificates();
+    const renewed = responses.filter(r => r.success && r.certificate);
+    const failed = responses.filter(r => !r.success && !r.message.startsWith('Skipped:'));
+
+    renewed.forEach(response => {
+      if (response.certificate) {
+        handleCertificateRenewed(response.certificate);
+      }
+    });
+
+    if (failed.length > 0) {
+      error.value = `Failed to renew ${failed.length} certificate${failed.length === 1 ? '' : 's'}: ${failed.map(r => r.domain).join(', ')}`;
+    }
+  } catch (err) {
+    error.value =
+      err instanceof Error ? err.message : 'Failed to renew certificates';
+  } finally {
+    isRenewingAll.value = false;
   }
 };
 

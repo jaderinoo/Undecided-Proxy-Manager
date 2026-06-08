@@ -15,6 +15,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var certificateRenewalService *services.CertificateRenewalService
+
+// SetCertificateRenewalService sets the certificate auto-renewal service instance.
+func SetCertificateRenewalService(service *services.CertificateRenewalService) {
+	certificateRenewalService = service
+}
+
 // GetCertificates godoc
 // @Summary      Get all certificates
 // @Description  Get a list of all SSL certificates
@@ -34,6 +41,15 @@ func GetCertificates(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch certificates: " + err.Error()})
 		return
+	}
+
+	certService := services.NewCertificateService("/etc/nginx/ssl")
+	for i := range certificates {
+		if certService.SyncCertificateStatus(&certificates[i]) {
+			if err := dbService.UpdateCertificate(&certificates[i]); err != nil {
+				log.Printf("Warning: Failed to sync certificate status for %s: %v", certificates[i].Domain, err)
+			}
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -295,52 +311,71 @@ func RenewCertificate(c *gin.Context) {
 		return
 	}
 
-	// Get existing certificate
 	certificate, err := dbService.GetCertificate(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Certificate not found"})
 		return
 	}
 
-	// Create certificate service
-	certService := services.NewCertificateService("/etc/nginx/ssl")
-
-	// Renew certificate using Let's Encrypt
-	log.Printf("Attempting to renew certificate for domain: %s (ID: %d)", certificate.Domain, id)
-	renewedCert, err := certService.RenewCertificate(certificate)
+	renewedCert, err := renewCertificateRecord(certificate)
 	if err != nil {
 		log.Printf("Certificate renewal failed for %s: %v", certificate.Domain, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to renew certificate: " + err.Error()})
 		return
 	}
+
+	c.JSON(http.StatusOK, gin.H{"data": renewedCert, "message": "Certificate renewed successfully"})
+}
+
+// RenewAllCertificates godoc
+// @Summary      Renew all eligible certificates
+// @Description  Renew all Let's Encrypt certificates expiring within 30 days
+// @Tags         certificates
+// @Accept       json
+// @Produce      json
+// @Success      200  {array}   models.CertificateRenewResponse
+// @Failure      500  {object}  map[string]string
+// @Router       /certificates/renew-all [post]
+func RenewAllCertificates(c *gin.Context) {
+	if certificateRenewalService == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Certificate renewal service not initialized"})
+		return
+	}
+
+	responses := certificateRenewalService.RenewEligibleCertificates()
+	c.JSON(http.StatusOK, gin.H{"responses": responses})
+}
+
+func renewCertificateRecord(certificate *models.Certificate) (*models.Certificate, error) {
+	certService := services.NewCertificateService("/etc/nginx/ssl")
+
+	log.Printf("Attempting to renew certificate for domain: %s (ID: %d)", certificate.Domain, certificate.ID)
+	renewedCert, err := certService.RenewCertificate(certificate)
+	if err != nil {
+		return nil, err
+	}
 	log.Printf("Certificate renewal successful for %s", certificate.Domain)
 
-	// Update certificate in database
 	certificate.CertPath = renewedCert.CertPath
 	certificate.KeyPath = renewedCert.KeyPath
 	certificate.ExpiresAt = renewedCert.ExpiresAt
 	certificate.IsValid = renewedCert.IsValid
 	certificate.UpdatedAt = time.Now()
 
-	// Save to database
 	if err := dbService.UpdateCertificate(certificate); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update certificate: " + err.Error()})
-		return
+		return nil, fmt.Errorf("failed to update certificate: %w", err)
 	}
 
-	// Certificates are now saved directly to /etc/ssl/certs, so no copy needed
-	// Reload nginx to pick up the new certificate
 	nginxService := GetNginxService()
 	if nginxService != nil {
 		if err := nginxService.ReloadNginx(); err != nil {
-			// Log error but don't fail the renewal - certificate is already renewed
 			log.Printf("Warning: Failed to reload nginx after certificate renewal: %v", err)
 		} else {
 			log.Printf("Nginx reloaded successfully after certificate renewal for %s", certificate.Domain)
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": certificate, "message": "Certificate renewed successfully"})
+	return certificate, nil
 }
 
 // GenerateLetsEncryptCertificate godoc

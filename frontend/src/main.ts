@@ -15,6 +15,7 @@ import DNSPage from './pages/DNSPage.vue';
 import LoginPage from './pages/LoginPage.vue';
 import ProxiesPage from './pages/ProxiesPage.vue';
 import SettingsPage from './pages/SettingsPage.vue';
+import { apiService } from './services/api';
 import { useAuthStore } from './stores/auth';
 import './styles/main.scss';
 
@@ -123,22 +124,44 @@ const router = createRouter({
   ],
 });
 
-// Navigation guards
-router.beforeEach((to, _from, next) => {
-  const authStore = useAuthStore();
+const pinia = createPinia();
 
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    next('/login');
-  } else if (to.meta.requiresGuest && authStore.isAuthenticated) {
-    next('/');
-  } else {
-    next();
+const app = createApp(App);
+app.use(pinia);
+app.use(vuetify);
+app.use(router);
+
+const authStore = useAuthStore();
+authStore.initializeAuth();
+
+apiService.setUnauthorizedHandler(() => {
+  authStore.logout();
+  if (router.currentRoute.value.path !== '/login') {
+    router.push('/login');
   }
 });
 
-const app = createApp(App);
+router.beforeEach(async (to, _from, next) => {
+  if (to.meta.requiresAuth) {
+    if (!authStore.isAuthenticated) {
+      next('/login');
+      return;
+    }
 
-app.use(createPinia());
-app.use(vuetify);
-app.use(router);
+    const valid = await authStore.validateSession();
+    if (!valid) {
+      next('/login');
+      return;
+    }
+  } else if (to.meta.requiresGuest && authStore.isAuthenticated) {
+    const valid = await authStore.validateSession();
+    if (valid) {
+      next('/');
+      return;
+    }
+  }
+
+  next();
+});
+
 app.mount('#app');
