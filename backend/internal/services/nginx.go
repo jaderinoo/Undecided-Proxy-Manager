@@ -14,20 +14,22 @@ import (
 )
 
 type NginxService struct {
-	ConfigPath      string
-	ReloadCommand   string
-	TemplatePath    string
-	ContainerName   string
-	DatabaseService *DatabaseService
+	ConfigPath       string
+	ReloadCommand    string
+	TemplatePath     string
+	ContainerName    string
+	DatabaseService  *DatabaseService
+	SitesEnabledPath string
 }
 
 func NewNginxService(configPath, reloadCommand, containerName string, dbService *DatabaseService) *NginxService {
 	return &NginxService{
-		ConfigPath:      configPath,
-		ReloadCommand:   reloadCommand,
-		TemplatePath:    filepath.Join(configPath, "proxy-template.conf"),
-		ContainerName:   containerName,
-		DatabaseService: dbService,
+		ConfigPath:       configPath,
+		ReloadCommand:    reloadCommand,
+		TemplatePath:     filepath.Join(configPath, "proxy-template.conf"),
+		ContainerName:    containerName,
+		DatabaseService:  dbService,
+		SitesEnabledPath: "/etc/nginx/sites-enabled",
 	}
 }
 
@@ -166,7 +168,7 @@ func (n *NginxService) GenerateProxyConfig(proxy *models.Proxy) error {
 	}
 
 	// Copy config file to sites-enabled directory (shared volume)
-	enabledPath := filepath.Join("/etc/nginx/sites-enabled", fmt.Sprintf("proxy-%d.conf", proxy.ID))
+	enabledPath := filepath.Join(n.SitesEnabledPath, fmt.Sprintf("proxy-%d.conf", proxy.ID))
 	if err := os.WriteFile(enabledPath, buf.Bytes(), 0644); err != nil {
 		return fmt.Errorf("failed to copy config to sites-enabled: %w", err)
 	}
@@ -177,7 +179,7 @@ func (n *NginxService) GenerateProxyConfig(proxy *models.Proxy) error {
 // RemoveProxyConfig removes nginx configuration for a proxy
 func (n *NginxService) RemoveProxyConfig(proxyID int) error {
 	// Remove config file from sites-enabled directory (shared volume)
-	enabledPath := filepath.Join("/etc/nginx/sites-enabled", fmt.Sprintf("proxy-%d.conf", proxyID))
+	enabledPath := filepath.Join(n.SitesEnabledPath, fmt.Sprintf("proxy-%d.conf", proxyID))
 	if err := os.Remove(enabledPath); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to remove config from sites-enabled: %w", err)
 	}
@@ -366,7 +368,7 @@ func isValidPEMFile(path string, marker string) bool {
 // UpdateProxyConfig updates nginx configuration for a proxy
 func (n *NginxService) UpdateProxyConfig(proxy *models.Proxy) error {
 	// Remove old config from sites-enabled directory (shared volume)
-	enabledPath := filepath.Join("/etc/nginx/sites-enabled", fmt.Sprintf("proxy-%d.conf", proxy.ID))
+	enabledPath := filepath.Join(n.SitesEnabledPath, fmt.Sprintf("proxy-%d.conf", proxy.ID))
 	if err := os.Remove(enabledPath); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to remove old config from sites-enabled: %w", err)
 	}
@@ -414,7 +416,7 @@ func (n *NginxService) UpdateAdminConfig(allowedRanges []string) error {
 	}
 
 	// Use envsubst to substitute environment variables and copy to sites-enabled
-	enabledPath := "/etc/nginx/sites-enabled/upm-admin.conf"
+	enabledPath := filepath.Join(n.SitesEnabledPath, "upm-admin.conf")
 	if err := n.processConfigWithEnvSubst(outputPath, enabledPath); err != nil {
 		return fmt.Errorf("failed to process config with envsubst: %w", err)
 	}

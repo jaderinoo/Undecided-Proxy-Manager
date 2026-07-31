@@ -201,7 +201,7 @@ func (d *DNSService) UpdateNamecheapDNS(config *models.DNSConfig, record *models
 		return &models.DNSUpdateResponse{
 			Success: false,
 			Message: errorMsg,
-		}, fmt.Errorf(errorMsg)
+		}, fmt.Errorf("%s", errorMsg)
 	}
 
 	// Update the record in database
