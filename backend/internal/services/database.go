@@ -63,6 +63,8 @@ func (d *DatabaseService) initTables() error {
 		ssl_enabled BOOLEAN DEFAULT FALSE,
 		ws_enabled BOOLEAN DEFAULT FALSE,
 		ssl_path TEXT,
+		rate_limit_enabled BOOLEAN DEFAULT TRUE,
+		rate_limit_rps INTEGER DEFAULT 15,
 		status TEXT DEFAULT 'active',
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -77,6 +79,20 @@ func (d *DatabaseService) initTables() error {
 	if _, err := d.db.Exec(alterTableQuery2); err != nil {
 		// Ignore error if column already exists
 		fmt.Printf("Note: ws_enabled column may already exist: %v\n", err)
+	}
+
+	// Migration: Add rate_limit_enabled column to existing proxies table if it doesn't exist
+	alterTableQuery5 := `ALTER TABLE proxies ADD COLUMN rate_limit_enabled BOOLEAN DEFAULT TRUE;`
+	if _, err := d.db.Exec(alterTableQuery5); err != nil {
+		// Ignore error if column already exists
+		fmt.Printf("Note: rate_limit_enabled column may already exist: %v\n", err)
+	}
+
+	// Migration: Add rate_limit_rps column to existing proxies table if it doesn't exist
+	alterTableQuery6 := `ALTER TABLE proxies ADD COLUMN rate_limit_rps INTEGER DEFAULT 15;`
+	if _, err := d.db.Exec(alterTableQuery6); err != nil {
+		// Ignore error if column already exists
+		fmt.Printf("Note: rate_limit_rps column may already exist: %v\n", err)
 	}
 
 	// Create users table
@@ -216,7 +232,7 @@ func (d *DatabaseService) initTables() error {
 // Proxy methods
 func (d *DatabaseService) GetProxies() ([]models.Proxy, error) {
 	query := `
-		SELECT id, name, domain, target_url, ssl_enabled, ws_enabled, ssl_path, status, created_at, updated_at
+		SELECT id, name, domain, target_url, ssl_enabled, ws_enabled, ssl_path, rate_limit_enabled, rate_limit_rps, status, created_at, updated_at
 		FROM proxies
 		ORDER BY created_at DESC`
 
@@ -237,6 +253,8 @@ func (d *DatabaseService) GetProxies() ([]models.Proxy, error) {
 			&proxy.SSLEnabled,
 			&proxy.WSEnabled,
 			&proxy.SSLPath,
+			&proxy.RateLimitEnabled,
+			&proxy.RateLimitRPS,
 			&proxy.Status,
 			&proxy.CreatedAt,
 			&proxy.UpdatedAt,
@@ -252,7 +270,7 @@ func (d *DatabaseService) GetProxies() ([]models.Proxy, error) {
 
 func (d *DatabaseService) GetProxy(id int) (*models.Proxy, error) {
 	query := `
-		SELECT id, name, domain, target_url, ssl_enabled, ws_enabled, ssl_path, status, created_at, updated_at
+		SELECT id, name, domain, target_url, ssl_enabled, ws_enabled, ssl_path, rate_limit_enabled, rate_limit_rps, status, created_at, updated_at
 		FROM proxies
 		WHERE id = ?`
 
@@ -265,6 +283,8 @@ func (d *DatabaseService) GetProxy(id int) (*models.Proxy, error) {
 		&proxy.SSLEnabled,
 		&proxy.WSEnabled,
 		&proxy.SSLPath,
+		&proxy.RateLimitEnabled,
+		&proxy.RateLimitRPS,
 		&proxy.Status,
 		&proxy.CreatedAt,
 		&proxy.UpdatedAt,
@@ -282,10 +302,10 @@ func (d *DatabaseService) GetProxy(id int) (*models.Proxy, error) {
 
 func (d *DatabaseService) CreateProxy(proxy *models.Proxy) error {
 	query := `
-		INSERT INTO proxies (name, domain, target_url, ssl_enabled, ws_enabled, ssl_path, status)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`
+		INSERT INTO proxies (name, domain, target_url, ssl_enabled, ws_enabled, ssl_path, rate_limit_enabled, rate_limit_rps, status)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
-	result, err := d.db.Exec(query, proxy.Name, proxy.Domain, proxy.TargetURL, proxy.SSLEnabled, proxy.WSEnabled, proxy.SSLPath, proxy.Status)
+	result, err := d.db.Exec(query, proxy.Name, proxy.Domain, proxy.TargetURL, proxy.SSLEnabled, proxy.WSEnabled, proxy.SSLPath, proxy.RateLimitEnabled, proxy.RateLimitRPS, proxy.Status)
 	if err != nil {
 		return fmt.Errorf("failed to insert proxy: %w", err)
 	}
@@ -305,10 +325,10 @@ func (d *DatabaseService) CreateProxy(proxy *models.Proxy) error {
 func (d *DatabaseService) UpdateProxy(proxy *models.Proxy) error {
 	query := `
 		UPDATE proxies
-		SET name = ?, domain = ?, target_url = ?, ssl_enabled = ?, ws_enabled = ?, ssl_path = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+		SET name = ?, domain = ?, target_url = ?, ssl_enabled = ?, ws_enabled = ?, ssl_path = ?, rate_limit_enabled = ?, rate_limit_rps = ?, status = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?`
 
-	result, err := d.db.Exec(query, proxy.Name, proxy.Domain, proxy.TargetURL, proxy.SSLEnabled, proxy.WSEnabled, proxy.SSLPath, proxy.Status, proxy.ID)
+	result, err := d.db.Exec(query, proxy.Name, proxy.Domain, proxy.TargetURL, proxy.SSLEnabled, proxy.WSEnabled, proxy.SSLPath, proxy.RateLimitEnabled, proxy.RateLimitRPS, proxy.Status, proxy.ID)
 	if err != nil {
 		return fmt.Errorf("failed to update proxy: %w", err)
 	}
@@ -941,7 +961,7 @@ func (d *DatabaseService) GetCertificateByDomain(domain string) (*models.Certifi
 
 func (d *DatabaseService) GetProxiesByDomain(domain string) ([]models.Proxy, error) {
 	query := `
-		SELECT id, name, domain, target_url, ssl_enabled, ssl_path, status, created_at, updated_at
+		SELECT id, name, domain, target_url, ssl_enabled, ws_enabled, ssl_path, rate_limit_enabled, rate_limit_rps, status, created_at, updated_at
 		FROM proxies
 		WHERE domain = ? OR domain LIKE ?`
 
@@ -960,7 +980,10 @@ func (d *DatabaseService) GetProxiesByDomain(domain string) ([]models.Proxy, err
 			&proxy.Domain,
 			&proxy.TargetURL,
 			&proxy.SSLEnabled,
+			&proxy.WSEnabled,
 			&proxy.SSLPath,
+			&proxy.RateLimitEnabled,
+			&proxy.RateLimitRPS,
 			&proxy.Status,
 			&proxy.CreatedAt,
 			&proxy.UpdatedAt,

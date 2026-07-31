@@ -132,27 +132,35 @@ func (n *NginxService) GenerateProxyConfig(proxy *models.Proxy) error {
 	sanitizedRanges := sanitizeAllowedRanges(allowedRanges)
 
 	data := struct {
-		Domain         string
-		TargetURL      string
-		SSLEnabled     bool
-		WSEnabled      bool
-		SSLPath        string
-		CertPath       string
-		KeyPath        string
-		AllowedRanges  []string
-		IncludeBackend bool
-		BackendURL     string
+		Domain           string
+		TargetURL        string
+		SSLEnabled       bool
+		WSEnabled        bool
+		SSLPath          string
+		CertPath         string
+		KeyPath          string
+		AllowedRanges    []string
+		IncludeBackend   bool
+		BackendURL       string
+		RateLimitEnabled bool
+		RateLimitZone    string
+		RateLimitRPS     int
+		RateLimitBurst   int
 	}{
-		Domain:         proxy.Domain,
-		TargetURL:      proxy.TargetURL,
-		SSLEnabled:     sslEnabled,
-		WSEnabled:      proxy.WSEnabled,
-		SSLPath:        "/etc/nginx/ssl",
-		CertPath:       certPath,
-		KeyPath:        keyPath,
-		AllowedRanges:  sanitizedRanges,
-		IncludeBackend: includeBackend,
-		BackendURL:     backendURL,
+		Domain:           proxy.Domain,
+		TargetURL:        proxy.TargetURL,
+		SSLEnabled:       sslEnabled,
+		WSEnabled:        proxy.WSEnabled,
+		SSLPath:          "/etc/nginx/ssl",
+		CertPath:         certPath,
+		KeyPath:          keyPath,
+		AllowedRanges:    sanitizedRanges,
+		IncludeBackend:   includeBackend,
+		BackendURL:       backendURL,
+		RateLimitEnabled: proxy.RateLimitEnabled,
+		RateLimitZone:    fmt.Sprintf("proxy_%d", proxy.ID),
+		RateLimitRPS:     proxy.RateLimitRPS,
+		RateLimitBurst:   proxy.RateLimitRPS * 2,
 	}
 
 	// Generate config content

@@ -106,6 +106,39 @@
                 </div>
               </v-alert>
             </v-col>
+
+            <v-col cols="12">
+              <v-switch
+                v-model="form.rate_limit_enabled"
+                label="Enable Rate Limiting"
+                color="primary"
+                hide-details
+                class="mb-2"
+              />
+              <v-text-field
+                v-if="form.rate_limit_enabled"
+                v-model.number="form.rate_limit_rps"
+                label="Requests per second (per IP)"
+                type="number"
+                variant="outlined"
+                density="compact"
+                :rules="[v => (v > 0 && v <= 10000) || 'Must be between 1 and 10000']"
+              />
+              <v-alert
+                v-if="form.rate_limit_enabled"
+                type="info"
+                variant="tonal"
+                density="compact"
+                class="mt-2"
+              >
+                <template v-slot:prepend>
+                  <v-icon>mdi-information</v-icon>
+                </template>
+                <div class="text-caption">
+                  Limits each IP address to this many requests per second (with some burst allowance) to protect against bots and scanners. Disable for proxies with legitimately high traffic.
+                </div>
+              </v-alert>
+            </v-col>
           </v-row>
         </v-form>
       </v-card-text>
@@ -162,6 +195,8 @@ const form = ref<ProxyCreateRequest & { id?: number }>({
   target_url: '',
   ssl_enabled: false,
   ws_enabled: false,
+  rate_limit_enabled: true,
+  rate_limit_rps: 15,
 });
 
 // Check if a certificate exists for the current domain
@@ -200,6 +235,8 @@ watch(() => props.editingProxy, (newValue) => {
       target_url: newValue.target_url,
       ssl_enabled: newValue.ssl_enabled,
       ws_enabled: newValue.ws_enabled || false,
+      rate_limit_enabled: newValue.rate_limit_enabled ?? true,
+      rate_limit_rps: newValue.rate_limit_rps || 15,
     };
   }
 });
@@ -218,6 +255,8 @@ const populateFormFromInitialData = () => {
       target_url: props.initialData.target_url || '',
       ssl_enabled: props.initialData.ssl_enabled || false,
       ws_enabled: props.initialData.ws_enabled || false,
+      rate_limit_enabled: props.initialData.rate_limit_enabled ?? true,
+      rate_limit_rps: props.initialData.rate_limit_rps || 15,
     };
   }
 };
@@ -229,6 +268,8 @@ const resetForm = () => {
     target_url: '',
     ssl_enabled: false,
     ws_enabled: false,
+    rate_limit_enabled: true,
+    rate_limit_rps: 15,
   };
   formValid.value = false;
   formRef.value?.reset();

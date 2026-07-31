@@ -61,3 +61,12 @@ func ValidateBackendURL(rawURL string) error {
 
 	return nil
 }
+
+// ValidateRateLimitRPS ensures a requests-per-second value is a sane bound
+// for an nginx limit_req_zone rate directive.
+func ValidateRateLimitRPS(rps int) error {
+	if rps < 1 || rps > 10000 {
+		return fmt.Errorf("rate_limit_rps must be between 1 and 10000")
+	}
+	return nil
+}

@@ -13,6 +13,8 @@ export interface Proxy {
   ssl_enabled: boolean;
   ws_enabled?: boolean;
   ssl_path?: string;
+  rate_limit_enabled: boolean;
+  rate_limit_rps: number;
   status: 'active' | 'inactive' | 'error';
   created_at: string;
   updated_at: string;
@@ -27,6 +29,8 @@ export interface ProxyCreateRequest {
   target_url: string;
   ssl_enabled: boolean;
   ws_enabled?: boolean;
+  rate_limit_enabled?: boolean;
+  rate_limit_rps?: number;
 }
 
 export interface ProxyUpdateRequest {
@@ -36,6 +40,8 @@ export interface ProxyUpdateRequest {
   target_url?: string;
   ssl_enabled?: boolean;
   ws_enabled?: boolean;
+  rate_limit_enabled?: boolean;
+  rate_limit_rps?: number;
 }
 
 export interface ProxyResponse {

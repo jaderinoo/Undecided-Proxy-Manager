@@ -2,6 +2,7 @@ package services
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -133,6 +134,111 @@ func TestGenerateProxyConfig_InjectionPayloadWouldBreakOutOfDirective(t *testing
 
 	if !strings.Contains(string(content), "location /pwned") {
 		t.Fatalf("expected the unfiltered template to demonstrate the injected location block")
+	}
+}
+
+func TestGenerateProxyConfig_RateLimitEnabled_RendersLimitReqDirectives(t *testing.T) {
+	svc := newTestNginxService(t)
+
+	proxy := &models.Proxy{
+		ID:               4,
+		Domain:           "ratelimited.example.com",
+		TargetURL:        "http://backend:8080",
+		RateLimitEnabled: true,
+		RateLimitRPS:     15,
+	}
+	if err := svc.GenerateProxyConfig(proxy); err != nil {
+		t.Fatalf("GenerateProxyConfig returned error: %v", err)
+	}
+
+	content, err := os.ReadFile(filepath.Join(svc.SitesEnabledPath, "proxy-4.conf"))
+	if err != nil {
+		t.Fatalf("expected config file: %v", err)
+	}
+
+	if !strings.Contains(string(content), "limit_req_zone $binary_remote_addr zone=proxy_4:10m rate=15r/s;") {
+		t.Errorf("expected limit_req_zone directive, got:\n%s", content)
+	}
+	if !strings.Contains(string(content), "limit_req zone=proxy_4 burst=30 nodelay;") {
+		t.Errorf("expected limit_req directive with burst=2x rate, got:\n%s", content)
+	}
+}
+
+func TestGenerateProxyConfig_RateLimitDisabled_NoLimitReqDirectives(t *testing.T) {
+	svc := newTestNginxService(t)
+
+	proxy := &models.Proxy{
+		ID:               5,
+		Domain:           "unlimited.example.com",
+		TargetURL:        "http://backend:8080",
+		RateLimitEnabled: false,
+	}
+	if err := svc.GenerateProxyConfig(proxy); err != nil {
+		t.Fatalf("GenerateProxyConfig returned error: %v", err)
+	}
+
+	content, err := os.ReadFile(filepath.Join(svc.SitesEnabledPath, "proxy-5.conf"))
+	if err != nil {
+		t.Fatalf("expected config file: %v", err)
+	}
+
+	if strings.Contains(string(content), "limit_req") {
+		t.Errorf("expected no limit_req directives when rate limiting is disabled, got:\n%s", content)
+	}
+}
+
+// TestGenerateProxyConfig_RenderedConfigIsValidNginxSyntax renders configs
+// with rate limiting on and off and, if the nginx binary is available,
+// actually runs `nginx -t` against them to catch template syntax errors that
+// a plain string-content test would miss.
+func TestGenerateProxyConfig_RenderedConfigIsValidNginxSyntax(t *testing.T) {
+	nginxPath, err := exec.LookPath("nginx")
+	if err != nil {
+		t.Skip("nginx binary not available, skipping syntax validation")
+	}
+
+	svc := newTestNginxService(t)
+
+	proxies := []*models.Proxy{
+		{ID: 10, Domain: "a.example.com", TargetURL: "http://127.0.0.1:8080", RateLimitEnabled: true, RateLimitRPS: 15},
+		{ID: 11, Domain: "b.example.com", TargetURL: "http://127.0.0.1:9090", RateLimitEnabled: false, SSLEnabled: true},
+		{ID: 12, Domain: "c.example.com", TargetURL: "http://127.0.0.1:7000", RateLimitEnabled: true, RateLimitRPS: 5, WSEnabled: true},
+	}
+	for _, p := range proxies {
+		if err := svc.GenerateProxyConfig(p); err != nil {
+			t.Fatalf("GenerateProxyConfig(%d) returned error: %v", p.ID, err)
+		}
+	}
+
+	// Build a minimal, self-contained nginx.conf that includes the rendered
+	// site configs, mirroring the http-context inclusion used in production.
+	nginxRoot := t.TempDir()
+	mainConf := `pid ` + filepath.Join(nginxRoot, "nginx.pid") + `;
+error_log ` + filepath.Join(nginxRoot, "error.log") + `;
+events {}
+http {
+    access_log ` + filepath.Join(nginxRoot, "access.log") + `;
+    map $http_upgrade $connection_upgrade {
+        default upgrade;
+        '' close;
+    }
+    include ` + filepath.Join(svc.SitesEnabledPath, "*.conf") + `;
+}
+`
+	mainConfPath := filepath.Join(nginxRoot, "nginx.conf")
+	if err := os.WriteFile(mainConfPath, []byte(mainConf), 0644); err != nil {
+		t.Fatalf("failed to write test nginx.conf: %v", err)
+	}
+
+	// `nginx -t` in this unprivileged test process also tries to load
+	// certificates and bind to ports 80/443, which fail here for reasons
+	// unrelated to the template (missing cert files, no CAP_NET_BIND_SERVICE).
+	// What we actually care about is that the config *parses*, which nginx
+	// reports via "syntax is ok" before attempting either of those steps.
+	cmd := exec.Command(nginxPath, "-t", "-c", mainConfPath)
+	output, err := cmd.CombinedOutput()
+	if !strings.Contains(string(output), "syntax is ok") {
+		t.Errorf("nginx -t did not report valid syntax: %v\noutput:\n%s", err, output)
 	}
 }
 

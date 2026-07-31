@@ -4,33 +4,43 @@ import (
 	"time"
 )
 
+// DefaultRateLimitRPS is the requests-per-second applied to a new proxy
+// when rate limiting is enabled and no explicit rate is provided.
+const DefaultRateLimitRPS = 15
+
 type Proxy struct {
-	ID         int       `json:"id" db:"id"`
-	Name       string    `json:"name" db:"name"`
-	Domain     string    `json:"domain" db:"domain"`
-	TargetURL  string    `json:"target_url" db:"target_url"`
-	SSLEnabled bool      `json:"ssl_enabled" db:"ssl_enabled"`
-	WSEnabled  bool      `json:"ws_enabled" db:"ws_enabled"`
-	SSLPath    string    `json:"ssl_path,omitempty" db:"ssl_path"`
-	Status     string    `json:"status" db:"status"` // active, inactive, error
-	CreatedAt  time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at" db:"updated_at"`
+	ID               int       `json:"id" db:"id"`
+	Name             string    `json:"name" db:"name"`
+	Domain           string    `json:"domain" db:"domain"`
+	TargetURL        string    `json:"target_url" db:"target_url"`
+	SSLEnabled       bool      `json:"ssl_enabled" db:"ssl_enabled"`
+	WSEnabled        bool      `json:"ws_enabled" db:"ws_enabled"`
+	SSLPath          string    `json:"ssl_path,omitempty" db:"ssl_path"`
+	RateLimitEnabled bool      `json:"rate_limit_enabled" db:"rate_limit_enabled"`
+	RateLimitRPS     int       `json:"rate_limit_rps" db:"rate_limit_rps"`
+	Status           string    `json:"status" db:"status"` // active, inactive, error
+	CreatedAt        time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at" db:"updated_at"`
 }
 
 type ProxyCreateRequest struct {
-	Name       string `json:"name" binding:"required"`
-	Domain     string `json:"domain" binding:"required"`
-	TargetURL  string `json:"target_url" binding:"required"`
-	SSLEnabled bool   `json:"ssl_enabled"`
-	WSEnabled  *bool  `json:"ws_enabled,omitempty"`
+	Name             string `json:"name" binding:"required"`
+	Domain           string `json:"domain" binding:"required"`
+	TargetURL        string `json:"target_url" binding:"required"`
+	SSLEnabled       bool   `json:"ssl_enabled"`
+	WSEnabled        *bool  `json:"ws_enabled,omitempty"`
+	RateLimitEnabled *bool  `json:"rate_limit_enabled,omitempty"`
+	RateLimitRPS     *int   `json:"rate_limit_rps,omitempty"`
 }
 
 type ProxyUpdateRequest struct {
-	Name       *string `json:"name,omitempty"`
-	Domain     *string `json:"domain,omitempty"`
-	TargetURL  *string `json:"target_url,omitempty"`
-	SSLEnabled *bool   `json:"ssl_enabled,omitempty"`
-	WSEnabled  *bool   `json:"ws_enabled,omitempty"`
+	Name             *string `json:"name,omitempty"`
+	Domain           *string `json:"domain,omitempty"`
+	TargetURL        *string `json:"target_url,omitempty"`
+	SSLEnabled       *bool   `json:"ssl_enabled,omitempty"`
+	WSEnabled        *bool   `json:"ws_enabled,omitempty"`
+	RateLimitEnabled *bool   `json:"rate_limit_enabled,omitempty"`
+	RateLimitRPS     *int    `json:"rate_limit_rps,omitempty"`
 }
 
 type Certificate struct {

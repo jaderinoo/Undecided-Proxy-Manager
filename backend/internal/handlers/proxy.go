@@ -117,6 +117,21 @@ func CreateProxy(c *gin.Context) {
 		return
 	}
 
+	rateLimitEnabled := true
+	if req.RateLimitEnabled != nil {
+		rateLimitEnabled = *req.RateLimitEnabled
+	}
+	rateLimitRPS := models.DefaultRateLimitRPS
+	if req.RateLimitRPS != nil {
+		rateLimitRPS = *req.RateLimitRPS
+	}
+	if rateLimitEnabled {
+		if err := models.ValidateRateLimitRPS(rateLimitRPS); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
 	if dbService == nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database service not initialized"})
 		return
@@ -128,12 +143,14 @@ func CreateProxy(c *gin.Context) {
 		wsEnabled = *req.WSEnabled
 	}
 	proxy := &models.Proxy{
-		Name:       req.Name,
-		Domain:     req.Domain,
-		TargetURL:  req.TargetURL,
-		SSLEnabled: req.SSLEnabled,
-		WSEnabled:  wsEnabled,
-		Status:     "active",
+		Name:             req.Name,
+		Domain:           req.Domain,
+		TargetURL:        req.TargetURL,
+		SSLEnabled:       req.SSLEnabled,
+		WSEnabled:        wsEnabled,
+		RateLimitEnabled: rateLimitEnabled,
+		RateLimitRPS:     rateLimitRPS,
+		Status:           "active",
 	}
 
 	// If SSL is enabled, check if certificate already exists
@@ -252,6 +269,12 @@ func UpdateProxy(c *gin.Context) {
 			return
 		}
 	}
+	if req.RateLimitRPS != nil {
+		if err := models.ValidateRateLimitRPS(*req.RateLimitRPS); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+	}
 
 	if dbService == nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database service not initialized"})
@@ -277,6 +300,12 @@ func UpdateProxy(c *gin.Context) {
 	}
 	if req.WSEnabled != nil {
 		proxy.WSEnabled = *req.WSEnabled
+	}
+	if req.RateLimitEnabled != nil {
+		proxy.RateLimitEnabled = *req.RateLimitEnabled
+	}
+	if req.RateLimitRPS != nil {
+		proxy.RateLimitRPS = *req.RateLimitRPS
 	}
 	if req.SSLEnabled != nil {
 		// If SSL is being enabled, check if certificate already exists
