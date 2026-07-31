@@ -213,6 +213,13 @@ func CreateDNSRecord(c *gin.Context) {
 		return
 	}
 
+	if req.BackendURL != "" {
+		if err := models.ValidateBackendURL(req.BackendURL); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid backend_url: " + err.Error()})
+			return
+		}
+	}
+
 	record := &models.DNSRecord{
 		ConfigID:              req.ConfigID,
 		Host:                  req.Host,
@@ -251,6 +258,13 @@ func UpdateDNSRecord(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+
+	if req.BackendURL != nil && *req.BackendURL != "" {
+		if err := models.ValidateBackendURL(*req.BackendURL); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid backend_url: " + err.Error()})
+			return
+		}
 	}
 
 	record, err := dnsHandler.dnsService.DbService.GetDNSRecord(id)

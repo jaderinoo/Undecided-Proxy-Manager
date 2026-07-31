@@ -108,6 +108,15 @@ func CreateProxy(c *gin.Context) {
 		return
 	}
 
+	if err := models.ValidateDomain(req.Domain); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := models.ValidateBackendURL(req.TargetURL); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid target_url: " + err.Error()})
+		return
+	}
+
 	if dbService == nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database service not initialized"})
 		return
@@ -229,6 +238,19 @@ func UpdateProxy(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+
+	if req.Domain != nil {
+		if err := models.ValidateDomain(*req.Domain); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+	}
+	if req.TargetURL != nil {
+		if err := models.ValidateBackendURL(*req.TargetURL); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid target_url: " + err.Error()})
+			return
+		}
 	}
 
 	if dbService == nil {
