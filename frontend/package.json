@@ -8,6 +8,8 @@
     "build": "vue-tsc && vite build",
     "preview": "vite preview",
     "type-check": "vue-tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint . --ext .vue,.js,.ts,.jsx,.tsx --fix",
@@ -32,6 +34,7 @@
     "sass-embedded": "^1.92.0",
     "typescript": "^5.9.2",
     "vite": "^7.1.4",
+    "vitest": "^4.1.10",
     "vue-eslint-parser": "^10.2.0",
     "vue-tsc": "^3.0.6"
   }

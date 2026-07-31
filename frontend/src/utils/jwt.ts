@@ -10,8 +10,7 @@ export function decodeJwtPayload(token: string): Record<string, unknown> | null 
     const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
     const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
     const json = decodeURIComponent(
-      window
-        .atob(padded)
+      atob(padded)
         .split('')
         .map(c => '%' + c.charCodeAt(0).toString(16).padStart(2, '0'))
         .join('')

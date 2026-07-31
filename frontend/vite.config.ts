@@ -7,4 +7,7 @@ export default defineConfig({
     port: 6071,
     host: true,
   },
+  test: {
+    setupFiles: ['./src/test/setup.ts'],
+  },
 });
