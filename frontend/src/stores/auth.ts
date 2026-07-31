@@ -2,13 +2,13 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { apiService } from '../services/api';
 import type { User, UserLoginRequest } from '../types/api';
+import { isTokenExpired } from '../utils/jwt';
 
 export const useAuthStore = defineStore('auth', () => {
   // State
   const user = ref<User | null>(null);
   const token = ref<string | null>(localStorage.getItem('upm_token'));
   const loading = ref(false);
-  const sessionValidated = ref(false);
 
   // Getters
   const isAuthenticated = computed(() => !!token.value);
@@ -30,7 +30,6 @@ export const useAuthStore = defineStore('auth', () => {
 
       // Set default authorization header for future requests
       apiService.setAuthToken(response.data.token);
-      sessionValidated.value = true;
 
       return response.data;
     } catch (error) {
@@ -45,7 +44,6 @@ export const useAuthStore = defineStore('auth', () => {
   const logout = () => {
     user.value = null;
     token.value = null;
-    sessionValidated.value = false;
     localStorage.removeItem('upm_token');
     apiService.clearAuthToken();
   };
@@ -69,13 +67,13 @@ export const useAuthStore = defineStore('auth', () => {
       return false;
     }
 
-    if (sessionValidated.value) {
-      return true;
+    if (isTokenExpired(token.value)) {
+      logout();
+      return false;
     }
 
     try {
       await apiService.getSettings();
-      sessionValidated.value = true;
       return true;
     } catch {
       if (token.value) {
@@ -83,6 +81,18 @@ export const useAuthStore = defineStore('auth', () => {
       }
       return false;
     }
+  };
+
+  // Fast, local-only check (no network round-trip) for whether the current
+  // token has passed its expiry. Used to detect a stale session on a tab
+  // that's been left open without any navigation to trigger validateSession.
+  // Returns true if the session was expired (and has now been logged out).
+  const logoutIfExpired = (): boolean => {
+    if (token.value && isTokenExpired(token.value)) {
+      logout();
+      return true;
+    }
+    return false;
   };
 
   return {
@@ -100,5 +110,6 @@ export const useAuthStore = defineStore('auth', () => {
     logout,
     initializeAuth,
     validateSession,
+    logoutIfExpired,
   };
 });

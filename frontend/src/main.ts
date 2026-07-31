@@ -134,12 +134,36 @@ app.use(router);
 const authStore = useAuthStore();
 authStore.initializeAuth();
 
-apiService.setUnauthorizedHandler(() => {
-  authStore.logout();
+const redirectToLoginIfNeeded = () => {
   if (router.currentRoute.value.path !== '/login') {
     router.push('/login');
   }
+};
+
+apiService.setUnauthorizedHandler(() => {
+  authStore.logout();
+  redirectToLoginIfNeeded();
 });
+
+// A tab left open across a token's expiry never triggers router.beforeEach
+// (no navigation happens) and may never make another API call either, so
+// nothing would otherwise notice the session went stale. Proactively check
+// the token's local expiry on an interval and whenever the tab regains
+// focus, so an expired session gets kicked back to the login page even if
+// the user never clicks anything.
+const checkSessionExpiry = () => {
+  if (authStore.logoutIfExpired()) {
+    redirectToLoginIfNeeded();
+  }
+};
+
+setInterval(checkSessionExpiry, 60_000);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    checkSessionExpiry();
+  }
+});
+window.addEventListener('focus', checkSessionExpiry);
 
 router.beforeEach(async (to, _from, next) => {
   if (to.meta.requiresAuth) {
