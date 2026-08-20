@@ -223,20 +223,24 @@ func DeleteCertificate(c *gin.Context) {
 		return
 	}
 
-	// Get certificate info before deletion for logging
 	certificate, err := dbService.GetCertificate(id)
-	if err == nil {
-		log.Printf("Deleting certificate ID %d for domain: %s", id, certificate.Domain)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Certificate not found"})
+		return
 	}
 
-	// Remove from database
+	log.Printf("Deleting certificate ID %d for domain: %s", id, certificate.Domain)
+
+	if err := services.RemoveCertificateFiles(certificate); err != nil {
+		log.Printf("Warning: failed to remove certificate files for %s: %v", certificate.Domain, err)
+	}
+
 	if err := dbService.DeleteCertificate(id); err != nil {
 		log.Printf("Failed to delete certificate ID %d: %v", id, err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Failed to delete certificate: " + err.Error()})
 		return
 	}
 
-	// Disable SSL on proxies that were using this certificate
 	disableSSLForDomain(certificate.Domain)
 
 	log.Printf("Successfully deleted certificate ID %d", id)

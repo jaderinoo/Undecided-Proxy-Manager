@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -321,4 +322,67 @@ func copyFile(src, dst string) error {
 	}
 
 	return os.Chmod(dst, sourceInfo.Mode())
+}
+
+// certificateDiskPaths returns on-disk cert/key files UPM may have written for this
+// certificate. Let's Encrypt copies also live under /etc/ssl/certs for nginx.
+func certificateDiskPaths(cert *models.Certificate) []string {
+	if cert == nil {
+		return nil
+	}
+
+	seen := make(map[string]struct{})
+	var paths []string
+	add := func(p string) {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			return
+		}
+		p = filepath.Clean(p)
+		if !filepath.IsAbs(p) {
+			return
+		}
+		if _, ok := seen[p]; ok {
+			return
+		}
+		seen[p] = struct{}{}
+		paths = append(paths, p)
+	}
+
+	add(cert.CertPath)
+	add(cert.KeyPath)
+
+	underLetsEncrypt := strings.Contains(cert.CertPath, "/etc/letsencrypt/") || strings.Contains(cert.KeyPath, "/etc/letsencrypt/")
+	if underLetsEncrypt {
+		add(strings.Replace(cert.CertPath, "/etc/letsencrypt/certs", "/etc/ssl/certs", 1))
+		add(strings.Replace(cert.KeyPath, "/etc/letsencrypt/certs", "/etc/ssl/certs", 1))
+		if cert.Domain != "" {
+			add(filepath.Join("/etc/ssl/certs", cert.Domain+".crt"))
+			add(filepath.Join("/etc/ssl/certs", cert.Domain+".key"))
+		}
+	}
+
+	return paths
+}
+
+// RemoveCertificateFiles deletes PEM files for a certificate. Missing files are ignored.
+func RemoveCertificateFiles(cert *models.Certificate) error {
+	var errs []error
+	for _, p := range certificateDiskPaths(cert) {
+		info, err := os.Lstat(p)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			errs = append(errs, fmt.Errorf("%s: %w", p, err))
+			continue
+		}
+		if info.IsDir() {
+			continue
+		}
+		if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+			errs = append(errs, fmt.Errorf("%s: %w", p, err))
+		}
+	}
+	return errors.Join(errs...)
 }

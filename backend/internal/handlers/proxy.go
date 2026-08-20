@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -411,13 +412,19 @@ func DeleteProxy(c *gin.Context) {
 		return
 	}
 
-	// Remove from database
+	proxy, err := dbService.GetProxy(id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Failed to delete proxy: " + err.Error()})
+		return
+	}
+
+	removeUnusedCertificateForDomain(proxy.Domain, id)
+
 	if err := dbService.DeleteProxy(id); err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Failed to delete proxy: " + err.Error()})
 		return
 	}
 
-	// Remove nginx configuration
 	nginxService := getNginxService()
 	if nginxService != nil {
 		if err := nginxService.RemoveProxyConfig(id); err != nil {
@@ -425,13 +432,11 @@ func DeleteProxy(c *gin.Context) {
 			return
 		}
 
-		// Test nginx configuration
 		if err := nginxService.TestNginxConfig(); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid nginx configuration: " + err.Error()})
 			return
 		}
 
-		// Reload nginx
 		if err := nginxService.ReloadNginx(); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reload nginx: " + err.Error()})
 			return
@@ -439,6 +444,35 @@ func DeleteProxy(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusNoContent, gin.H{"message": "Proxy deleted successfully"})
+}
+
+// removeUnusedCertificateForDomain deletes the cert DB row and PEM files when no
+// other proxy still uses this exact domain.
+func removeUnusedCertificateForDomain(domain string, exceptProxyID int) {
+	if dbService == nil || domain == "" {
+		return
+	}
+
+	proxies, err := dbService.GetProxiesByDomain(domain)
+	if err != nil {
+		return
+	}
+	for _, p := range proxies {
+		if p.ID != exceptProxyID && p.Domain == domain {
+			return
+		}
+	}
+
+	cert, err := dbService.GetCertificateByDomain(domain)
+	if err != nil {
+		return
+	}
+	if err := services.RemoveCertificateFiles(cert); err != nil {
+		log.Printf("Warning: failed to remove certificate files for %s: %v", domain, err)
+	}
+	if err := dbService.DeleteCertificate(cert.ID); err != nil {
+		log.Printf("Warning: failed to delete certificate row for %s: %v", domain, err)
+	}
 }
 
 // GetProxyCertificate godoc

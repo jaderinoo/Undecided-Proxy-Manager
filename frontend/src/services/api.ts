@@ -324,7 +324,7 @@ class ApiService {
     });
   }
 
-  async deleteDNSRecord(id: number): Promise<{ message: string }> {
+  async deleteDNSRecord(id: number): Promise<{ message: string; warning?: string }> {
     return this.request(`/api/v1/dns/records/${id}`, {
       method: 'DELETE',
     });

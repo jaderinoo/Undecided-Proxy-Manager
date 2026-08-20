@@ -365,17 +365,29 @@ func DeleteDNSRecord(c *gin.Context) {
 		return
 	}
 
+	record, err := dnsHandler.dnsService.DbService.GetDNSRecord(id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
 	if err := dnsHandler.dnsService.DbService.DeleteDNSRecord(id); err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Stop scheduled job if it exists
 	if dnsHandler.schedulerService != nil {
 		dnsHandler.schedulerService.StopScheduledJob(id)
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "DNS record deleted successfully"})
+	if err := regenerateNginxForDNSRecord(record); err != nil {
+		fmt.Printf("Warning: Failed to regenerate nginx for deleted DNS record %d: %v\n", id, err)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "DNS record deleted successfully",
+		"warning": "Namecheap dynamic DNS cannot delete the host. Remove the A record at the registrar if it should stop resolving.",
+	})
 }
 
 // DNS Update handlers

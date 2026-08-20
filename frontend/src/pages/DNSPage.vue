@@ -387,7 +387,8 @@
       @confirm="confirmDeleteConfig" />
 
     <ConfirmationDialog v-model:show="showDeleteRecordDialog" title="Delete DNS Record"
-      message="Are you sure you want to delete this DNS record?" icon="mdi-delete-alert" icon-color="error"
+      message="This removes the record from UPM and stops dynamic DNS updates. Namecheap cannot delete the host via dynamic DNS — remove the A record in the registrar if it should stop resolving."
+      icon="mdi-delete-alert" icon-color="error"
       confirm-text="Delete" confirm-color="error" @confirm="confirmDeleteRecord" />
   </AppLayout>
 </template>
