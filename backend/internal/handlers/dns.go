@@ -306,7 +306,55 @@ func UpdateDNSRecord(c *gin.Context) {
 		}
 	}
 
+	// Allowed IP ranges live on the DNS record, but nginx only reads them when
+	// the proxy config is generated. Re-render so a save in the DNS UI actually
+	// applies allow/deny on the vhost.
+	if err := regenerateNginxForDNSRecord(record); err != nil {
+		fmt.Printf("Warning: Failed to regenerate nginx for DNS record %d: %v\n", record.ID, err)
+	}
+
 	c.JSON(http.StatusOK, gin.H{"record": record})
+}
+
+func regenerateNginxForDNSRecord(record *models.DNSRecord) error {
+	nginx := GetNginxService()
+	db := GetDatabaseService()
+	if nginx == nil || db == nil {
+		return nil
+	}
+
+	config, err := db.GetDNSConfig(record.ConfigID)
+	if err != nil {
+		return err
+	}
+
+	fqdn := config.Domain
+	if record.Host != "" && record.Host != "@" {
+		fqdn = record.Host + "." + config.Domain
+	}
+
+	proxies, err := db.GetProxiesByDomain(fqdn)
+	if err != nil {
+		return err
+	}
+
+	regenerated := false
+	for i := range proxies {
+		if proxies[i].Domain != fqdn {
+			continue
+		}
+		if err := nginx.GenerateProxyConfig(&proxies[i]); err != nil {
+			return err
+		}
+		regenerated = true
+	}
+	if !regenerated {
+		return nil
+	}
+	if err := nginx.TestNginxConfig(); err != nil {
+		return err
+	}
+	return nginx.ReloadNginx()
 }
 
 // DeleteDNSRecord deletes a DNS record
